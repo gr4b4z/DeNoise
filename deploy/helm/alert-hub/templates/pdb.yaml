@@ -1,0 +1,15 @@
+{{- range $host := list "api" "ingest" "workers" }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "alert-hub.fullname" $ }}-{{ $host }}
+  labels:
+    {{- include "alert-hub.labels" $ | nindent 4 }}
+spec:
+  minAvailable: {{ $.Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "alert-hub.selectorLabels" $ | nindent 6 }}
+      app.kubernetes.io/component: {{ $host }}
+{{- end }}

@@ -1,0 +1,1 @@
+{{ include "alert-hub.deployment" (dict "root" . "host" "api" "spec" .Values.api) }}

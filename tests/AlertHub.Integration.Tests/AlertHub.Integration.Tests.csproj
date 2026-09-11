@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../../src/AlertHub.Api/AlertHub.Api.csproj" />
+    <ProjectReference Include="../../src/AlertHub.Ingest/AlertHub.Ingest.csproj" />
+    <ProjectReference Include="../../src/AlertHub.Workers/AlertHub.Workers.csproj" />
+    <ProjectReference Include="../../src/AlertHub.Migrator/AlertHub.Migrator.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+</Project>

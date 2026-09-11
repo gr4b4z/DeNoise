@@ -1,0 +1,33 @@
+# Migrations run as a Helm pre-upgrade/pre-install hook (ADR-10); app containers never migrate.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "alert-hub.fullname" . }}-migrate
+  labels:
+    {{- include "alert-hub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrator
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "alert-hub.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migrator
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: migrator
+          image: "{{ .Values.image.repository }}-migrator:{{ include "alert-hub.tag" . }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            {{- include "alert-hub.env" . | nindent 12 }}
+          resources: {{- toYaml .Values.migrator.resources | nindent 12 }}

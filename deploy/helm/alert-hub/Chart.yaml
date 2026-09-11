@@ -1,0 +1,6 @@
+apiVersion: v2
+name: alert-hub
+description: Alert Hub — alert ingestion, deduplication, ownership, auto-resolve, coverage and notifications
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

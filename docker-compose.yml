@@ -1,0 +1,60 @@
+# Local stack (AGENTS.md §4). `docker compose up -d postgres mailpit` for development against `dotnet run`;
+# `docker compose --profile app up --build` runs the full Hub from the Dockerfiles.
+name: alerthub
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: alerthub
+      POSTGRES_USER: alerthub
+      POSTGRES_PASSWORD: alerthub
+    command: ["postgres", "-c", "log_min_duration_statement=500", "-c", "shared_buffers=256MB"]
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alerthub -d alerthub"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["8025:8025", "1025:1025"]
+
+  migrator:
+    profiles: ["app"]
+    build: { context: ., dockerfile: build/Dockerfile, args: { HOST: Migrator } }
+    environment: &appenv
+      ConnectionStrings__AlertHub: Host=postgres;Port=5432;Database=alerthub;Username=alerthub;Password=alerthub
+      DOTNET_ENVIRONMENT: Development
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    profiles: ["app"]
+    build: { context: ., dockerfile: build/Dockerfile, args: { HOST: Api } }
+    environment: *appenv
+    ports: ["8080:8080"]
+    depends_on:
+      migrator: { condition: service_completed_successfully }
+
+  ingest:
+    profiles: ["app"]
+    build: { context: ., dockerfile: build/Dockerfile, args: { HOST: Ingest } }
+    environment: *appenv
+    ports: ["8081:8080"]
+    depends_on:
+      migrator: { condition: service_completed_successfully }
+
+  workers:
+    profiles: ["app"]
+    build: { context: ., dockerfile: build/Dockerfile, args: { HOST: Workers } }
+    command: ["--roles=processing,scheduler,dispatcher"]
+    environment: *appenv
+    ports: ["8082:8080"]
+    depends_on:
+      migrator: { condition: service_completed_successfully }
+
+volumes:
+  pgdata: {}
