@@ -1,4 +1,6 @@
 using AlertHub.Domain.Alerts;
+using AlertHub.Domain.Audit;
+using AlertHub.Domain.Integrations;
 using AlertHub.Domain.Ops;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,6 +19,8 @@ public sealed class AlertHubDbContext(DbContextOptions<AlertHubDbContext> option
     public DbSet<Job> Jobs => Set<Job>();
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
     public DbSet<HubComponentHeartbeat> HubComponentHeartbeats => Set<HubComponentHeartbeat>();
+    public DbSet<Integration> Integrations => Set<Integration>();
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

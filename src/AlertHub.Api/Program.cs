@@ -1,9 +1,11 @@
+using AlertHub.Infrastructure;
 using AlertHub.Infrastructure.Health;
 using AlertHub.Infrastructure.Hosting;
 using AlertHub.Infrastructure.Observability;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddAlertHubCore("api");
+builder.Services.AddAlertHubInfrastructure(builder.Configuration);
 builder.Services.AddHealthChecks().AddCheck<OutboxLagHealthCheck>("outbox-lag", tags: [HealthEndpoints.ReadyTag]);
 builder.Services.AddOpenApi();
 

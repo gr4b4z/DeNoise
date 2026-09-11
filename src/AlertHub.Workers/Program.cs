@@ -1,19 +1,39 @@
+using AlertHub.Application.Ops;
+using AlertHub.Domain.Ops;
+using AlertHub.Infrastructure;
 using AlertHub.Infrastructure.Health;
 using AlertHub.Infrastructure.Hosting;
 using AlertHub.Infrastructure.Observability;
+using AlertHub.Infrastructure.Ops;
 using AlertHub.Workers;
 using AlertHub.Workers.Scheduling;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddAlertHubCore("workers");
+builder.Services.AddAlertHubInfrastructure(builder.Configuration);
 
 var rolesArg = args.FirstOrDefault(a => a.StartsWith("--roles=", StringComparison.OrdinalIgnoreCase))?["--roles=".Length..];
 var roles = WorkerRoles.Parse(rolesArg ?? builder.Configuration[$"{WorkerRoles.Section}:Roles"]);
 builder.Services.AddSingleton(roles);
+builder.Services.AddHostedService<QueueGauges>();
+
+if (roles.Processing)
+{
+    builder.Services.AddHostedService(sp => new JobRunner(
+        sp.GetRequiredService<IServiceScopeFactory>(), sp.GetServices<IJobHandler>(), sp.GetRequiredService<IOptions<JobQueueOptions>>(),
+        sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<AlertHubMetrics>(), sp.GetRequiredService<ILogger<JobRunner>>(),
+        JobKinds.Processing, "processing"));
+}
 
 if (roles.Scheduler)
 {
     builder.Services.AddHostedService<PartitionCreateWorker>();
+    builder.Services.AddHostedService<QueueReaperWorker>();
+    builder.Services.AddHostedService(sp => new JobRunner(
+        sp.GetRequiredService<IServiceScopeFactory>(), sp.GetServices<IJobHandler>(), sp.GetRequiredService<IOptions<JobQueueOptions>>(),
+        sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<AlertHubMetrics>(), sp.GetRequiredService<ILogger<JobRunner>>(),
+        JobKinds.Scheduler, "scheduler"));
 }
 
 var app = builder.Build();
