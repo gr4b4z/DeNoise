@@ -31,6 +31,14 @@ try
 
     if (args.Contains("seed-dev", StringComparer.OrdinalIgnoreCase))
     {
+        var teams = scope.ServiceProvider.GetRequiredService<AlertHub.Application.Teams.ITeamRepository>();
+        if (await teams.GetTriageAsync() is null)
+        {
+            await scope.ServiceProvider.GetRequiredService<AlertHub.Application.Teams.TeamService>()
+                .CreateAsync(new AlertHub.Application.Teams.CreateTeam("triage", ["dev"], IsTriage: true), Actor.System(Guid.NewGuid().ToString("N"), "migrator:seed-dev"));
+            logger.LogInformation("Development triage team created");
+        }
+
         var integrations = scope.ServiceProvider.GetRequiredService<IIntegrationRepository>();
         var existing = (await integrations.ListCurrentAsync()).FirstOrDefault(i => i.Name == "dev-generic-webhook");
         if (existing is not null)

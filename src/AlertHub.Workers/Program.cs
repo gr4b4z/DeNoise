@@ -36,6 +36,11 @@ if (roles.Scheduler)
         JobKinds.Scheduler, "scheduler"));
 }
 
+if (roles.Dispatcher)
+{
+    builder.Services.AddHostedService<AlertHub.Infrastructure.Notifications.DispatcherWorker>();
+}
+
 var app = builder.Build();
 app.Logger.LogInformation("Workers host starting with roles {Roles}", roles);
 app.UseAlertHubRequestLogging();

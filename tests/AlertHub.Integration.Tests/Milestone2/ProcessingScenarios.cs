@@ -54,11 +54,11 @@ public sealed class ProcessingScenarios(PostgresFixture postgres) : IAsyncLifeti
 
     private async Task<ProcessingResult> IngestAndProcessAsync(string body) => await ProcessAsync(await IngestAsync(body));
 
-    private static string Firing(string alertId, string eventId, DateTimeOffset at, string severity = "high", string rule = "5xx", string resource = "orders-api", string? version = null)
-        => $$"""{"eventType":"firing","alertId":"{{alertId}}","eventId":"{{eventId}}","occurredAt":"{{at:O}}","severity":"{{severity}}","environment":"production","service":"orders","resource":{"id":"{{resource}}","name":"Orders"},"rule":{"id":"{{rule}}","name":"5xx rate"},"summary":"5xx high"{{(version is null ? "" : $",\"version\":\"{version}\"")}}}""";
+    private static string Firing(string alertId, string eventId, DateTimeOffset at, string severity = "high", string rule = "5xx", string? resource = null, string? version = null)
+        => $$"""{"eventType":"firing","alertId":"{{alertId}}","eventId":"{{eventId}}","occurredAt":"{{at:O}}","severity":"{{severity}}","environment":"production","service":"orders","resource":{"id":"{{resource ?? "res-" + alertId}}","name":"Orders"},"rule":{"id":"{{rule}}","name":"5xx rate"},"summary":"5xx high"{{(version is null ? "" : $",\"version\":\"{version}\"")}}}""";
 
-    private static string Resolved(string alertId, string eventId, DateTimeOffset at, string rule = "5xx", string resource = "orders-api", string? version = null)
-        => $$"""{"eventType":"resolved","alertId":"{{alertId}}","eventId":"{{eventId}}","occurredAt":"{{at:O}}","severity":"high","environment":"production","resource":{"id":"{{resource}}"},"rule":{"id":"{{rule}}"}{{(version is null ? "" : $",\"version\":\"{version}\"")}}}""";
+    private static string Resolved(string alertId, string eventId, DateTimeOffset at, string rule = "5xx", string? resource = null, string? version = null)
+        => $$"""{"eventType":"resolved","alertId":"{{alertId}}","eventId":"{{eventId}}","occurredAt":"{{at:O}}","severity":"high","environment":"production","resource":{"id":"{{resource ?? "res-" + alertId}}"},"rule":{"id":"{{rule}}"}{{(version is null ? "" : $",\"version\":\"{version}\"")}}}""";
 
     private Task<Episode> LoadEpisodeAsync(Guid id) => TestServices.InDbAsync(_services, db => db.Episodes.AsNoTracking().SingleAsync(e => e.EpisodeId == id));
     private Task<List<Episode>> AllEpisodesAsync() => TestServices.InDbAsync(_services, db => db.Episodes.AsNoTracking().OrderBy(e => e.CreatedAt).ToListAsync());
@@ -67,7 +67,7 @@ public sealed class ProcessingScenarios(PostgresFixture postgres) : IAsyncLifeti
     [Fact]
     public async Task First_firing_opens_an_episode_with_identity_timeline_and_audit()
     {
-        var result = await IngestAndProcessAsync(Firing("a1", "e1", T0));
+        var result = await IngestAndProcessAsync(Firing("a1-t1", "e1-t1", T0));
 
         result.Outcome.Should().Be(ProcessingOutcome.Opened);
         var episode = await LoadEpisodeAsync(result.EpisodeId!.Value);
@@ -79,11 +79,11 @@ public sealed class ProcessingScenarios(PostgresFixture postgres) : IAsyncLifeti
         episode.OccurrenceCount.Should().Be(1);
         episode.FirstSeen.Should().Be(T0);
         episode.Summary.Should().Be("5xx high");
-        episode.SourceAlertId.Should().Be("a1");
+        episode.SourceAlertId.Should().Be("a1-t1");
 
         await using var db = PostgresFixture.CreateContext(_cs);
         (await db.Identities.CountAsync(i => i.Fingerprint == episode.Fingerprint && i.EpisodeCount == 1)).Should().Be(1);
-        (await db.AppliedEvents.CountAsync(a => a.IntegrationId == IntegrationId && a.DeliveryKey == "evt:e1" && a.Outcome == "applied")).Should().Be(1);
+        (await db.AppliedEvents.CountAsync(a => a.IntegrationId == IntegrationId && a.DeliveryKey.StartsWith("evt:e1") && a.Outcome == "applied")).Should().Be(1);
         var normalised = await db.NormalisedEvents.SingleAsync();
         normalised.EpisodeId.Should().Be(episode.EpisodeId);
         normalised.IdentityComponents.Should().NotBeNull();
@@ -94,7 +94,7 @@ public sealed class ProcessingScenarios(PostgresFixture postgres) : IAsyncLifeti
     [Fact]
     public async Task Scenario_DuplicateWebhookDelivery_second_identical_body_changes_nothing()
     {
-        var body = Firing("a1", "e1", T0);
+        var body = Firing("a1-t2", "e1-t2", T0);
         var first = await IngestAndProcessAsync(body);
         var second = await IngestAndProcessAsync(body);
         var third = await IngestAndProcessAsync(body);
@@ -111,18 +111,18 @@ public sealed class ProcessingScenarios(PostgresFixture postgres) : IAsyncLifeti
         (await db.AppliedEvents.CountAsync()).Should().Be(1);
         var dup = await db.DeliveryDuplicates.SingleAsync();
         dup.Count.Should().Be(2);
-        dup.DeliveryKey.Should().Be("evt:e1");
+        dup.DeliveryKey.Should().StartWith("evt:e1");
         (await db.RawEvents.CountAsync()).Should().Be(3, "raw bytes are always retained");
         (await db.NormalisedEvents.CountAsync()).Should().Be(1, "duplicates are not stored as normalised events");
-        (await TimelineAsync(episode.EpisodeId)).Should().HaveCount(1);
+        (await TimelineAsync(episode.EpisodeId)).Should().ContainSingle(t => t.Kind == EpisodeEventKind.SourceEvent).And.NotContain(t => t.Kind == EpisodeEventKind.LateEvent);
     }
 
     [Fact]
     public async Task Repeats_update_last_seen_and_count_and_severity_is_the_maximum()
     {
-        var opened = await IngestAndProcessAsync(Firing("a1", "e1", T0, "medium"));
-        var updated = await IngestAndProcessAsync(Firing("a1", "e2", T0.AddMinutes(1), "critical"));
-        var lower = await IngestAndProcessAsync(Firing("a1", "e3", T0.AddMinutes(2), "low"));
+        var opened = await IngestAndProcessAsync(Firing("a1-t3", "e1-t3", T0, "medium"));
+        var updated = await IngestAndProcessAsync(Firing("a1-t3", "e2-t3", T0.AddMinutes(1), "critical"));
+        var lower = await IngestAndProcessAsync(Firing("a1-t3", "e3-t3", T0.AddMinutes(2), "low"));
 
         updated.Outcome.Should().Be(ProcessingOutcome.Updated);
         lower.Outcome.Should().Be(ProcessingOutcome.Updated);
@@ -143,7 +143,7 @@ public sealed class ProcessingScenarios(PostgresFixture postgres) : IAsyncLifeti
         var payloads = new List<NormaliseJobPayload>();
         for (var i = 0; i < 8; i++)
         {
-            payloads.Add(await IngestAsync(Firing("a1", $"e{i}", T0.AddSeconds(i))));
+            payloads.Add(await IngestAsync(Firing("a1-t4", $"e{i}", T0.AddSeconds(i))));
         }
 
         var results = await Task.WhenAll(payloads.Select(p => Task.Run(() => ProcessAsync(p))));
@@ -163,8 +163,8 @@ public sealed class ProcessingScenarios(PostgresFixture postgres) : IAsyncLifeti
     [Fact]
     public async Task Source_resolved_closes_with_evidence_source_and_a_later_firing_opens_a_linked_new_episode()
     {
-        var opened = await IngestAndProcessAsync(Firing("a1", "e1", T0));
-        var resolved = await IngestAndProcessAsync(Resolved("a1", "e2", T0.AddMinutes(5)));
+        var opened = await IngestAndProcessAsync(Firing("a1-t5", "e1-t5", T0));
+        var resolved = await IngestAndProcessAsync(Resolved("a1-t5", "e2-t5", T0.AddMinutes(5)));
 
         resolved.Outcome.Should().Be(ProcessingOutcome.Resolved);
         var closed = await LoadEpisodeAsync(opened.EpisodeId!.Value);
@@ -173,7 +173,7 @@ public sealed class ProcessingScenarios(PostgresFixture postgres) : IAsyncLifeti
         closed.ClosureReason.Should().Be(ClosureReason.SourceResolved);
         closed.ResolutionEvidence.Should().Be(Evidence.Source);
 
-        var again = await IngestAndProcessAsync(Firing("a1", "e3", T0.AddMinutes(10)));
+        var again = await IngestAndProcessAsync(Firing("a1-t5", "e3-t5", T0.AddMinutes(10)));
         again.Outcome.Should().Be(ProcessingOutcome.Opened);
         again.EpisodeId.Should().NotBe(opened.EpisodeId!.Value);
         var recurrence = await LoadEpisodeAsync(again.EpisodeId!.Value);
@@ -188,34 +188,34 @@ public sealed class ProcessingScenarios(PostgresFixture postgres) : IAsyncLifeti
     [Fact]
     public async Task Scenario_RecoveryArrivesBeforeOpening_delayed_opening_does_not_reactivate()
     {
-        var recovery = await IngestAndProcessAsync(Resolved("a1", "e-resolved", T0.AddMinutes(5)));
+        var recovery = await IngestAndProcessAsync(Resolved("a1-t6", "e-resolved-t6", T0.AddMinutes(5)));
         recovery.Outcome.Should().Be(ProcessingOutcome.RecordedWithoutEpisode);
 
-        var delayedOpening = await IngestAndProcessAsync(Firing("a1", "e-firing", T0));
+        var delayedOpening = await IngestAndProcessAsync(Firing("a1-t6", "e-firing-t6", T0));
         delayedOpening.Outcome.Should().Be(ProcessingOutcome.Late);
         (await AllEpisodesAsync()).Should().BeEmpty();
 
         await using var db = PostgresFixture.CreateContext(_cs);
         var marker = await db.SourceInstanceStates.SingleAsync();
-        marker.SourceAlertId.Should().Be("a1");
+        marker.SourceAlertId.Should().Be("a1-t6");
         marker.ResolvedAt.Should().Be(T0.AddMinutes(5));
-        (await db.AppliedEvents.SingleAsync(a => a.DeliveryKey == "evt:e-firing")).Outcome.Should().Be("late");
+        (await db.AppliedEvents.SingleAsync(a => a.DeliveryKey.StartsWith("evt:e-firing"))).Outcome.Should().Be("late");
 
         // A genuinely new firing after the recovery opens normally.
-        var fresh = await IngestAndProcessAsync(Firing("a1", "e-new", T0.AddMinutes(6)));
+        var fresh = await IngestAndProcessAsync(Firing("a1-t6", "e-new-t6", T0.AddMinutes(6)));
         fresh.Outcome.Should().Be(ProcessingOutcome.Opened);
     }
 
     [Fact]
     public async Task Scenario_OldRecoveryDuringNewEpisode_new_episode_stays_active_and_the_event_is_recorded_late()
     {
-        var a = await IngestAndProcessAsync(Firing("a1", "e1", T0));
-        (await IngestAndProcessAsync(Resolved("a1", "e2", T0.AddMinutes(5)))).Outcome.Should().Be(ProcessingOutcome.Resolved);
-        var b = await IngestAndProcessAsync(Firing("a1", "e3", T0.AddMinutes(10)));
+        var a = await IngestAndProcessAsync(Firing("a1-t7", "e1-t7", T0));
+        (await IngestAndProcessAsync(Resolved("a1-t7", "e2-t7", T0.AddMinutes(5)))).Outcome.Should().Be(ProcessingOutcome.Resolved);
+        var b = await IngestAndProcessAsync(Firing("a1-t7", "e3-t7", T0.AddMinutes(10)));
         b.Outcome.Should().Be(ProcessingOutcome.Opened);
 
         // A recovery whose occurred_at falls inside A's window arrives now.
-        var oldRecovery = await IngestAndProcessAsync(Resolved("a1", "e4", T0.AddMinutes(3)));
+        var oldRecovery = await IngestAndProcessAsync(Resolved("a1-t7", "e4-t7", T0.AddMinutes(3)));
 
         oldRecovery.Outcome.Should().Be(ProcessingOutcome.Late);
         oldRecovery.EpisodeId.Should().Be(b.EpisodeId!.Value);
@@ -229,9 +229,9 @@ public sealed class ProcessingScenarios(PostgresFixture postgres) : IAsyncLifeti
     [Fact]
     public async Task Producer_versions_take_precedence_over_timestamps()
     {
-        var opened = await IngestAndProcessAsync(Firing("a1", "e1", T0, version: "5"));
-        var stale = await IngestAndProcessAsync(Firing("a1", "e2", T0.AddMinutes(1), "critical", version: "4"));
-        var newer = await IngestAndProcessAsync(Resolved("a1", "e3", T0.AddMinutes(-30), version: "6"));
+        var opened = await IngestAndProcessAsync(Firing("a1-t8", "e1-t8", T0, version: "5"));
+        var stale = await IngestAndProcessAsync(Firing("a1-t8", "e2-t8", T0.AddMinutes(1), "critical", version: "4"));
+        var newer = await IngestAndProcessAsync(Resolved("a1-t8", "e3-t8", T0.AddMinutes(-30), version: "6"));
 
         stale.Outcome.Should().Be(ProcessingOutcome.Late);
         newer.Outcome.Should().Be(ProcessingOutcome.Resolved, "a newer version applies even with an older timestamp");
@@ -243,13 +243,13 @@ public sealed class ProcessingScenarios(PostgresFixture postgres) : IAsyncLifeti
     [Fact]
     public async Task Scenario_HistoricalReplay_executes_without_transitions_or_new_episodes()
     {
-        var opened = await IngestAndProcessAsync(Firing("a1", "e1", T0));
-        (await IngestAndProcessAsync(Resolved("a1", "e2", T0.AddMinutes(5)))).Outcome.Should().Be(ProcessingOutcome.Resolved);
+        var opened = await IngestAndProcessAsync(Firing("a1-t9", "e1-t9", T0));
+        (await IngestAndProcessAsync(Resolved("a1-t9", "e2-t9", T0.AddMinutes(5)))).Outcome.Should().Be(ProcessingOutcome.Resolved);
         var before = await LoadEpisodeAsync(opened.EpisodeId!.Value);
 
         // Replay both raw events and a never-seen firing in historical mode.
-        var replayed1 = await ProcessAsync(await IngestAsync(Firing("a1", "e1", T0)), replay: true);
-        var replayed2 = await ProcessAsync(await IngestAsync(Firing("a1", "e-unseen", T0.AddMinutes(20))), replay: true);
+        var replayed1 = await ProcessAsync(await IngestAsync(Firing("a1-t9", "e1-t9", T0)), replay: true);
+        var replayed2 = await ProcessAsync(await IngestAsync(Firing("a1-t9", "e-unseen-t9", T0.AddMinutes(20))), replay: true);
 
         replayed1.Outcome.Should().Be(ProcessingOutcome.Replayed);
         replayed1.EpisodeId.Should().Be(opened.EpisodeId!.Value);
@@ -261,14 +261,14 @@ public sealed class ProcessingScenarios(PostgresFixture postgres) : IAsyncLifeti
         (await TimelineAsync(opened.EpisodeId.Value)).Should().ContainSingle(t => t.Kind == EpisodeEventKind.Replayed);
 
         await using var db = PostgresFixture.CreateContext(_cs);
-        (await db.AppliedEvents.SingleAsync(a => a.DeliveryKey == "evt:e-unseen")).Outcome.Should().Be("replayed");
+        (await db.AppliedEvents.SingleAsync(a => a.DeliveryKey.StartsWith("evt:e-unseen"))).Outcome.Should().Be("replayed");
         (await db.Jobs.CountAsync(j => j.Kind != "normalise")).Should().Be(0, "no timers, no escalations");
     }
 
     [Fact]
     public async Task Scenario_ManualCloseWhileSourceIsFiring_processing_half_new_episode_opens_and_closed_one_keeps_its_condition()
     {
-        var opened = await IngestAndProcessAsync(Firing("a1", "e1", T0));
+        var opened = await IngestAndProcessAsync(Firing("a1-t10", "e1-t10", T0));
         await TestServices.InDbAsync(_services, async db =>
         {
             var e = await db.Episodes.SingleAsync(x => x.EpisodeId == opened.EpisodeId);
@@ -276,7 +276,7 @@ public sealed class ProcessingScenarios(PostgresFixture postgres) : IAsyncLifeti
             return await db.SaveChangesAsync();
         });
 
-        var stillFiring = await IngestAndProcessAsync(Firing("a1", "e2", T0.AddMinutes(2)));
+        var stillFiring = await IngestAndProcessAsync(Firing("a1-t10", "e2-t10", T0.AddMinutes(2)));
 
         stillFiring.Outcome.Should().Be(ProcessingOutcome.Opened);
         var previous = await LoadEpisodeAsync(opened.EpisodeId!.Value);
@@ -291,8 +291,8 @@ public sealed class ProcessingScenarios(PostgresFixture postgres) : IAsyncLifeti
     [Fact]
     public async Task Cancelled_closes_as_source_cancelled_not_applicable()
     {
-        var opened = await IngestAndProcessAsync(Firing("a1", "e1", T0));
-        var cancelled = await IngestAndProcessAsync(Firing("a1", "e2", T0.AddMinutes(1)).Replace("\"firing\"", "\"cancelled\"", StringComparison.Ordinal));
+        var opened = await IngestAndProcessAsync(Firing("a1-t11", "e1-t11", T0));
+        var cancelled = await IngestAndProcessAsync(Firing("a1-t11", "e2-t11", T0.AddMinutes(1)).Replace("\"firing\"", "\"cancelled\"", StringComparison.Ordinal));
         cancelled.Outcome.Should().Be(ProcessingOutcome.Cancelled);
         var episode = await LoadEpisodeAsync(opened.EpisodeId!.Value);
         episode.ConditionState.Should().Be(ConditionState.NotApplicable);
@@ -331,7 +331,7 @@ public sealed class ProcessingScenarios(PostgresFixture postgres) : IAsyncLifeti
     [Fact]
     public async Task Reprocessing_the_same_job_after_a_crash_is_idempotent()
     {
-        var payload = await IngestAsync(Firing("a1", "e1", T0));
+        var payload = await IngestAsync(Firing("a1-t14", "e1-t14", T0));
         var first = await ProcessAsync(payload);
         var again = await ProcessAsync(payload);
         first.Outcome.Should().Be(ProcessingOutcome.Opened);

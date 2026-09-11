@@ -44,6 +44,14 @@ public interface IProcessingSession
     void AddEpisodeEvent(EpisodeEvent evt);
     void AddAudit(AuditEntry entry);
     void AddMappingFailure(MappingFailure failure);
+    /// <summary>Stages an outbox row; committed with the transition (transactional outbox, spec §17.3).</summary>
+    void AddOutbox(Domain.Ops.OutboxMessage message);
+    /// <summary>Stages a timer job (<c>ack_deadline</c>, <c>escalation_step</c>, <c>auto_resolve</c>, …) in the same commit.</summary>
+    void AddJob(Domain.Ops.Job job);
+    /// <summary>Cancels pending/suspended timers of the given kinds for an episode (closure cancels timers, 04 §2).</summary>
+    Task<int> CancelJobsAsync(Guid episodeId, IReadOnlyCollection<string> kinds, CancellationToken ct = default);
+    /// <summary>Destinations that already received a notification about the episode (for <c>episode.closed</c> to prior recipients, 04 §6).</summary>
+    Task<IReadOnlyList<Guid>> PriorRecipientsAsync(Guid episodeId, CancellationToken ct = default);
 }
 
 /// <summary>Runs one processing transaction. Conflicts surface as <see cref="ProcessingConflictException"/>.</summary>

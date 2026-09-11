@@ -3,7 +3,10 @@ using AlertHub.Domain.Alerts;
 using AlertHub.Domain.Audit;
 using AlertHub.Domain.Episodes;
 using AlertHub.Domain.Integrations;
+using AlertHub.Domain.Notifications;
 using AlertHub.Domain.Ops;
+using AlertHub.Domain.Policies;
+using AlertHub.Domain.Teams;
 using Microsoft.EntityFrameworkCore;
 
 namespace AlertHub.Infrastructure.Persistence;
@@ -32,6 +35,11 @@ public sealed class AlertHubDbContext(DbContextOptions<AlertHubDbContext> option
     public DbSet<Episode> Episodes => Set<Episode>();
     public DbSet<EpisodeEvent> EpisodeEvents => Set<EpisodeEvent>();
     public DbSet<MappingVersion> MappingVersions => Set<MappingVersion>();
+    public DbSet<Team> Teams => Set<Team>();
+    public DbSet<AccessScope> Scopes => Set<AccessScope>();
+    public DbSet<Destination> Destinations => Set<Destination>();
+    public DbSet<DeliveryAttempt> DeliveryAttempts => Set<DeliveryAttempt>();
+    public DbSet<PolicyVersion> Policies => Set<PolicyVersion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

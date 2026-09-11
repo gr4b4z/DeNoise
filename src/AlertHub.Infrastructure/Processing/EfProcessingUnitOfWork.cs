@@ -108,4 +108,20 @@ internal sealed class EfProcessingSession(AlertHubDbContext db) : IProcessingSes
     public void AddEpisodeEvent(EpisodeEvent evt) => db.EpisodeEvents.Add(evt);
     public void AddAudit(AuditEntry entry) => db.AuditEntries.Add(entry);
     public void AddMappingFailure(MappingFailure failure) => db.MappingFailures.Add(failure);
+    public void AddOutbox(Domain.Ops.OutboxMessage message) => db.Outbox.Add(message);
+    public void AddJob(Domain.Ops.Job job) => db.Jobs.Add(job);
+
+    public Task<int> CancelJobsAsync(Guid episodeId, IReadOnlyCollection<string> kinds, CancellationToken ct = default)
+    {
+        var kindArray = kinds.ToArray();
+        return db.Database.ExecuteSqlInterpolatedAsync($"""
+            UPDATE ops.job SET status = 'cancelled', updated_at = now()
+            WHERE episode_id = {episodeId} AND kind = ANY({kindArray}) AND status IN ('pending','suspended')
+            """, ct);
+    }
+
+    public async Task<IReadOnlyList<Guid>> PriorRecipientsAsync(Guid episodeId, CancellationToken ct = default)
+        => await db.Outbox.AsNoTracking()
+            .Where(o => o.EpisodeId == episodeId && o.Status != Domain.Ops.OutboxStatus.Cancelled && o.Status != Domain.Ops.OutboxStatus.Coalesced)
+            .Select(o => o.DestinationId).Distinct().ToListAsync(ct);
 }
