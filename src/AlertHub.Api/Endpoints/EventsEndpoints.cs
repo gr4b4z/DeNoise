@@ -5,7 +5,7 @@ using AlertHub.Infrastructure.Realtime;
 
 namespace AlertHub.Api.Endpoints;
 
-/// <summary><c>GET /api/v1/events/stream</c> (ADR-12, 06 §4 Realtime): scope-filtered SSE with <c>Last-Event-ID</c> replay, <c>resync</c> on gaps, heartbeat comment every 15 s.</summary>
+/// <summary><c>GET /api/v1/events/stream</c> (ADR-12, 06 §4 Realtime): scope-filtered SSE with <c>Last-Event-ID</c> replay, <c>resync</c> on gaps, <c>heartbeat</c> event every 15 s.</summary>
 public static class EventsEndpoints
 {
     public static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(15);
@@ -55,7 +55,8 @@ public static class EventsEndpoints
                     }
                     catch (OperationCanceledException) when (!http.RequestAborted.IsCancellationRequested)
                     {
-                        await WriteAsync(body, $": heartbeat {time.GetUtcNow():O}\n\n", http.RequestAborted);
+                        // A named event rather than a comment: browsers do not surface comment lines to EventSource, and the FreshnessBar needs to see it (08 §1).
+                        await WriteAsync(body, $"event: heartbeat\ndata: {{\"at\":\"{time.GetUtcNow():O}\"}}\n\n", http.RequestAborted);
                     }
                 }
             }

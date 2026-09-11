@@ -1,0 +1,123 @@
+@import 'tailwindcss';
+@import './tokens.css';
+
+/* Expose the tokens to Tailwind utilities (bg-surface, text-ink-2, border-line, text-sev-critical, ...). */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-sev-critical: var(--sev-critical);
+  --color-sev-high: var(--sev-high);
+  --color-sev-medium: var(--sev-medium);
+  --color-sev-low: var(--sev-low);
+  --color-sev-info: var(--sev-info);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius);
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 28px;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    margin: 0;
+    min-height: 100dvh;
+  }
+  code,
+  kbd,
+  .mono {
+    font-family: var(--font-mono);
+  }
+  h1,
+  h2,
+  h3 {
+    font-weight: 600;
+    margin: 0;
+  }
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--focus);
+    border-radius: var(--radius-sm);
+  }
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+  a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-surface px-3 text-base leading-none text-ink hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply border-accent bg-accent text-white hover:bg-accent hover:brightness-110;
+  }
+  .btn-sm {
+    @apply h-7 px-2 text-sm;
+  }
+  .input {
+    @apply h-8 w-full rounded-md border border-line bg-surface-2 px-2.5 text-base text-ink placeholder:text-ink-2;
+  }
+  .badge {
+    @apply inline-flex h-5 items-center gap-1 rounded-sm border border-line px-1.5 text-xs leading-none text-ink-2;
+  }
+  .hairline {
+    border-color: var(--line);
+  }
+  .row-pulse {
+    animation: row-pulse 600ms ease-out;
+  }
+  .row-leave {
+    animation: row-leave 200ms ease-in forwards;
+  }
+}
+
+@keyframes row-pulse {
+  from {
+    background-color: var(--surface-2);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+@keyframes row-leave {
+  to {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+}

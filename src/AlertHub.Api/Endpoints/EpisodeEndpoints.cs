@@ -6,8 +6,18 @@ using AlertHub.Application.Episodes;
 using AlertHub.Contracts;
 using AlertHub.Domain.Episodes;
 using AlertHub.Domain.Users;
+using FromQueryAttribute = Microsoft.AspNetCore.Mvc.FromQueryAttribute;
 
 namespace AlertHub.Api.Endpoints;
+
+/// <summary>Query string of <c>GET /api/v1/episodes</c> (06 §3): view, filters, sort and keyset paging.</summary>
+public sealed record EpisodeListQuery(
+    [property: FromQuery(Name = "view")] string? View, [property: FromQuery(Name = "severity")] string[]? Severity, [property: FromQuery(Name = "handling")] string[]? Handling,
+    [property: FromQuery(Name = "condition")] string[]? Condition, [property: FromQuery(Name = "team")] Guid? Team, [property: FromQuery(Name = "scope")] string? Scope,
+    [property: FromQuery(Name = "environment")] string? Environment, [property: FromQuery(Name = "service")] string? Service, [property: FromQuery(Name = "integration")] Guid? Integration,
+    [property: FromQuery(Name = "q")] string? Q, [property: FromQuery(Name = "closureReason")] string? ClosureReason, [property: FromQuery(Name = "evidence")] string? Evidence,
+    [property: FromQuery(Name = "sort")] string? Sort, [property: FromQuery(Name = "limit")] int? Limit, [property: FromQuery(Name = "cursor")] string? Cursor,
+    [property: FromQuery(Name = "includeTotal")] bool? IncludeTotal);
 
 public static class EpisodeEndpoints
 {
@@ -15,27 +25,24 @@ public static class EpisodeEndpoints
     {
         var group = app.MapGroup("/api/v1/episodes").WithTags("Episodes").RequireAuthorization().AddEndpointFilter<MustChangePasswordFilter>();
 
-        group.MapGet("", async (HttpContext http, IEpisodeQueries queries, ITeamMemberRepository members) =>
+        group.MapGet("", async ([AsParameters] EpisodeListQuery query, HttpContext http, IEpisodeQueries queries, ITeamMemberRepository members) =>
         {
-            var q = http.Request.Query;
             var filter = new EpisodeFilter(
-                View: q["view"].FirstOrDefault(), Severity: q["severity"].Where(s => s is not null).Select(s => s!).ToList(), Handling: q["handling"].Where(s => s is not null).Select(s => s!).ToList(),
-                Condition: q["condition"].Where(s => s is not null).Select(s => s!).ToList(), TeamId: Guid.TryParse(q["team"], out var team) ? team : null, Scope: q["scope"].FirstOrDefault(),
-                Environment: q["environment"].FirstOrDefault(), Service: q["service"].FirstOrDefault(), IntegrationId: Guid.TryParse(q["integration"], out var integ) ? integ : null,
-                Query: q["q"].FirstOrDefault(), ClosureReason: q["closureReason"].FirstOrDefault(), Evidence: q["evidence"].FirstOrDefault(), Sort: q["sort"].FirstOrDefault(),
-                Limit: int.TryParse(q["limit"], out var limit) ? limit : 50, Cursor: q["cursor"].FirstOrDefault(), IncludeTotal: q["includeTotal"] == "true");
+                View: query.View, Severity: query.Severity ?? [], Handling: query.Handling ?? [], Condition: query.Condition ?? [], TeamId: query.Team, Scope: query.Scope,
+                Environment: query.Environment, Service: query.Service, IntegrationId: query.Integration, Query: query.Q, ClosureReason: query.ClosureReason, Evidence: query.Evidence,
+                Sort: query.Sort, Limit: query.Limit ?? 50, Cursor: query.Cursor, IncludeTotal: query.IncludeTotal ?? false);
             if (filter.View is not null && !QueueViews.All.Contains(filter.View)) return Problems.Result(http, 400, "validation", "Unknown view", $"view must be one of {string.Join(", ", QueueViews.All)}");
             var p = http.Principal();
             var myTeams = (await members.ListForUserAsync(p.UserId, http.RequestAborted)).Select(m => m.TeamId).ToList();
             return Results.Ok(await queries.ListAsync(p, filter, myTeams, http.RequestAborted));
-        }).RequirePermission(Permissions.EpisodeRead).WithName("ListEpisodes");
+        }).RequirePermission(Permissions.EpisodeRead).WithName("ListEpisodes").Produces<PagedResponse<EpisodeListItem>>().ProducesProblem(400);
 
         group.MapGet("/counts", async (HttpContext http, IEpisodeQueries queries, ITeamMemberRepository members) =>
         {
             var p = http.Principal();
             var myTeams = (await members.ListForUserAsync(p.UserId, http.RequestAborted)).Select(m => m.TeamId).ToList();
             return Results.Ok(await queries.ViewCountsAsync(p, myTeams, http.RequestAborted));
-        }).RequirePermission(Permissions.EpisodeRead).WithName("GetEpisodeViewCounts");
+        }).RequirePermission(Permissions.EpisodeRead).WithName("GetEpisodeViewCounts").Produces<Dictionary<string, int>>();
 
         group.MapGet("/{id:guid}", async (Guid id, HttpContext http, IEpisodeQueries queries) =>
         {
@@ -43,19 +50,19 @@ public static class EpisodeEndpoints
             if (detail is null) return NotFound(http, id);
             http.Response.Headers.ETag = $"\"{detail.Item.Version}\"";
             return Results.Ok(detail);
-        }).RequirePermission(Permissions.EpisodeRead).WithName("GetEpisode");
+        }).RequirePermission(Permissions.EpisodeRead).WithName("GetEpisode").Produces<EpisodeDetail>().ProducesProblem(404);
 
         group.MapGet("/{id:guid}/timeline", async (Guid id, int? limit, string? cursor, string? kind, HttpContext http, IEpisodeQueries queries) =>
         {
             if (await queries.GetAsync(http.Principal(), id, http.RequestAborted) is null) return NotFound(http, id);
             return Results.Ok(await queries.TimelineAsync(http.Principal(), id, limit ?? 50, cursor, kind, http.RequestAborted));
-        }).RequirePermission(Permissions.EpisodeRead).WithName("GetEpisodeTimeline");
+        }).RequirePermission(Permissions.EpisodeRead).WithName("GetEpisodeTimeline").Produces<PagedResponse<TimelineEntry>>().ProducesProblem(404);
 
         group.MapGet("/{id:guid}/related", async (Guid id, HttpContext http, IEpisodeQueries queries) =>
         {
             var related = await queries.RelatedAsync(http.Principal(), id, http.RequestAborted);
             return related is null ? NotFound(http, id) : Results.Ok(related);
-        }).RequirePermission(Permissions.EpisodeRead).WithName("GetRelatedEpisodes");
+        }).RequirePermission(Permissions.EpisodeRead).WithName("GetRelatedEpisodes").Produces<RelatedEpisodes>().ProducesProblem(404);
 
         group.MapGet("/{id:guid}/raw/{eventId:guid}", async (Guid id, Guid eventId, HttpContext http, IEpisodeQueries queries) =>
         {
@@ -63,23 +70,23 @@ public static class EpisodeEndpoints
             if (raw is null) return NotFound(http, id);
             http.Response.Headers["X-Received-At"] = raw.Value.ReceivedAt.ToString("O");
             return Results.Bytes(raw.Value.Body, raw.Value.ContentType ?? "application/octet-stream");
-        }).RequirePermission(Permissions.EpisodeRawPayloadRead).WithName("GetEpisodeRawPayload");
+        }).RequirePermission(Permissions.EpisodeRawPayloadRead).WithName("GetEpisodeRawPayload").Produces(200, contentType: "application/octet-stream").ProducesProblem(404);
 
         // Actions: auth → permission → If-Match → Idempotency-Key → handler (ADR-3 filter pipeline).
-        Action(group, "/{id:guid}/ack", Permissions.EpisodeAck, async (id, body, http, actions) =>
+        Action<AckRequest>(group, "/{id:guid}/ack", Permissions.EpisodeAck, async (id, body, http, actions) =>
             await actions.AcknowledgeAsync(http.Principal(), id, IfMatchFilter.Version(http), Read<AckRequest>(body)?.Force ?? false, http.CorrelationId(), http.RequestAborted), "AcknowledgeEpisode");
-        Action(group, "/{id:guid}/assign", Permissions.EpisodeAssign, async (id, body, http, actions) =>
+        Action<AssignRequest>(group, "/{id:guid}/assign", Permissions.EpisodeAssign, async (id, body, http, actions) =>
         {
             var r = Read<AssignRequest>(body) ?? new AssignRequest(null, null);
             return await actions.AssignAsync(http.Principal(), id, IfMatchFilter.Version(http), r.TeamId, r.UserId, http.CorrelationId(), http.RequestAborted);
         }, "AssignEpisode");
-        Action(group, "/{id:guid}/note", Permissions.EpisodeNote, async (id, body, http, actions) =>
+        Action<NoteRequest>(group, "/{id:guid}/note", Permissions.EpisodeNote, async (id, body, http, actions) =>
             await actions.NoteAsync(http.Principal(), id, IfMatchFilter.Version(http), Read<NoteRequest>(body)?.Text ?? string.Empty, http.CorrelationId(), http.RequestAborted), "AddEpisodeNote");
-        Action(group, "/{id:guid}/close", Permissions.EpisodeClose, async (id, body, http, actions) =>
+        Action<CloseRequest>(group, "/{id:guid}/close", Permissions.EpisodeClose, async (id, body, http, actions) =>
             await actions.CloseAsync(http.Principal(), id, IfMatchFilter.Version(http), Read<CloseRequest>(body)?.Reason ?? string.Empty, http.CorrelationId(), http.RequestAborted), "CloseEpisode");
-        Action(group, "/{id:guid}/restore", Permissions.EpisodeRestore, async (id, body, http, actions) =>
+        Action<RestoreRequest>(group, "/{id:guid}/restore", Permissions.EpisodeRestore, async (id, body, http, actions) =>
             await actions.RestoreAsync(http.Principal(), id, IfMatchFilter.Version(http), Read<RestoreRequest>(body)?.Reason, http.CorrelationId(), http.RequestAborted), "RestoreEpisode");
-        Action(group, "/{id:guid}/silence", Permissions.EpisodeSilence, async (id, body, http, actions) =>
+        Action<SilenceRequest>(group, "/{id:guid}/silence", Permissions.EpisodeSilence, async (id, body, http, actions) =>
         {
             var r = Read<SilenceRequest>(body) ?? throw new ArgumentException("until and reason are required");
             return await actions.SilenceAsync(http.Principal(), id, IfMatchFilter.Version(http), r.Until, r.Reason, http.CorrelationId(), http.RequestAborted);
@@ -89,7 +96,7 @@ public static class EpisodeEndpoints
         {
             await actions.RefreshStateAsync(http.Principal(), id, http.CorrelationId(), http.RequestAborted);
             return Results.Accepted($"/api/v1/episodes/{id}");
-        }).RequirePermission(Permissions.EpisodeRead).AddEndpointFilter<CsrfFilter>().AddEndpointFilter<IdempotencyFilter>().WithName("RefreshEpisodeState");
+        }).RequirePermission(Permissions.EpisodeRead).AddEndpointFilter<CsrfFilter>().AddEndpointFilter<IdempotencyFilter>().WithName("RefreshEpisodeState").Produces(202).ProducesProblem(404);
 
         group.MapPost("/bulk", async (BulkRequest request, HttpContext http, EpisodeActionService actions, IEpisodeQueries queries) =>
         {
@@ -122,12 +129,13 @@ public static class EpisodeEndpoints
                 }
             }
             return Results.Ok(new BulkResponse(results));
-        }).RequirePermission(Permissions.EpisodeBulk).AddEndpointFilter<CsrfFilter>().AddEndpointFilter<IdempotencyFilter>().WithName("BulkEpisodeAction");
+        }).RequirePermission(Permissions.EpisodeBulk).AddEndpointFilter<CsrfFilter>().AddEndpointFilter<IdempotencyFilter>().WithName("BulkEpisodeAction").Accepts<BulkRequest>("application/json").Produces<BulkResponse>().ProducesProblem(400);
 
         return app;
     }
 
-    private static void Action(RouteGroupBuilder group, string pattern, string permission, Func<Guid, JsonElement?, HttpContext, EpisodeActionService, Task<ActionResult>> run, string name)
+    private static void Action<TBody>(RouteGroupBuilder group, string pattern, string permission, Func<Guid, JsonElement?, HttpContext, EpisodeActionService, Task<ActionResult>> run, string name)
+        where TBody : class
     {
         group.MapPost(pattern, async (Guid id, HttpContext http, EpisodeActionService actions, IEpisodeQueries queries) =>
         {
@@ -151,7 +159,8 @@ public static class EpisodeEndpoints
             if (detail is null) return NotFound(http, id);
             http.Response.Headers.ETag = $"\"{detail.Item.Version}\"";
             return Results.Ok(detail);
-        }).RequirePermission(permission).AddEndpointFilter<CsrfFilter>().AddEndpointFilter<IfMatchFilter>().AddEndpointFilter<IdempotencyFilter>().WithName(name);
+        }).RequirePermission(permission).AddEndpointFilter<CsrfFilter>().AddEndpointFilter<IfMatchFilter>().AddEndpointFilter<IdempotencyFilter>().WithName(name)
+          .Accepts<TBody>("application/json").Produces<EpisodeDetail>().ProducesProblem(404).ProducesProblem(409).ProducesProblem(428).ProducesProblem(400).ProducesProblem(422);
     }
 
     private static T? Read<T>(JsonElement? body) where T : class => body is { ValueKind: JsonValueKind.Object } e ? e.Deserialize<T>(JsonDefaults.Stored) : null;

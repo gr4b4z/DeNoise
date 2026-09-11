@@ -28,54 +28,54 @@ public static class ConfigEndpoints
                 list.Add(new TeamSummary(t.TeamId, t.Name, t.AccessScopes, t.IsTriage, t.FallbackTeamId, t.DefaultEscalationPolicyId, (await members.ListForTeamAsync(t.TeamId, http.RequestAborted)).Count, t.Version));
             }
             return Results.Ok(list);
-        }).RequirePermission(Permissions.EpisodeRead).WithName("ListTeams");
+        }).RequirePermission(Permissions.EpisodeRead).WithName("ListTeams").Produces<List<TeamSummary>>();
         teams.MapPost("", async (CreateTeamRequest request, HttpContext http, TeamService service) =>
         {
             var team = await service.CreateAsync(new CreateTeam(request.Name, request.AccessScopes, request.IsTriage, request.FallbackTeamId, request.DefaultEscalationPolicyId), Actor(http), http.RequestAborted);
             return Results.Created($"/api/v1/teams/{team.TeamId}", new TeamSummary(team.TeamId, team.Name, team.AccessScopes, team.IsTriage, team.FallbackTeamId, team.DefaultEscalationPolicyId, 0, team.Version));
-        }).RequirePermission(Permissions.TeamManage).AddEndpointFilter<CsrfFilter>().WithName("CreateTeam");
+        }).RequirePermission(Permissions.TeamManage).AddEndpointFilter<CsrfFilter>().WithName("CreateTeam").Produces<TeamSummary>(201).ProducesProblem(400).ProducesProblem(409);
         teams.MapGet("/{id:guid}", async (Guid id, HttpContext http, ITeamRepository repo, ITeamMemberRepository members) =>
         {
             var t = await repo.GetAsync(id, http.RequestAborted);
             return t is null ? Results.NotFound() : Results.Ok(new TeamSummary(t.TeamId, t.Name, t.AccessScopes, t.IsTriage, t.FallbackTeamId, t.DefaultEscalationPolicyId, (await members.ListForTeamAsync(t.TeamId, http.RequestAborted)).Count, t.Version));
-        }).RequirePermission(Permissions.EpisodeRead).WithName("GetTeam");
+        }).RequirePermission(Permissions.EpisodeRead).WithName("GetTeam").Produces<TeamSummary>().Produces(404);
         teams.MapGet("/{id:guid}/overview", async (Guid id, HttpContext http, IEpisodeQueries queries) =>
         {
             var overview = await queries.TeamOverviewAsync(http.Principal(), id, http.RequestAborted);
             return overview is null ? Results.NotFound() : Results.Ok(overview);
-        }).RequirePermission(Permissions.EpisodeRead).WithName("GetTeamOverview");
+        }).RequirePermission(Permissions.EpisodeRead).WithName("GetTeamOverview").Produces<TeamOverview>().Produces(404);
         teams.MapPost("/{id:guid}/members/{userId:guid}", async (Guid id, Guid userId, HttpContext http, ITeamMemberRepository members, IUnitOfWork uow) =>
         {
             if ((await members.ListForTeamAsync(id, http.RequestAborted)).Any(m => m.UserId == userId)) return Results.NoContent();
             members.Add(new TeamMember { TeamId = id, UserId = userId });
             await uow.CommitAsync(http.RequestAborted);
             return Results.NoContent();
-        }).RequirePermission(Permissions.TeamManage).AddEndpointFilter<CsrfFilter>().WithName("AddTeamMember");
+        }).RequirePermission(Permissions.TeamManage).AddEndpointFilter<CsrfFilter>().WithName("AddTeamMember").Produces(204);
         teams.MapDelete("/{id:guid}/members/{userId:guid}", async (Guid id, Guid userId, HttpContext http, ITeamMemberRepository members) =>
             await members.RemoveAsync(id, userId, http.RequestAborted) > 0 ? Results.NoContent() : Results.NotFound())
-            .RequirePermission(Permissions.TeamManage).AddEndpointFilter<CsrfFilter>().WithName("RemoveTeamMember");
+            .RequirePermission(Permissions.TeamManage).AddEndpointFilter<CsrfFilter>().WithName("RemoveTeamMember").Produces(204).Produces(404);
 
         var integrations = app.MapGroup("/api/v1/integrations").WithTags("Integrations").RequireAuthorization().AddEndpointFilter<MustChangePasswordFilter>();
         integrations.MapGet("", async (HttpContext http, IIntegrationRepository repo) =>
         {
             var p = http.Principal();
             return Results.Ok((await repo.ListCurrentAsync(http.RequestAborted)).Where(i => p.CanSeeScope(i.AccessScope)).Select(ToSummary).ToList());
-        }).RequirePermission(Permissions.IntegrationRead).WithName("ListIntegrations");
+        }).RequirePermission(Permissions.IntegrationRead).WithName("ListIntegrations").Produces<List<IntegrationSummary>>();
         integrations.MapGet("/{id:guid}", async (Guid id, HttpContext http, IIntegrationRepository repo) =>
         {
             var i = await repo.GetCurrentAsync(id, http.RequestAborted);
             return i is null || !http.Principal().CanSeeScope(i.AccessScope) ? Results.NotFound() : Results.Ok(ToSummary(i));
-        }).RequirePermission(Permissions.IntegrationRead).WithName("GetIntegration");
+        }).RequirePermission(Permissions.IntegrationRead).WithName("GetIntegration").Produces<IntegrationSummary>().Produces(404);
         integrations.MapPost("", async (CreateIntegrationRequest request, HttpContext http, IntegrationService service) =>
         {
             var created = await service.CreateAsync(new CreateIntegration(request.Name, request.Type, request.AccessScope, request.OwnerTeamId), Actor(http), http.RequestAborted);
             return Results.Created($"/api/v1/integrations/{created.Integration.IntegrationId}", new IntegrationCreatedResponse(ToSummary(created.Integration), created.IngestPath, created.IngestToken));
-        }).RequirePermission(Permissions.IntegrationManage).AddEndpointFilter<CsrfFilter>().WithName("CreateIntegration");
+        }).RequirePermission(Permissions.IntegrationManage).AddEndpointFilter<CsrfFilter>().WithName("CreateIntegration").Produces<IntegrationCreatedResponse>(201).ProducesProblem(400);
         integrations.MapPost("/{id:guid}/rotate-ingest-token", async (Guid id, HttpContext http, IntegrationService service) =>
         {
             var rotated = await service.RotateIngestTokenAsync(id, Actor(http), http.RequestAborted);
             return Results.Ok(new IntegrationCreatedResponse(ToSummary(rotated.Integration), rotated.IngestPath, rotated.IngestToken));
-        }).RequirePermission(Permissions.IntegrationManage).AddEndpointFilter<CsrfFilter>().WithName("RotateIngestToken");
+        }).RequirePermission(Permissions.IntegrationManage).AddEndpointFilter<CsrfFilter>().WithName("RotateIngestToken").Produces<IntegrationCreatedResponse>();
 
         var policies = app.MapGroup("/api/v1/policies/{kind}").WithTags("Policies").RequireAuthorization().AddEndpointFilter<MustChangePasswordFilter>();
         policies.MapGet("", async (string kind, HttpContext http, IPolicyRepository repo) =>
@@ -83,47 +83,47 @@ public static class ConfigEndpoints
             if (!PolicyKinds.All.Contains(kind)) return Problems.Result(http, 400, "validation", "Unknown policy kind", null);
             var active = await repo.ListActiveAsync(kind, http.RequestAborted);
             return Results.Ok(active.Select(v => ToDto(v, includeYaml: true)).ToList());
-        }).RequirePermission(Permissions.EpisodeRead).WithName("ListActivePolicies");
+        }).RequirePermission(Permissions.EpisodeRead).WithName("ListActivePolicies").Produces<List<PolicyVersionDto>>();
         policies.MapGet("/{id:guid}/versions", async (string kind, Guid id, HttpContext http, IPolicyRepository repo) =>
             Results.Ok((await repo.ListVersionsAsync(kind, id, http.RequestAborted)).Select(v => ToDto(v, includeYaml: true)).ToList()))
-            .RequirePermission(Permissions.EpisodeRead).WithName("ListPolicyVersions");
+            .RequirePermission(Permissions.EpisodeRead).WithName("ListPolicyVersions").Produces<List<PolicyVersionDto>>();
         policies.MapPost("", async (string kind, CreatePolicyRequest request, HttpContext http, PolicyService service) =>
         {
             var v = await service.CreateVersionAsync(new CreatePolicyVersion(kind, request.Yaml, request.PolicyId, request.Name), Actor(http), http.RequestAborted);
             return Results.Created($"/api/v1/policies/{kind}/{v.PolicyId}/{v.Version}", ToDto(v, includeYaml: true));
-        }).RequirePermission(Permissions.PolicyManage).AddEndpointFilter<CsrfFilter>().WithName("CreatePolicyVersion");
+        }).RequirePermission(Permissions.PolicyManage).AddEndpointFilter<CsrfFilter>().WithName("CreatePolicyVersion").Produces<PolicyVersionDto>(201).ProducesProblem(400);
         policies.MapPost("/{id:guid}/{version:int}/activate", async (string kind, Guid id, int version, HttpContext http, PolicyService service) =>
         {
             await service.ActivateAsync(kind, id, version, Actor(http), http.RequestAborted);
             return Results.NoContent();
-        }).RequirePermission(Permissions.PolicyManage).AddEndpointFilter<CsrfFilter>().WithName("ActivatePolicyVersion");
+        }).RequirePermission(Permissions.PolicyManage).AddEndpointFilter<CsrfFilter>().WithName("ActivatePolicyVersion").Produces(204).ProducesProblem(409);
         policies.MapPost("/{id:guid}/rollback", async (string kind, Guid id, RollbackRequest request, HttpContext http, PolicyService service) =>
         {
             await service.RollbackAsync(kind, id, request.ToVersion, Actor(http), http.RequestAborted);
             return Results.NoContent();
-        }).RequirePermission(Permissions.PolicyManage).AddEndpointFilter<CsrfFilter>().WithName("RollbackPolicy");
+        }).RequirePermission(Permissions.PolicyManage).AddEndpointFilter<CsrfFilter>().WithName("RollbackPolicy").Produces(204).ProducesProblem(409);
 
         var destinations = app.MapGroup("/api/v1/destinations").WithTags("Destinations").RequireAuthorization().AddEndpointFilter<MustChangePasswordFilter>();
         destinations.MapGet("", async (HttpContext http, IDestinationRepository repo, DestinationService service) =>
             Results.Ok((await repo.ListAsync(http.RequestAborted)).Select(d => ToSummary(d, service)).ToList()))
-            .RequirePermission(Permissions.EpisodeRead).WithName("ListDestinations");
+            .RequirePermission(Permissions.EpisodeRead).WithName("ListDestinations").Produces<List<DestinationSummary>>();
         destinations.MapPost("", async (CreateDestinationRequest request, HttpContext http, DestinationService service) =>
         {
             var created = await service.CreateAsync(ToCreate(request), Actor(http), http.RequestAborted);
             return Results.Created($"/api/v1/destinations/{created.Destination.DestinationId}", new DestinationCreatedResponse(ToSummary(created.Destination, service), created.SigningSecret));
-        }).RequirePermission(Permissions.DestinationManage).AddEndpointFilter<CsrfFilter>().WithName("CreateDestination");
+        }).RequirePermission(Permissions.DestinationManage).AddEndpointFilter<CsrfFilter>().WithName("CreateDestination").Produces<DestinationCreatedResponse>(201).ProducesProblem(400);
         destinations.MapPost("/pair", async (CreateDestinationPairRequest request, HttpContext http, DestinationService service) =>
         {
             var (primary, fallback) = await service.CreatePairAsync(ToCreate(request.Primary), ToCreate(request.Fallback), Actor(http), http.RequestAborted);
             return Results.Created($"/api/v1/destinations/{primary.Destination.DestinationId}", new DestinationPairResponse(
                 new DestinationCreatedResponse(ToSummary(primary.Destination, service), primary.SigningSecret), new DestinationCreatedResponse(ToSummary(fallback.Destination, service), fallback.SigningSecret)));
-        }).RequirePermission(Permissions.DestinationManage).AddEndpointFilter<CsrfFilter>().WithName("CreateDestinationPair");
+        }).RequirePermission(Permissions.DestinationManage).AddEndpointFilter<CsrfFilter>().WithName("CreateDestinationPair").Produces<DestinationPairResponse>(201).ProducesProblem(400);
         destinations.MapGet("/{id:guid}/deliveries", async (Guid id, int? limit, HttpContext http, Infrastructure.Persistence.AlertHubDbContext db) =>
         {
             var rows = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
                 (from a in db.DeliveryAttempts join o in db.Outbox on a.OutboxId equals o.OutboxId where o.DestinationId == id orderby a.AttemptedAt descending select a).Take(Math.Clamp(limit ?? 50, 1, 200)), http.RequestAborted);
             return Results.Ok(rows.Select(a => new DeliveryAttemptDto(a.Id, a.OutboxId, a.AttemptedAt, a.Channel, a.Outcome, a.HttpStatus, a.LatencyMs, a.Error, a.UsedFallback, a.ResponseExcerpt)).ToList());
-        }).RequirePermission(Permissions.DestinationManage).WithName("ListDestinationDeliveries");
+        }).RequirePermission(Permissions.DestinationManage).WithName("ListDestinationDeliveries").Produces<List<DeliveryAttemptDto>>();
 
         return app;
     }

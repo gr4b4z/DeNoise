@@ -1,0 +1,82 @@
+{
+  "app": { "name": "Alert Hub" },
+  "nav": { "views": "Views", "teams": "Teams", "admin": "Admin", "signOut": "Sign out", "theme": "Theme", "density": "Density" },
+  "views": {
+    "needsAttention": "Needs attention",
+    "mine": "My alerts",
+    "myTeams": "My teams",
+    "unassigned": "Unassigned",
+    "acknowledged": "Acknowledged & active",
+    "stale": "Stale / unverified",
+    "suppressed": "Suppressed",
+    "closed": "Closed"
+  },
+  "login": {
+    "username": "Username",
+    "password": "Password",
+    "keepSignedIn": "Keep me signed in",
+    "signIn": "Sign in",
+    "sso": "Sign in with SoftwareOne SSO",
+    "changeTitle": "Set a new password",
+    "changeWhy": "Your password was set by an administrator, so it must be replaced before you continue.",
+    "current": "Current password",
+    "new": "New password",
+    "confirm": "Confirm new password",
+    "setNew": "Set new password",
+    "mismatch": "The two passwords differ",
+    "tooShort": "At least 12 characters"
+  },
+  "queue": {
+    "search": "Search summary, resource, service",
+    "severity": "Severity",
+    "columns": { "summary": "Summary", "resource": "Resource / service", "env": "Env", "condition": "Condition", "handling": "Handling", "owner": "Owner", "age": "Age", "seen": "Last seen", "flags": "" },
+    "emptyHealthy": "Nothing needs attention.",
+    "emptyCoverage": "Nothing in this view — but coverage is not verified for {{count}} integration(s).",
+    "emptyFiltered": "No episodes match these filters.",
+    "selected": "{{count}} selected",
+    "keys": "j / k move · a acknowledge · o open · / search"
+  },
+  "actions": {
+    "acknowledge": "Acknowledge",
+    "acknowledged": "Acknowledged",
+    "assignToMe": "Assign to me",
+    "takeOver": "Take over",
+    "assign": "Assign…",
+    "note": "Add note…",
+    "close": "Close…",
+    "restore": "Restore",
+    "silence": "Silence…",
+    "refresh": "Refresh state",
+    "open": "Open",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "reason": "Reason",
+    "reasonRequired": "A reason is required"
+  },
+  "detail": {
+    "overview": "Overview",
+    "timeline": "Timeline",
+    "explanation": "Why you see this",
+    "identity": "Why these events were combined",
+    "lifecycle": "Lifecycle",
+    "routing": "Routing",
+    "links": "Links",
+    "closure": "Closure",
+    "coverage": "Coverage",
+    "timers": "Timers",
+    "source": "Source",
+    "runbook": "Runbook",
+    "noTimers": "No timers scheduled",
+    "conflict": "Updated by someone else just now — refreshing",
+    "back": "Back to queue"
+  },
+  "freshness": {
+    "live": "Live",
+    "connecting": "Connecting…",
+    "stale": "No updates for over a minute",
+    "disconnected": "Data may be out of date — live connection lost",
+    "polling": "Live connection lost — refreshing every 30 s",
+    "lastEvent": "last event {{when}}"
+  },
+  "errors": { "forbidden": "You do not have access to this scope.", "notFound": "This page or episode does not exist, or is not visible to you." }
+}

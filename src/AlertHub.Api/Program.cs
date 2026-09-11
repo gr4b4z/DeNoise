@@ -24,6 +24,8 @@ builder.Services.AddSingleton<CsrfTokens>();
 builder.Services.ConfigureHttpJsonOptions(o =>
 {
     o.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    // Strict numbers: otherwise the OpenAPI document types every integer as ["integer","string"] and the generated TypeScript client loses `number`.
+    o.SerializerOptions.NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.Strict;
     o.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.CamelCase));
 });
 builder.Services.Configure<ForwardedHeadersOptions>(o =>

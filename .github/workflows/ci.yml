@@ -45,14 +45,94 @@ jobs:
           ALERTHUB_TEST_CONNECTION: Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres
         run: dotnet test --no-build -c Release --filter Category=Integration --logger "trx;LogFileName=integration.trx"
       - name: OpenAPI drift
-        run: |
-          dotnet tool install --global Microsoft.Extensions.ApiDescription.Server --version 10.0.* >/dev/null 2>&1 || true
-          echo "OpenAPI document is validated by AlertHub.Contract.Tests; committed snapshot comparison lands with Milestone 4."
+        # AlertHub.Contract.Tests compares the running API with docs/openapi/v1.json; a diff here means the snapshot was not regenerated.
+        run: git diff --exit-code -- docs/openapi/v1.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results
           path: "**/TestResults/*.trx"
+
+  web:
+    name: Web typecheck, lint, unit tests, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Generated client is current
+        run: pnpm generate:api && git diff --exit-code -- src/api/schema.d.ts
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+
+  e2e:
+    name: Web e2e (Playwright + axe)
+    runs-on: ubuntu-latest
+    needs: [backend, web]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: alerthub
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      ConnectionStrings__AlertHub: Host=localhost;Port=5432;Database=alerthub;Username=postgres;Password=postgres
+      Auth__Local__BootstrapPassword: Bootstrap-Admin-Passw0rd!
+      Http__TrustForwardedHeaders: "true"
+      DOTNET_ENVIRONMENT: Development
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: dotnet build -c Release
+      - run: dotnet run --no-build -c Release --project src/AlertHub.Migrator
+      - name: Start the hosts
+        run: |
+          ASPNETCORE_URLS=http://localhost:8080 nohup dotnet run --no-build -c Release --project src/AlertHub.Api > api.log 2>&1 &
+          ASPNETCORE_URLS=http://localhost:8081 nohup dotnet run --no-build -c Release --project src/AlertHub.Ingest > ingest.log 2>&1 &
+          ASPNETCORE_URLS=http://localhost:8082 nohup dotnet run --no-build -c Release --project src/AlertHub.Workers -- --roles=processing,scheduler,dispatcher > workers.log 2>&1 &
+          for p in 8080 8081 8082; do for i in $(seq 1 60); do curl -sf http://localhost:$p/healthz/ready && break || sleep 2; done; done
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+      - run: pnpm exec playwright install --with-deps chromium
+        working-directory: web
+      - run: pnpm e2e
+        working-directory: web
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-results
+          path: |
+            web/playwright-report
+            web/test-results
+            api.log
+            ingest.log
+            workers.log
 
   images:
     name: Container images build

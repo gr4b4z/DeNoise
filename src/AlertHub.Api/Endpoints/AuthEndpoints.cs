@@ -13,7 +13,7 @@ public static class AuthEndpoints
         var group = app.MapGroup("/auth").WithTags("Auth");
 
         group.MapGet("/providers", (IOptions<LocalAuthOptions> options) => Results.Ok(new ProvidersResponse(true, null, options.Value.SelfServiceResetEnabled)))
-            .AllowAnonymous().WithName("GetAuthProviders");
+            .AllowAnonymous().WithName("GetAuthProviders").Produces<ProvidersResponse>();
 
         group.MapPost("/login", async (LoginRequest request, HttpContext http, AuthService auth, IOptions<LocalAuthOptions> options) =>
         {
@@ -40,7 +40,7 @@ public static class AuthEndpoints
                 Expires = request.KeepSignedIn ? result.ExpiresAt : null,
             });
             return Results.NoContent();
-        }).AllowAnonymous().RequireRateLimiting("login").WithName("Login");
+        }).AllowAnonymous().RequireRateLimiting("login").WithName("Login").Produces(204).ProducesProblem(401).ProducesProblem(423).ProducesProblem(429);
 
         group.MapPost("/logout", async (HttpContext http, AuthService auth) =>
         {
@@ -51,14 +51,14 @@ public static class AuthEndpoints
             }
             http.Response.Cookies.Delete(AlertHubAuthenticationHandler.CookieName, new CookieOptions { Path = "/" });
             return Results.NoContent();
-        }).RequireAuthorization().WithName("Logout");
+        }).RequireAuthorization().WithName("Logout").Produces(204);
 
         group.MapGet("/csrf", (HttpContext http, CsrfTokens tokens) =>
         {
             var principal = http.Principal();
             if (principal.Credential != CredentialKind.Session) return Results.Ok(new CsrfResponse(string.Empty));
             return Results.Ok(new CsrfResponse(tokens.Issue(principal.SessionId!)));
-        }).RequireAuthorization().WithName("GetCsrfToken");
+        }).RequireAuthorization().WithName("GetCsrfToken").Produces<CsrfResponse>();
 
         group.MapPost("/change-password", async (ChangePasswordRequest request, HttpContext http, AuthService auth) =>
         {
@@ -68,9 +68,9 @@ public static class AuthEndpoints
             return problems.Count == 0
                 ? Results.NoContent()
                 : Problems.Result(http, StatusCodes.Status422UnprocessableEntity, "validation", "Password not accepted", string.Join("; ", problems), new { errors = problems });
-        }).RequireAuthorization().AddEndpointFilter<CsrfFilter>().WithName("ChangePassword");
+        }).RequireAuthorization().AddEndpointFilter<CsrfFilter>().WithName("ChangePassword").Produces(204).ProducesProblem(422);
 
-        group.MapPost("/reset/request", (HttpContext http) => Results.Accepted()).AllowAnonymous().WithName("RequestPasswordReset")
+        group.MapPost("/reset/request", (HttpContext http) => Results.Accepted()).AllowAnonymous().WithName("RequestPasswordReset").Produces(202)
             .WithDescription("Self-service reset lands with SMTP (C4); always answers 202 so nothing is leaked.");
 
         return app;
