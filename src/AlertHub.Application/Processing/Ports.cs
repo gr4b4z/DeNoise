@@ -74,6 +74,19 @@ public interface IProcessingSession
     Task<DateTimeOffset?> OldestPendingNormaliseAsync(Guid integrationId, CancellationToken ct = default);
     /// <summary>Open episodes carrying the given lifecycle policy (impact preview and rescheduling on activation).</summary>
     Task<IReadOnlyList<Episode>> ListOpenEpisodesByLifecyclePolicyForUpdateAsync(Guid policyId, CancellationToken ct = default);
+
+    // --- Heartbeats (milestone 6) ---
+
+    /// <summary>The heartbeat row, locked <c>FOR UPDATE</c> (pings and ticks serialise on it).</summary>
+    Task<Domain.Heartbeats.Heartbeat?> FindHeartbeatForUpdateAsync(Guid heartbeatId, CancellationToken ct = default);
+    /// <summary>Heartbeats whose deadline (or lateness) has passed, locked <c>FOR UPDATE SKIP LOCKED</c> so scheduler replicas share the work.</summary>
+    Task<IReadOnlyList<Domain.Heartbeats.Heartbeat>> ClaimDueHeartbeatsAsync(DateTimeOffset now, int limit, CancellationToken ct = default);
+    /// <summary>Heartbeats that may be paused or resumed by maintenance (auto-pause enabled, not paused by a person).</summary>
+    Task<IReadOnlyList<Domain.Heartbeats.Heartbeat>> ListMaintenanceCandidatesForUpdateAsync(CancellationToken ct = default);
+    Task<long> NextHeartbeatRunSeqAsync(Guid heartbeatId, CancellationToken ct = default);
+    void AddHeartbeatRun(Domain.Heartbeats.HeartbeatRun run);
+    /// <summary>Keeps the last <paramref name="keep"/> runs of a heartbeat (the ring of spec §13.3.3).</summary>
+    Task<int> TrimHeartbeatRunsAsync(Guid heartbeatId, int keep, CancellationToken ct = default);
 }
 
 /// <summary>What a source-state query returned (04 §5.3 guard 7).</summary>
@@ -119,6 +132,12 @@ public interface ITransitionHook
 
     /// <summary>A closure without a source event (auto-resolve, expiry, coverage): cancel timers and notify prior recipients (04 §6 "resolved / cancelled / expired").</summary>
     Task OnSystemClosureAsync(Episode episode, IProcessingSession session, CancellationToken ct) => Task.CompletedTask;
+
+    /// <summary>
+    /// An episode the Hub opened itself with ownership already decided (heartbeat miss: the definition names the team). Routing rules are
+    /// skipped; the ack deadline, lifecycle exemption and the given notification type to the team's destinations are staged as for any open.
+    /// </summary>
+    Task OnPreassignedOpenAsync(Episode episode, NormalisedEvent evt, Domain.Integrations.Integration integration, Domain.Teams.Team team, string notificationType, object? detail, IProcessingSession session, CancellationToken ct) => Task.CompletedTask;
 }
 
 /// <summary>Best-effort post-commit notification for the UI stream (ADR-12). Never inside the transaction.</summary>

@@ -97,6 +97,25 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ReadModels.HealthQueries>();
         services.AddScoped<PolicyImpactService>();
         services.AddScoped<IPolicyActivationHook, LifecycleActivationHook>();
+
+        // Milestone 6: registered heartbeats.
+        services.AddOptions<AlertHub.Application.Heartbeats.HeartbeatOptions>().Bind(configuration.GetSection(AlertHub.Application.Heartbeats.HeartbeatOptions.Section));
+        services.AddScoped<AlertHub.Application.Heartbeats.IHeartbeatRepository, Heartbeats.EfHeartbeatRepository>();
+        services.AddScoped<AlertHub.Application.Heartbeats.IHeartbeatPingAuthenticator, Heartbeats.HeartbeatPingAuthenticator>();
+        services.TryAddScoped<AlertHub.Application.Heartbeats.IMaintenanceWindows, AlertHub.Application.Heartbeats.NoMaintenanceWindows>();
+        services.AddScoped<AlertHub.Application.Heartbeats.HeartbeatEffects>();
+        services.AddScoped<AlertHub.Application.Heartbeats.HeartbeatPingService>();
+        services.AddScoped<AlertHub.Application.Heartbeats.HeartbeatMonitor>();
+        services.AddScoped<AlertHub.Application.Heartbeats.HeartbeatService>();
+        // The Helm chart exposes the public URLs under AlertHub:* (03 §"Helm values"); honour them when the section-specific keys are absent.
+        services.PostConfigure<AlertHub.Application.Heartbeats.HeartbeatOptions>(o =>
+        {
+            if (configuration["Heartbeats:IngestPublicBaseUrl"] is null && configuration["AlertHub:IngestPublicBaseUrl"] is { Length: > 0 } ingest) o.IngestPublicBaseUrl = ingest;
+        });
+        services.PostConfigure<NotificationOptions>(o =>
+        {
+            if (configuration["Notifications:PublicBaseUrl"] is null && configuration["AlertHub:PublicBaseUrl"] is { Length: > 0 } url) o.PublicBaseUrl = url;
+        });
         services.AddScoped<IOutboxQueue, EfOutboxQueue>();
         services.AddScoped<IEpisodeReader, EfEpisodeReader>();
         services.AddHttpClient(WebhookChannel.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler

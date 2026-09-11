@@ -15,6 +15,9 @@ public static class LifecycleProfiles
     public const string Unknown = "unknown";
     /// <summary>Internal profile of coverage episodes: exempt from every lifecycle timer (04 §9).</summary>
     public const string Coverage = "coverage";
+    /// <summary>Internal profile of heartbeat miss episodes: they resolve on the next ping with evidence <c>source</c>, never by inference (spec §13.3.3).</summary>
+    public const string Heartbeat = "heartbeat";
+    public static bool IsInternal(string? profile) => profile is Coverage or Heartbeat;
     public static readonly IReadOnlyList<string> All = [ExplicitRecovery, QueryableState, RepeatingWhileActive, OneShot, Unknown];
 
     /// <summary>Profile preset for an integration type when neither mapping nor policy names one (spec §12.2 table).</summary>

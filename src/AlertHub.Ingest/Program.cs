@@ -42,6 +42,19 @@ builder.Services.AddRateLimiter(o =>
             .Add(1, new KeyValuePair<string, object?>("reason", "rate_limited"));
         return ValueTask.CompletedTask;
     };
+    // 06 §3: heartbeat pings are limited per key id (default 60/min); the token lives in the URL, so the key prefix is the partition.
+    o.AddPolicy(HeartbeatPingEndpoints.RateLimitPolicy, ctx =>
+    {
+        var perMinute = ctx.RequestServices.GetRequiredService<IOptions<AlertHub.Application.Heartbeats.HeartbeatOptions>>().Value.PingsPerMinutePerKey;
+        return RateLimitPartition.GetSlidingWindowLimiter("hb:" + HeartbeatPingEndpoints.PartitionKey(ctx), _ => new SlidingWindowRateLimiterOptions
+        {
+            PermitLimit = perMinute,
+            Window = TimeSpan.FromMinutes(1),
+            SegmentsPerWindow = 6,
+            QueueLimit = 0,
+            AutoReplenishment = true,
+        });
+    });
     o.AddPolicy(IngestEndpoints.RateLimitPolicy, ctx =>
     {
         var key = ctx.Request.RouteValues.TryGetValue("integrationKeyId", out var k) ? k?.ToString() ?? string.Empty : string.Empty;
@@ -63,6 +76,7 @@ app.UseAlertHubRequestLogging();
 app.UseRateLimiter();
 app.MapAlertHubHealth();
 app.MapIngest();
+app.MapHeartbeatPings();
 
 app.Run();
 

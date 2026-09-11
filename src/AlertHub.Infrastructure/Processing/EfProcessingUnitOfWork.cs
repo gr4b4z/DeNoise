@@ -170,6 +170,25 @@ internal sealed class EfProcessingSession(AlertHubDbContext db) : IProcessingSes
     public async Task<IReadOnlyList<Episode>> ListOpenEpisodesByLifecyclePolicyForUpdateAsync(Guid policyId, CancellationToken ct = default)
         => await db.Episodes.FromSqlInterpolated($"SELECT * FROM alert.episode WHERE lifecycle_policy_id = {policyId} AND handling_state <> 'closed' ORDER BY first_seen FOR UPDATE").ToListAsync(ct);
 
+    public Task<Domain.Heartbeats.Heartbeat?> FindHeartbeatForUpdateAsync(Guid heartbeatId, CancellationToken ct = default)
+        => db.Heartbeats.FromSqlInterpolated($"SELECT * FROM hb.heartbeat WHERE heartbeat_id = {heartbeatId} FOR UPDATE").SingleOrDefaultAsync(ct);
+
+    public async Task<IReadOnlyList<Domain.Heartbeats.Heartbeat>> ClaimDueHeartbeatsAsync(DateTimeOffset now, int limit, CancellationToken ct = default)
+        => await db.Heartbeats.FromSqlInterpolated($"SELECT * FROM hb.heartbeat WHERE state IN ('healthy','late') AND expected_next < {now} ORDER BY expected_next LIMIT {limit} FOR UPDATE SKIP LOCKED").ToListAsync(ct);
+
+    public async Task<IReadOnlyList<Domain.Heartbeats.Heartbeat>> ListMaintenanceCandidatesForUpdateAsync(CancellationToken ct = default)
+        => await db.Heartbeats.FromSqlInterpolated($"SELECT * FROM hb.heartbeat WHERE auto_pause_during_maintenance AND (state <> 'paused' OR paused_by_maintenance) ORDER BY heartbeat_id FOR UPDATE SKIP LOCKED").ToListAsync(ct);
+
+    public async Task<long> NextHeartbeatRunSeqAsync(Guid heartbeatId, CancellationToken ct = default)
+        => (await db.HeartbeatRuns.Where(r => r.HeartbeatId == heartbeatId).MaxAsync(r => (long?)r.Seq, ct) ?? 0) + 1;
+
+    public void AddHeartbeatRun(Domain.Heartbeats.HeartbeatRun run) => db.HeartbeatRuns.Add(run);
+
+    public Task<int> TrimHeartbeatRunsAsync(Guid heartbeatId, int keep, CancellationToken ct = default)
+        => db.Database.ExecuteSqlInterpolatedAsync($"""
+            DELETE FROM hb.run WHERE heartbeat_id = {heartbeatId} AND seq <= (SELECT max(seq) FROM hb.run WHERE heartbeat_id = {heartbeatId}) - {keep}
+            """, ct);
+
     public async Task<IReadOnlyList<Guid>> PriorRecipientsAsync(Guid episodeId, CancellationToken ct = default)
         => await db.Outbox.AsNoTracking()
             .Where(o => o.EpisodeId == episodeId && o.Status != Domain.Ops.OutboxStatus.Cancelled && o.Status != Domain.Ops.OutboxStatus.Coalesced)

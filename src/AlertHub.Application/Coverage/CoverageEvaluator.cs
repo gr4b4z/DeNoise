@@ -61,6 +61,38 @@ public sealed class CoverageEvaluator(
         await ApplyStepAsync(integration, state, step, session, now, ct);
     }
 
+    /// <summary>
+    /// A heartbeat bound to the integration drives its coverage (spec §13.3.3): a miss is an explicit coverage failure, a recovery a success.
+    /// Without a canary method the heartbeat's own <c>recovery_successes_required</c> is the threshold. Returns the episodes touched.
+    /// </summary>
+    public async Task<IReadOnlyList<Episode>> OnBoundHeartbeatAsync(Guid integrationId, bool success, int recoveryRequired, IProcessingSession session, DateTimeOffset now, CancellationToken ct)
+    {
+        var integration = await integrations.GetCurrentAsync(integrationId, ct);
+        if (integration is null) return [];
+        var config = CoverageConfig.Parse(integration.Coverage);
+        var method = config.Canary ?? new CanaryMethod(TimeSpan.MaxValue, TimeSpan.MaxValue, TimeSpan.MaxValue, TimeSpan.MaxValue, Math.Max(1, recoveryRequired));
+        var state = await session.GetCoverageForUpdateAsync(integrationId, ct);
+        if (state is null)
+        {
+            state = new CoverageState { IntegrationId = integrationId, State = CoverageStates.Unknown, Since = now };
+            session.AddCoverage(state);
+        }
+        if (success) state.LastSignalAt = now;
+        var step = CoverageMachine.OnSignal(state, method, now, success);
+        var (_, episodes) = await ApplyStepAsync(integration, state, step, session, now, ct);
+        if (step.Changed) _pendingAnnouncements.Add((integration, step.To));
+        return episodes;
+    }
+
+    private readonly List<(Integration Integration, string State)> _pendingAnnouncements = [];
+
+    /// <summary>Announces coverage changes recorded by <see cref="OnBoundHeartbeatAsync"/> once the caller has committed.</summary>
+    public async Task FlushAnnouncementsAsync(CancellationToken ct)
+    {
+        foreach (var (integration, state) in _pendingAnnouncements) await AnnounceAsync(integration, state, [], ct);
+        _pendingAnnouncements.Clear();
+    }
+
     /// <summary>Scheduler tick: evaluates every current integration with a canary method. Returns the integrations whose state changed.</summary>
     public async Task<IReadOnlyList<CoverageEvaluation>> TickAllAsync(CancellationToken ct)
     {

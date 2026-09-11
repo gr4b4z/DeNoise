@@ -98,3 +98,23 @@ public sealed record QueueDepth(string Kind, int Pending, int Reserved, int Susp
 public sealed record DeadmanStatus(bool Configured, DateTimeOffset? LastPingAt, bool Ok);
 public sealed record HubHealth(DateTimeOffset At, bool DatabaseOk, IReadOnlyList<HubComponent> Components, IReadOnlyList<QueueDepth> Queues, int OutboxPending, DateTimeOffset? OutboxOldestPending, int OutboxFailed, int JobsFailed, DeadmanStatus Deadman);
 public sealed record HubFailure(Guid Id, string Source, string Type, DateTimeOffset At, int Attempts, string? LastError, Guid? EpisodeId);
+
+// --- Milestone 6: heartbeats ---
+public sealed record HeartbeatScheduleDto(string Kind, string? Interval, string? Cron, string? Timezone, string Description);
+public sealed record HeartbeatSummary(Guid Id, string Name, string? Description, string AccessScope, TeamRef? OwningTeam, Guid? AssigneeId, HeartbeatScheduleDto Schedule, string Grace,
+    string SeverityOnMiss, Guid? RoutingPolicyId, Guid? BindsToIntegrationId, string? BoundIntegrationName, int RecoverySuccessesRequired, bool AutoPauseDuringMaintenance, string State,
+    DateTimeOffset? ExpectedNext, DateTimeOffset? LastPingAt, string? LastPingIp, string? LastRunDuration, Guid? PausedBy, DateTimeOffset? PausedAt, string? PauseReason, bool PausedByMaintenance,
+    Guid? MissEpisodeId, string KeyId, DateTimeOffset TokenRotatedAt, int Version, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
+public sealed record HeartbeatRunDto(long Seq, DateTimeOffset? StartedAt, DateTimeOffset FinishedAt, string Kind, int? ExitCode, string? Body, string? SourceIp);
+public sealed record HeartbeatDetail(HeartbeatSummary Heartbeat, IReadOnlyList<HeartbeatRunDto> LastRuns, IReadOnlyList<DateTimeOffset> NextRuns);
+public sealed record HeartbeatScheduleRequest(string Kind, string? Interval, string? Cron, string? Timezone);
+public sealed record HeartbeatRequest(string Name, string? Description, Guid OwningTeamId, Guid? AssigneeId, HeartbeatScheduleRequest Schedule, string Grace, string SeverityOnMiss,
+    Guid? RoutingPolicyId, Guid? BindsToIntegrationId, int RecoverySuccessesRequired = 1, bool AutoPauseDuringMaintenance = true, string? AccessScope = null);
+public sealed record HeartbeatCreatedResponse(HeartbeatSummary Heartbeat, string PingUrl);
+public sealed record PingUrlResponse(string PingUrl);
+public sealed record PauseHeartbeatRequest(string Reason);
+public sealed record SchedulePreviewRequest(HeartbeatScheduleRequest Schedule, int Count = 5);
+public sealed record SchedulePreviewResponse(IReadOnlyList<DateTimeOffset> NextRuns, string Description);
+public sealed record HeartbeatImportRequest(string Yaml, bool DryRun = true);
+public sealed record HeartbeatImportEntryDto(string Name, string Action, Guid? HeartbeatId, IReadOnlyList<string> Changes, string? PingUrl);
+public sealed record HeartbeatImportResponse(bool DryRun, IReadOnlyList<HeartbeatImportEntryDto> Entries, IReadOnlyList<string> Errors);

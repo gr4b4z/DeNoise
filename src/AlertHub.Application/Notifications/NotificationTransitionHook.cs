@@ -115,36 +115,7 @@ public sealed class NotificationTransitionHook(
 
         // Escalation policy: rule → team default; ack deadline timer (04 §2.1, §7.2).
         var escalationId = decision.EscalationPolicyId ?? team?.DefaultEscalationPolicyId;
-        EscalationPolicyDocument? escalation = null;
-        int? escalationVersion = null;
-        if (escalationId is { } eid && await policies.GetActiveAsync(PolicyKinds.Escalation, eid, ct) is { } ev)
-        {
-            try
-            {
-                escalation = EscalationPolicyDocument.Parse(JsonNode.Parse(ev.Body)!, ev.Version);
-                escalationVersion = ev.Version;
-            }
-            catch (Mapping.MappingValidationException ex)
-            {
-                logger.LogError(ex, "Escalation policy {PolicyId} v{Version} does not parse; no deadline scheduled", eid, ev.Version);
-            }
-        }
-        if (episode.IsActionable && escalation?.AckDeadline is { } deadline)
-        {
-            episode.AckDeadlineAt = now + deadline;
-            session.AddJob(new Job
-            {
-                JobId = Ids.New(time),
-                Kind = JobKinds.AckDeadline,
-                NotBefore = episode.AckDeadlineAt.Value,
-                EpisodeId = episode.EpisodeId,
-                IntegrationId = integration.IntegrationId,
-                ExpectedVersion = episode.Version,
-                Payload = JsonSerializer.Serialize(new EscalationJobPayload(episode.EpisodeId, escalationId!.Value, escalationVersion!.Value, 0, 0), JsonDefaults.Stored),
-                CreatedAt = now,
-                UpdatedAt = now,
-            });
-        }
+        await ScheduleAckDeadlineAsync(episode, integration, escalationId, session, now, ct);
 
         session.AddEpisodeEvent(new EpisodeEvent
         {
@@ -188,6 +159,65 @@ public sealed class NotificationTransitionHook(
                 AccessScope = episode.AccessScope,
                 After = JsonSerializer.Serialize(new { decision.Why, teamId = decision.TeamId }, JsonDefaults.Stored),
                 CorrelationId = evt.EventId.ToString("N"),
+            });
+        }
+    }
+
+    /// <summary>Heartbeat miss episodes: ownership comes from the definition, so routing rules are skipped (spec §13.3.3 "owned and routed like any other" — by its declared team).</summary>
+    public async Task OnPreassignedOpenAsync(Episode episode, NormalisedEvent evt, Integration integration, Team team, string notificationType, object? detail, IProcessingSession session, CancellationToken ct)
+    {
+        var now = time.GetUtcNow();
+        episode.OwningTeamId = team.TeamId;
+        episode.RoutingRuleId = null;
+        episode.RoutingCorrectionRequired = false;
+        await ScheduleAckDeadlineAsync(episode, integration, team.DefaultEscalationPolicyId, session, now, ct);
+        session.AddEpisodeEvent(new EpisodeEvent
+        {
+            Id = Ids.New(time),
+            EpisodeId = episode.EpisodeId,
+            At = now,
+            Kind = EpisodeEventKind.Assign,
+            EventId = evt.EventId,
+            Detail = JsonSerializer.Serialize(new { teamId = team.TeamId, ruleId = (Guid?)null, ruleName = (string?)null, why = $"ownership set by the heartbeat definition → team '{team.Name}'", correctionRequired = false, escalationPolicyId = team.DefaultEscalationPolicyId }, JsonDefaults.Stored),
+        });
+        var effectiveLifecycle = await lifecycle.ResolveAsync(episode, integration, null, ct);
+        await lifecycle.ScheduleAsync(episode, integration, effectiveLifecycle, session, now, ct);
+
+        var model = NotificationModel.ForEpisode(notificationType, episode, evt, integration, team, options.Value.PublicBaseUrl, escalation: detail);
+        if (detail is not null) model["heartbeat"] = JsonSerializer.SerializeToNode(detail, JsonDefaults.Stored);
+        Stage(session, episode, notificationType, model, await TeamDestinationsAsync(team.TeamId, ct), integration, now);
+    }
+
+    private async Task ScheduleAckDeadlineAsync(Episode episode, Integration integration, Guid? escalationId, IProcessingSession session, DateTimeOffset now, CancellationToken ct)
+    {
+        EscalationPolicyDocument? escalation = null;
+        int? escalationVersion = null;
+        if (escalationId is { } eid && await policies.GetActiveAsync(PolicyKinds.Escalation, eid, ct) is { } ev)
+        {
+            try
+            {
+                escalation = EscalationPolicyDocument.Parse(JsonNode.Parse(ev.Body)!, ev.Version);
+                escalationVersion = ev.Version;
+            }
+            catch (Mapping.MappingValidationException ex)
+            {
+                logger.LogError(ex, "Escalation policy {PolicyId} v{Version} does not parse; no deadline scheduled", eid, ev.Version);
+            }
+        }
+        if (episode.IsActionable && escalation?.AckDeadline is { } deadline)
+        {
+            episode.AckDeadlineAt = now + deadline;
+            session.AddJob(new Job
+            {
+                JobId = Ids.New(time),
+                Kind = JobKinds.AckDeadline,
+                NotBefore = episode.AckDeadlineAt.Value,
+                EpisodeId = episode.EpisodeId,
+                IntegrationId = integration.IntegrationId,
+                ExpectedVersion = episode.Version,
+                Payload = JsonSerializer.Serialize(new EscalationJobPayload(episode.EpisodeId, escalationId!.Value, escalationVersion!.Value, 0, 0), JsonDefaults.Stored),
+                CreatedAt = now,
+                UpdatedAt = now,
             });
         }
     }

@@ -65,6 +65,20 @@ public sealed class LifecycleScheduler(IPolicyRepository policies, TimeProvider 
         }
 
         // 3. Mapping hint, then the integration type preset (spec §12.2 table).
+        if (LifecycleProfiles.IsInternal(episode.LifecycleProfile))
+        {
+            var internalDoc = LifecyclePolicyDocument.Preset(LifecycleProfiles.OneShot);
+            return new EffectiveLifecycle(null, null, new LifecyclePolicyDocument
+            {
+                Version = 0,
+                Profile = episode.LifecycleProfile!,
+                DeliveryGrace = internalDoc.DeliveryGrace,
+                MinInactivity = internalDoc.MinInactivity,
+                Source = internalDoc.Source,
+                AutoResolve = internalDoc.AutoResolve with { Enabled = false },
+                Expiry = new ExpirySettings(null, null, null, internalDoc.Expiry.NeverExpireSeverities),
+            }, $"internal profile '{episode.LifecycleProfile}': no lifecycle timers");
+        }
         var profile = episode.LifecycleProfile is { } hint && LifecycleProfiles.All.Contains(hint) ? hint : LifecycleProfiles.DefaultFor(integration.Type);
         return new EffectiveLifecycle(null, null, LifecyclePolicyDocument.Preset(profile), $"preset for profile '{profile}'");
     }
@@ -81,7 +95,7 @@ public sealed class LifecycleScheduler(IPolicyRepository policies, TimeProvider 
         episode.AutoResolveAt = null;
         var payload = new LifecycleJobPayload(episode.EpisodeId, lifecycle.PolicyId, lifecycle.PolicyVersion, doc.Profile);
 
-        if (doc.Profile == LifecycleProfiles.Coverage) return; // coverage episodes resolve only through the coverage machine (04 §9)
+        if (LifecycleProfiles.IsInternal(doc.Profile)) return; // coverage/heartbeat episodes resolve only through their own machines (04 §9, §10)
 
         if (!episode.IsActionable || episode.ConditionState == ConditionState.NotApplicable)
         {
