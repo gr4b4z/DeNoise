@@ -7,6 +7,7 @@ using AlertHub.Domain.Notifications;
 using AlertHub.Domain.Ops;
 using AlertHub.Domain.Policies;
 using AlertHub.Domain.Teams;
+using AlertHub.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 
 namespace AlertHub.Infrastructure.Persistence;
@@ -24,6 +25,7 @@ public sealed class AlertHubDbContext(DbContextOptions<AlertHubDbContext> option
     public DbSet<Job> Jobs => Set<Job>();
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
     public DbSet<HubComponentHeartbeat> HubComponentHeartbeats => Set<HubComponentHeartbeat>();
+    public DbSet<CoverageState> CoverageStates => Set<CoverageState>();
     public DbSet<Integration> Integrations => Set<Integration>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<NormalisedEvent> NormalisedEvents => Set<NormalisedEvent>();
@@ -40,6 +42,13 @@ public sealed class AlertHubDbContext(DbContextOptions<AlertHubDbContext> option
     public DbSet<Destination> Destinations => Set<Destination>();
     public DbSet<DeliveryAttempt> DeliveryAttempts => Set<DeliveryAttempt>();
     public DbSet<PolicyVersion> Policies => Set<PolicyVersion>();
+    public DbSet<User> Users => Set<User>();
+    public DbSet<Session> Sessions => Set<Session>();
+    public DbSet<PersonalAccessToken> PersonalAccessTokens => Set<PersonalAccessToken>();
+    public DbSet<LoginAttempt> LoginAttempts => Set<LoginAttempt>();
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+    public DbSet<TeamMember> TeamMembers => Set<TeamMember>();
+    public DbSet<SavedFilter> SavedFilters => Set<SavedFilter>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

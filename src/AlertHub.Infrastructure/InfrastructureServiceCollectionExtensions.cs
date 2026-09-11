@@ -1,5 +1,7 @@
 using AlertHub.Application.Abstractions;
 using AlertHub.Application.Audit;
+using AlertHub.Application.Auth;
+using AlertHub.Application.Episodes;
 using AlertHub.Application.Ingest;
 using AlertHub.Application.Integrations;
 using AlertHub.Application.Mapping;
@@ -7,10 +9,12 @@ using AlertHub.Application.Notifications;
 using AlertHub.Application.Ops;
 using AlertHub.Application.Policies;
 using AlertHub.Application.Processing;
+using AlertHub.Application.Realtime;
 using AlertHub.Application.Routing;
 using AlertHub.Application.Scheduling;
 using AlertHub.Application.Teams;
 using AlertHub.Infrastructure.Audit;
+using AlertHub.Infrastructure.Auth;
 using AlertHub.Infrastructure.Ingest;
 using AlertHub.Infrastructure.Integrations;
 using AlertHub.Infrastructure.Mapping;
@@ -18,6 +22,8 @@ using AlertHub.Infrastructure.Notifications;
 using AlertHub.Infrastructure.Ops;
 using AlertHub.Infrastructure.Persistence;
 using AlertHub.Infrastructure.Processing;
+using AlertHub.Infrastructure.ReadModels;
+using AlertHub.Infrastructure.Realtime;
 using AlertHub.Infrastructure.Security;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
@@ -84,6 +90,25 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<INotificationChannel, WebhookChannel>();
         services.AddScoped<INotificationChannel, SmtpEmailChannel>();
         services.AddScoped<OutboxDispatcher>();
+
+        // Users, auth, application API read models, realtime (milestone 4)
+        services.AddOptions<LocalAuthOptions>().Bind(configuration.GetSection(LocalAuthOptions.Section));
+        services.AddScoped<IUserRepository, EfUserRepository>();
+        services.AddScoped<ISessionRepository, EfSessionRepository>();
+        services.AddScoped<IPersonalAccessTokenRepository, EfPersonalAccessTokenRepository>();
+        services.AddScoped<ILoginAttemptRepository, EfLoginAttemptRepository>();
+        services.AddScoped<IIdempotencyStore, EfIdempotencyStore>();
+        services.AddScoped<ITeamMemberRepository, EfTeamMemberRepository>();
+        services.AddScoped<ISavedFilterRepository, EfSavedFilterRepository>();
+        services.AddScoped<IIdentityProvider, LocalPasswordProvider>();
+        services.AddScoped<AuthService>();
+        services.AddScoped<UserService>();
+        services.AddScoped<PersonalAccessTokenService>();
+        services.AddScoped<IEpisodeQueries, EpisodeQueries>();
+        services.AddScoped<EpisodeActionService>();
+        services.AddSingleton<SseHub>();
+        services.AddScoped<IChangeBroadcaster, PgChangeBroadcaster>();
+        services.Replace(ServiceDescriptor.Scoped<IEpisodeChangePublisher, BroadcastingEpisodeChangePublisher>());
         return services;
     }
 }

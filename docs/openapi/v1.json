@@ -1,0 +1,2176 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Alert Hub application API",
+    "description": "Authenticated operator API (docs/06-api-contract.md). Session cookie for the UI or \u0060Authorization: Bearer ah_pat_\u003CkeyId\u003E.\u003Csecret\u003E\u0060 for API clients.",
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "http://localhost/"
+    }
+  ],
+  "paths": {
+    "/auth/providers": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "GetAuthProviders",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "Login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "Logout",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/auth/csrf": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "GetCsrfToken",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/auth/change-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "ChangePassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/auth/reset/request": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "description": "Self-service reset lands with SMTP (C4); always answers 202 so nothing is leaked.",
+        "operationId": "RequestPasswordReset",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "Me"
+        ],
+        "operationId": "GetMe",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/me/tokens": {
+      "get": {
+        "tags": [
+          "Me"
+        ],
+        "operationId": "ListMyTokens",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Me"
+        ],
+        "operationId": "CreateMyToken",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/me/tokens/{id}": {
+      "delete": {
+        "tags": [
+          "Me"
+        ],
+        "operationId": "RevokeMyToken",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/me/sessions": {
+      "get": {
+        "tags": [
+          "Me"
+        ],
+        "operationId": "ListMySessions",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/me/sessions/{id}": {
+      "delete": {
+        "tags": [
+          "Me"
+        ],
+        "operationId": "RevokeMySession",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/me/filters": {
+      "get": {
+        "tags": [
+          "Me"
+        ],
+        "operationId": "ListMyFilters",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Me"
+        ],
+        "operationId": "SaveMyFilter",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveFilterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/me/filters/{id}": {
+      "delete": {
+        "tags": [
+          "Me"
+        ],
+        "operationId": "DeleteMyFilter",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "ListUsers",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "CreateUser",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/{id}": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "GetUser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "UpdateUser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/{id}/reset-password": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "ResetUserPassword",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/{id}/disable": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "DisableUser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/{id}/enable": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "EnableUser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/{id}/unlock": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "UnlockUser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/episodes": {
+      "get": {
+        "tags": [
+          "Episodes"
+        ],
+        "operationId": "ListEpisodes",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/episodes/counts": {
+      "get": {
+        "tags": [
+          "Episodes"
+        ],
+        "operationId": "GetEpisodeViewCounts",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/episodes/{id}": {
+      "get": {
+        "tags": [
+          "Episodes"
+        ],
+        "operationId": "GetEpisode",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/episodes/{id}/timeline": {
+      "get": {
+        "tags": [
+          "Episodes"
+        ],
+        "operationId": "GetEpisodeTimeline",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/episodes/{id}/related": {
+      "get": {
+        "tags": [
+          "Episodes"
+        ],
+        "operationId": "GetRelatedEpisodes",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/episodes/{id}/raw/{eventId}": {
+      "get": {
+        "tags": [
+          "Episodes"
+        ],
+        "operationId": "GetEpisodeRawPayload",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/episodes/{id}/ack": {
+      "post": {
+        "tags": [
+          "Episodes"
+        ],
+        "operationId": "AcknowledgeEpisode",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/episodes/{id}/assign": {
+      "post": {
+        "tags": [
+          "Episodes"
+        ],
+        "operationId": "AssignEpisode",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/episodes/{id}/note": {
+      "post": {
+        "tags": [
+          "Episodes"
+        ],
+        "operationId": "AddEpisodeNote",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/episodes/{id}/close": {
+      "post": {
+        "tags": [
+          "Episodes"
+        ],
+        "operationId": "CloseEpisode",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/episodes/{id}/restore": {
+      "post": {
+        "tags": [
+          "Episodes"
+        ],
+        "operationId": "RestoreEpisode",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/episodes/{id}/silence": {
+      "post": {
+        "tags": [
+          "Episodes"
+        ],
+        "operationId": "SilenceEpisode",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/episodes/{id}/refresh-state": {
+      "post": {
+        "tags": [
+          "Episodes"
+        ],
+        "operationId": "RefreshEpisodeState",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/episodes/bulk": {
+      "post": {
+        "tags": [
+          "Episodes"
+        ],
+        "operationId": "BulkEpisodeAction",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/teams": {
+      "get": {
+        "tags": [
+          "Teams"
+        ],
+        "operationId": "ListTeams",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Teams"
+        ],
+        "operationId": "CreateTeam",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTeamRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/teams/{id}": {
+      "get": {
+        "tags": [
+          "Teams"
+        ],
+        "operationId": "GetTeam",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/teams/{id}/overview": {
+      "get": {
+        "tags": [
+          "Teams"
+        ],
+        "operationId": "GetTeamOverview",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/teams/{id}/members/{userId}": {
+      "post": {
+        "tags": [
+          "Teams"
+        ],
+        "operationId": "AddTeamMember",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Teams"
+        ],
+        "operationId": "RemoveTeamMember",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations": {
+      "get": {
+        "tags": [
+          "Integrations"
+        ],
+        "operationId": "ListIntegrations",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "operationId": "CreateIntegration",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIntegrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/{id}": {
+      "get": {
+        "tags": [
+          "Integrations"
+        ],
+        "operationId": "GetIntegration",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/{id}/rotate-ingest-token": {
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "operationId": "RotateIngestToken",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/policies/{kind}": {
+      "get": {
+        "tags": [
+          "Policies"
+        ],
+        "operationId": "ListActivePolicies",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Policies"
+        ],
+        "operationId": "CreatePolicyVersion",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/policies/{kind}/{id}/versions": {
+      "get": {
+        "tags": [
+          "Policies"
+        ],
+        "operationId": "ListPolicyVersions",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/policies/{kind}/{id}/{version}/activate": {
+      "post": {
+        "tags": [
+          "Policies"
+        ],
+        "operationId": "ActivatePolicyVersion",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/policies/{kind}/{id}/rollback": {
+      "post": {
+        "tags": [
+          "Policies"
+        ],
+        "operationId": "RollbackPolicy",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RollbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/destinations": {
+      "get": {
+        "tags": [
+          "Destinations"
+        ],
+        "operationId": "ListDestinations",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Destinations"
+        ],
+        "operationId": "CreateDestination",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDestinationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/destinations/pair": {
+      "post": {
+        "tags": [
+          "Destinations"
+        ],
+        "operationId": "CreateDestinationPair",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDestinationPairRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/destinations/{id}/deliveries": {
+      "get": {
+        "tags": [
+          "Destinations"
+        ],
+        "operationId": "ListDestinationDeliveries",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BulkRequest": {
+        "required": [
+          "ids",
+          "action",
+          "params"
+        ],
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "action": {
+            "type": "string"
+          },
+          "params": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          }
+        }
+      },
+      "ChangePasswordRequest": {
+        "required": [
+          "current",
+          "new"
+        ],
+        "type": "object",
+        "properties": {
+          "current": {
+            "type": "string"
+          },
+          "new": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateDestinationPairRequest": {
+        "required": [
+          "primary",
+          "fallback"
+        ],
+        "type": "object",
+        "properties": {
+          "primary": {
+            "$ref": "#/components/schemas/CreateDestinationRequest"
+          },
+          "fallback": {
+            "$ref": "#/components/schemas/CreateDestinationRequest"
+          }
+        }
+      },
+      "CreateDestinationRequest": {
+        "required": [
+          "name",
+          "channelType",
+          "teamId",
+          "fallbackDestinationId",
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "channelType": {
+            "type": "string"
+          },
+          "teamId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "fallbackDestinationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "default": "POST"
+          },
+          "headers": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "signingSecret": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "timeout": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "eventTypes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "emailTo": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "CreateIntegrationRequest": {
+        "required": [
+          "name",
+          "type",
+          "accessScope",
+          "ownerTeamId"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "accessScope": {
+            "type": "string"
+          },
+          "ownerTeamId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "CreatePolicyRequest": {
+        "required": [
+          "yaml",
+          "policyId",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "yaml": {
+            "type": "string"
+          },
+          "policyId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CreateTeamRequest": {
+        "required": [
+          "name",
+          "accessScopes"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "accessScopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "isTriage": {
+            "type": "boolean",
+            "default": false
+          },
+          "fallbackTeamId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "defaultEscalationPolicyId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "CreateTokenRequest": {
+        "required": [
+          "name",
+          "scopes",
+          "expiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateUserRequest": {
+        "required": [
+          "username",
+          "displayName",
+          "email",
+          "roles",
+          "scopes"
+        ],
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "JsonElement": {},
+      "LoginRequest": {
+        "required": [
+          "username",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "keepSignedIn": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "RollbackRequest": {
+        "required": [
+          "toVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "toVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "SaveFilterRequest": {
+        "required": [
+          "name",
+          "query"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateUserRequest": {
+        "required": [
+          "displayName",
+          "email",
+          "roles",
+          "scopes"
+        ],
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "roles": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "scopes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "description": "Server-side session cookie set by POST /auth/login.",
+        "name": "alerthub_session",
+        "in": "cookie"
+      },
+      "pat": {
+        "type": "http",
+        "description": "Personal access token ah_pat_\u003CkeyId\u003E.\u003Csecret\u003E.",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Me"
+    },
+    {
+      "name": "Users"
+    },
+    {
+      "name": "Episodes"
+    },
+    {
+      "name": "Teams"
+    },
+    {
+      "name": "Integrations"
+    },
+    {
+      "name": "Policies"
+    },
+    {
+      "name": "Destinations"
+    }
+  ]
+}

@@ -4,6 +4,7 @@
     <ProjectReference Include="../../src/AlertHub.Ingest/AlertHub.Ingest.csproj" />
     <ProjectReference Include="../../src/AlertHub.Workers/AlertHub.Workers.csproj" />
     <ProjectReference Include="../../src/AlertHub.Migrator/AlertHub.Migrator.csproj" />
+    <ProjectReference Include="../../src/AlertHub.Contracts/AlertHub.Contracts.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
