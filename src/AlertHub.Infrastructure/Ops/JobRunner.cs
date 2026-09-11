@@ -99,14 +99,16 @@ public sealed class JobRunner(
 
         try
         {
+            JobContext context;
             await using (var scope = scopes.CreateAsyncScope())
             {
                 var queue = scope.ServiceProvider.GetRequiredService<IJobQueue>();
                 var handler = scope.ServiceProvider.GetServices<IJobHandler>().First(h => h.Kind == job.Kind);
-                var context = new JobContext(WorkerId, (lease, token) => queue.ExtendAsync(job.JobId, WorkerId, lease, token));
+                context = new JobContext(WorkerId, (lease, token) => queue.ExtendAsync(job.JobId, WorkerId, lease, token));
                 await handler.HandleAsync(job, context, ct);
             }
 
+            if (context.Retained) return; // the handler rescheduled or suspended the row itself
             await using (var scope = scopes.CreateAsyncScope())
             {
                 var queue = scope.ServiceProvider.GetRequiredService<IJobQueue>();

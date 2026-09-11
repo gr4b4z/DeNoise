@@ -79,6 +79,24 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<EscalationJobHandler>();
         services.AddScoped<IJobHandler, AckDeadlineJobHandler>();
         services.AddScoped<IJobHandler, EscalationStepJobHandler>();
+
+        // Milestone 5: lifecycle timers, coverage state machine, policy impact.
+        services.AddOptions<AlertHub.Application.Lifecycle.LifecycleOptions>().Bind(configuration.GetSection(AlertHub.Application.Lifecycle.LifecycleOptions.Section));
+        services.AddScoped<AlertHub.Application.Lifecycle.LifecycleScheduler>();
+        services.AddScoped<AlertHub.Application.Lifecycle.LifecycleJobHandler>();
+        services.AddScoped<IJobHandler, AlertHub.Application.Lifecycle.AutoResolveJobHandler>();
+        services.AddScoped<IJobHandler, AlertHub.Application.Lifecycle.VerifyStateJobHandler>();
+        services.AddScoped<IJobHandler, AlertHub.Application.Lifecycle.StaleReviewJobHandler>();
+        services.AddScoped<IJobHandler, AlertHub.Application.Lifecycle.AdminExpiryJobHandler>();
+        services.AddScoped<IJobHandler, AlertHub.Application.Lifecycle.InformationalExpiryJobHandler>();
+        services.AddScoped<IPolicyValidator, AlertHub.Application.Lifecycle.LifecyclePolicyValidator>();
+        services.TryAddScoped<IStateQueryAdapter, NoStateQueryAdapter>();
+        services.AddScoped<AlertHub.Application.Coverage.CoverageEvaluator>();
+        services.AddScoped<AlertHub.Application.Coverage.ICoverageSignalSink>(sp => sp.GetRequiredService<AlertHub.Application.Coverage.CoverageEvaluator>());
+        services.AddScoped<IPolicyImpactQueries, ReadModels.PolicyImpactQueries>();
+        services.AddScoped<ReadModels.HealthQueries>();
+        services.AddScoped<PolicyImpactService>();
+        services.AddScoped<IPolicyActivationHook, LifecycleActivationHook>();
         services.AddScoped<IOutboxQueue, EfOutboxQueue>();
         services.AddScoped<IEpisodeReader, EfEpisodeReader>();
         services.AddHttpClient(WebhookChannel.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler

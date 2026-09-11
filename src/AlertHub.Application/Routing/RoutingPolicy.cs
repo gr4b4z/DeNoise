@@ -4,7 +4,7 @@ using AlertHub.Application.Mapping;
 namespace AlertHub.Application.Routing;
 
 /// <summary>One routing rule (04 §7.1).</summary>
-public sealed record RoutingRule(Guid RuleId, string? Name, int Priority, Predicate Match, Guid TeamId, IReadOnlyList<Guid> Destinations, Guid? EscalationPolicyId, bool Stop);
+public sealed record RoutingRule(Guid RuleId, string? Name, int Priority, Predicate Match, Guid TeamId, IReadOnlyList<Guid> Destinations, Guid? EscalationPolicyId, bool Stop, Guid? LifecyclePolicyId = null);
 
 /// <summary>Ordered rule set of the active routing policy. Evaluation: first match wins unless <c>stop: false</c> (adds destinations, continues).</summary>
 public sealed class RoutingPolicyDocument
@@ -57,8 +57,14 @@ public sealed class RoutingPolicyDocument
                 if (Guid.TryParse(ev.ToString(), out var eid)) escalation = eid;
                 else errors.Add(new MappingValidationError($"{path}.escalation_policy", "must be a policy id (uuid)"));
             }
+            Guid? lifecycle = null;
+            if (rule["lifecycle_policy"] is JsonValue lv)
+            {
+                if (Guid.TryParse(lv.ToString(), out var lid)) lifecycle = lid;
+                else errors.Add(new MappingValidationError($"{path}.lifecycle_policy", "must be a policy id (uuid)"));
+            }
             var stop = rule["stop"] is not JsonValue sv || !sv.TryGetValue<bool>(out var s) || s;
-            if (match is not null) rules.Add(new RoutingRule(ruleId, rule["name"]?.ToString(), priority, match, teamId, destinations, escalation, stop));
+            if (match is not null) rules.Add(new RoutingRule(ruleId, rule["name"]?.ToString(), priority, match, teamId, destinations, escalation, stop, lifecycle));
         }
         if (errors.Count > 0) throw new MappingValidationException(errors);
         return new RoutingPolicyDocument { Version = version, Rules = rules.OrderBy(r => r.Priority).ToList(), Source = (JsonObject)doc.DeepClone() };

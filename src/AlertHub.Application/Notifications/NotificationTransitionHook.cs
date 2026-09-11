@@ -27,9 +27,11 @@ namespace AlertHub.Application.Notifications;
 /// recipients and cancel timers. Shadow integrations get routing but never outbox rows.
 /// </summary>
 public sealed class NotificationTransitionHook(
-    IPolicyRepository policies, ITeamRepository teams, IDestinationRepository destinations, IIntegrationRepository integrations,
+    IPolicyRepository policies, ITeamRepository teams, IDestinationRepository destinations, IIntegrationRepository integrations, Lifecycle.LifecycleScheduler lifecycle,
     IOptions<NotificationOptions> options, TimeProvider time, ILogger<NotificationTransitionHook> logger) : ITransitionHook
 {
+    private static readonly IReadOnlyList<string> AllTimers = [JobKinds.AckDeadline, JobKinds.FollowUp, JobKinds.EscalationStep, JobKinds.AutoResolve, JobKinds.VerifyState, JobKinds.StaleReview, JobKinds.AdminExpiry, JobKinds.InformationalExpiry];
+
     public async Task OnTransitionAsync(Episode episode, NormalisedEvent evt, EpisodeTransition transition, IProcessingSession session, CancellationToken ct)
     {
         var integration = await integrations.GetCurrentAsync(episode.IntegrationId, ct);
@@ -41,33 +43,50 @@ public sealed class NotificationTransitionHook(
             case EpisodeTransitionKind.Opened:
                 await OnOpenedAsync(episode, evt, integration, session, now, ct);
                 break;
-            case EpisodeTransitionKind.Updated when transition.IsMaterialSeverityIncrease && episode.IsActionable:
+            case EpisodeTransitionKind.Updated:
                 {
-                    var team = episode.OwningTeamId is { } t ? await teams.GetAsync(t, ct) : null;
-                    var model = NotificationModel.ForEpisode(NotificationTypes.EpisodeEscalatedSeverity, episode, evt, integration, team, options.Value.PublicBaseUrl,
-                        previous: new { severity = transition.PreviousSeverity.ToWire() });
-                    var targets = await TeamDestinationsAsync(episode.OwningTeamId, ct);
-                    Stage(session, episode, NotificationTypes.EpisodeEscalatedSeverity, model, targets, integration, now);
+                    // Every effective signal moves last_seen: reschedule the lifecycle timers from it (04 §2.1 row 2).
+                    var effective = await lifecycle.ResolveAsync(episode, integration, null, ct);
+                    await lifecycle.ScheduleAsync(episode, integration, effective, session, now, ct);
+                    if (transition.IsMaterialSeverityIncrease && episode.IsActionable)
+                    {
+                        var team = episode.OwningTeamId is { } t ? await teams.GetAsync(t, ct) : null;
+                        var model = NotificationModel.ForEpisode(NotificationTypes.EpisodeEscalatedSeverity, episode, evt, integration, team, options.Value.PublicBaseUrl,
+                            previous: new { severity = transition.PreviousSeverity.ToWire() });
+                        var targets = await TeamDestinationsAsync(episode.OwningTeamId, ct);
+                        Stage(session, episode, NotificationTypes.EpisodeEscalatedSeverity, model, targets, integration, now);
+                    }
                     break;
                 }
             case EpisodeTransitionKind.Resolved:
             case EpisodeTransitionKind.Cancelled:
-                {
-                    await session.CancelJobsAsync(episode.EpisodeId, [JobKinds.AckDeadline, JobKinds.FollowUp, JobKinds.EscalationStep, JobKinds.AutoResolve, JobKinds.VerifyState, JobKinds.StaleReview, JobKinds.AdminExpiry], ct);
-                    var recipients = await session.PriorRecipientsAsync(episode.EpisodeId, ct);
-                    if (recipients.Count == 0) break;
-                    var team = episode.OwningTeamId is { } t ? await teams.GetAsync(t, ct) : null;
-                    var model = NotificationModel.ForEpisode(NotificationTypes.EpisodeClosed, episode, evt, integration, team, options.Value.PublicBaseUrl);
-                    var targets = new List<Destination>();
-                    foreach (var id in recipients)
-                    {
-                        var d = await destinations.GetAsync(id, ct);
-                        if (d is not null) targets.Add(d);
-                    }
-                    Stage(session, episode, NotificationTypes.EpisodeClosed, model, targets, integration, now);
-                    break;
-                }
+                await CloseAsync(episode, evt, integration, session, now, ct);
+                break;
         }
+    }
+
+    /// <summary>Closure without a source event (auto-resolve, expiry, coverage): timers cancelled, prior recipients told (04 §6).</summary>
+    public async Task OnSystemClosureAsync(Episode episode, IProcessingSession session, CancellationToken ct)
+    {
+        var integration = await integrations.GetCurrentAsync(episode.IntegrationId, ct);
+        if (integration is null) return;
+        await CloseAsync(episode, null, integration, session, time.GetUtcNow(), ct);
+    }
+
+    private async Task CloseAsync(Episode episode, NormalisedEvent? evt, Integration integration, IProcessingSession session, DateTimeOffset now, CancellationToken ct)
+    {
+        await session.CancelJobsAsync(episode.EpisodeId, AllTimers, ct);
+        var recipients = await session.PriorRecipientsAsync(episode.EpisodeId, ct);
+        if (recipients.Count == 0) return;
+        var team = episode.OwningTeamId is { } t ? await teams.GetAsync(t, ct) : null;
+        var model = NotificationModel.ForEpisode(NotificationTypes.EpisodeClosed, episode, evt, integration, team, options.Value.PublicBaseUrl);
+        var targets = new List<Destination>();
+        foreach (var id in recipients)
+        {
+            var d = await destinations.GetAsync(id, ct);
+            if (d is not null) targets.Add(d);
+        }
+        Stage(session, episode, NotificationTypes.EpisodeClosed, model, targets, integration, now);
     }
 
     private async Task OnOpenedAsync(Episode episode, NormalisedEvent evt, Integration integration, IProcessingSession session, DateTimeOffset now, CancellationToken ct)
@@ -136,6 +155,10 @@ public sealed class NotificationTransitionHook(
             EventId = evt.EventId,
             Detail = JsonSerializer.Serialize(new { teamId = decision.TeamId, ruleId = decision.RuleId, ruleName = decision.RuleName, why = decision.Why, correctionRequired = decision.CorrectionRequired, escalationPolicyId = escalationId }, JsonDefaults.Stored),
         });
+
+        // Lifecycle timers (04 §2.1 row 1): auto_resolve per policy, expiry per spec §12.5; informational gets its retention timer.
+        var effectiveLifecycle = await lifecycle.ResolveAsync(episode, integration, decision.LifecyclePolicyId, ct);
+        await lifecycle.ScheduleAsync(episode, integration, effectiveLifecycle, session, now, ct);
 
         if (!episode.IsActionable) return; // informational: queue only (spec §2.1)
 

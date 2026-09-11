@@ -120,6 +120,56 @@ internal sealed class EfProcessingSession(AlertHubDbContext db) : IProcessingSes
             """, ct);
     }
 
+    public async Task<IReadOnlyList<Episode>> ListOpenEpisodesForIntegrationForUpdateAsync(Guid integrationId, CancellationToken ct = default)
+        => await db.Episodes.FromSqlInterpolated($"SELECT * FROM alert.episode WHERE integration_id = {integrationId} AND handling_state <> 'closed' ORDER BY first_seen FOR UPDATE").ToListAsync(ct);
+
+    public Task<int> SuspendJobsAsync(Guid integrationId, IReadOnlyCollection<string> kinds, CancellationToken ct = default)
+    {
+        var kindArray = kinds.ToArray();
+        return db.Database.ExecuteSqlInterpolatedAsync($"""
+            UPDATE ops.job SET status = 'suspended', updated_at = now()
+            WHERE integration_id = {integrationId} AND kind = ANY({kindArray}) AND status = 'pending'
+            """, ct);
+    }
+
+    public Task<int> ResumeJobsAsync(Guid integrationId, IReadOnlyCollection<string> kinds, DateTimeOffset notBefore, CancellationToken ct = default)
+    {
+        var kindArray = kinds.ToArray();
+        return db.Database.ExecuteSqlInterpolatedAsync($"""
+            UPDATE ops.job SET status = 'pending', not_before = GREATEST(not_before, {notBefore}), updated_at = now()
+            WHERE integration_id = {integrationId} AND kind = ANY({kindArray}) AND status = 'suspended'
+            """, ct);
+    }
+
+    public async Task<bool> SuspendJobAsync(Guid jobId, CancellationToken ct = default)
+        => await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE ops.job SET status = 'suspended', reserved_by = NULL, reserved_until = NULL, updated_at = now() WHERE job_id = {jobId} AND status IN ('pending','reserved')", ct) == 1;
+
+    public async Task<bool> RescheduleJobAsync(Guid jobId, DateTimeOffset notBefore, int expectedVersion, DateTimeOffset expectedLastSeen, string payload, CancellationToken ct = default)
+        => await db.Database.ExecuteSqlInterpolatedAsync($"""
+            UPDATE ops.job SET status = 'pending', not_before = {notBefore}, expected_version = {expectedVersion}, expected_last_seen = {expectedLastSeen},
+                payload = {payload}::jsonb, reserved_by = NULL, reserved_until = NULL, attempts = 0, last_error = NULL, updated_at = now()
+            WHERE job_id = {jobId} AND status IN ('pending','reserved','suspended')
+            """, ct) == 1;
+
+    public Task<Domain.Ops.CoverageState?> GetCoverageForUpdateAsync(Guid integrationId, CancellationToken ct = default)
+        => db.CoverageStates.FromSqlInterpolated($"SELECT * FROM ops.coverage_state WHERE integration_id = {integrationId} FOR UPDATE").SingleOrDefaultAsync(ct);
+
+    public void AddCoverage(Domain.Ops.CoverageState state) => db.CoverageStates.Add(state);
+
+    public Task<int> CountMappingFailuresAsync(Guid integrationId, DateTimeOffset since, CancellationToken ct = default)
+        => db.MappingFailures.CountAsync(f => f.IntegrationId == integrationId && f.RawReceivedAt >= since, ct);
+
+    public async Task<DateTimeOffset?> OldestPendingNormaliseAsync(Guid integrationId, CancellationToken ct = default)
+    {
+        var oldest = await db.Jobs.AsNoTracking()
+            .Where(j => j.IntegrationId == integrationId && j.Kind == Domain.Ops.JobKinds.Normalise && (j.Status == Domain.Ops.JobStatus.Pending || j.Status == Domain.Ops.JobStatus.Reserved))
+            .OrderBy(j => j.CreatedAt).Select(j => (DateTimeOffset?)j.CreatedAt).FirstOrDefaultAsync(ct);
+        return oldest;
+    }
+
+    public async Task<IReadOnlyList<Episode>> ListOpenEpisodesByLifecyclePolicyForUpdateAsync(Guid policyId, CancellationToken ct = default)
+        => await db.Episodes.FromSqlInterpolated($"SELECT * FROM alert.episode WHERE lifecycle_policy_id = {policyId} AND handling_state <> 'closed' ORDER BY first_seen FOR UPDATE").ToListAsync(ct);
+
     public async Task<IReadOnlyList<Guid>> PriorRecipientsAsync(Guid episodeId, CancellationToken ct = default)
         => await db.Outbox.AsNoTracking()
             .Where(o => o.EpisodeId == episodeId && o.Status != Domain.Ops.OutboxStatus.Cancelled && o.Status != Domain.Ops.OutboxStatus.Coalesced)

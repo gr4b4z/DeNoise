@@ -58,4 +58,8 @@ public static class EpisodeEventKind
     public const string Notify = "notify";
     public const string Escalate = "escalate";
     public const string Suppress = "suppress";
+    public const string Postpone = "postpone";
+    public const string StaleReview = "stale_review";
+    public const string Expire = "expire";
+    public const string Coverage = "coverage";
 }

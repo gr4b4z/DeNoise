@@ -66,6 +66,12 @@ public static class ConfigEndpoints
             var i = await repo.GetCurrentAsync(id, http.RequestAborted);
             return i is null || !http.Principal().CanSeeScope(i.AccessScope) ? Results.NotFound() : Results.Ok(ToSummary(i));
         }).RequirePermission(Permissions.IntegrationRead).WithName("GetIntegration").Produces<IntegrationSummary>().Produces(404);
+        integrations.MapGet("/{id:guid}/health", async (Guid id, HttpContext http, IIntegrationRepository repo, Infrastructure.ReadModels.HealthQueries health) =>
+        {
+            var i = await repo.GetCurrentAsync(id, http.RequestAborted);
+            if (i is null || !http.Principal().CanSeeScope(i.AccessScope)) return Results.NotFound();
+            return Results.Ok(await health.IntegrationAsync(i, http.RequestAborted));
+        }).RequirePermission(Permissions.IntegrationRead).WithName("GetIntegrationHealth").Produces<IntegrationHealth>().Produces(404);
         integrations.MapPost("", async (CreateIntegrationRequest request, HttpContext http, IntegrationService service) =>
         {
             var created = await service.CreateAsync(new CreateIntegration(request.Name, request.Type, request.AccessScope, request.OwnerTeamId), Actor(http), http.RequestAborted);
@@ -97,6 +103,12 @@ public static class ConfigEndpoints
             await service.ActivateAsync(kind, id, version, Actor(http), http.RequestAborted);
             return Results.NoContent();
         }).RequirePermission(Permissions.PolicyManage).AddEndpointFilter<CsrfFilter>().WithName("ActivatePolicyVersion").Produces(204).ProducesProblem(409);
+        policies.MapPost("/{id:guid}/{version:int}/impact", async (string kind, Guid id, int version, HttpContext http, PolicyImpactService impact) =>
+        {
+            var result = await impact.PreviewAsync(kind, id, version, http.RequestAborted);
+            return Results.Ok(new PolicyImpactDto(result.Kind, result.PolicyId, result.Version, result.AffectedOpenEpisodes,
+                result.Sample.Select(x => new PolicyImpactSampleDto(x.EpisodeId, x.Summary, x.Severity, x.LastSeen, x.CurrentAutoResolveAt, x.ProposedAutoResolveAt, x.Note)).ToList(), result.Explanation));
+        }).RequirePermission(Permissions.PolicyManage).AddEndpointFilter<CsrfFilter>().WithName("PreviewPolicyImpact").Produces<PolicyImpactDto>().ProducesProblem(404);
         policies.MapPost("/{id:guid}/rollback", async (string kind, Guid id, RollbackRequest request, HttpContext http, PolicyService service) =>
         {
             await service.RollbackAsync(kind, id, request.ToVersion, Actor(http), http.RequestAborted);

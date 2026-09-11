@@ -51,7 +51,7 @@ public static class WellKnownPolicies
 public sealed record CreatePolicyVersion(string Kind, string Yaml, Guid? PolicyId = null, string? Name = null);
 
 /// <summary>Create/activate/rollback for every policy kind (ADR-6, 06 §4 "Policies").</summary>
-public sealed class PolicyService(IPolicyRepository repository, IEnumerable<IPolicyValidator> validators, IAuditWriter audit, IUnitOfWork uow, TimeProvider time)
+public sealed class PolicyService(IPolicyRepository repository, IEnumerable<IPolicyValidator> validators, IEnumerable<IPolicyActivationHook> activationHooks, IAuditWriter audit, IUnitOfWork uow, TimeProvider time)
 {
     public async Task<PolicyVersion> CreateVersionAsync(CreatePolicyVersion request, Actor actor, CancellationToken ct = default)
     {
@@ -122,6 +122,7 @@ public sealed class PolicyService(IPolicyRepository repository, IEnumerable<IPol
             RequestIp = actor.Ip,
         });
         await uow.CommitAsync(ct);
+        foreach (var hook in activationHooks) await hook.AfterActivatedAsync(kind, policyId, version, actor, ct);
     }
 
     /// <summary>Rollback = activate an earlier version (ADR-6: exactly one activation path).</summary>

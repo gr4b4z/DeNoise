@@ -37,7 +37,7 @@ public static class NotificationTypes
     public static bool IsSupersededByClosure(string type) => type is EpisodeOpened or EpisodeEscalatedSeverity or EpisodeAckOverdue or EpisodeFollowUpDue or EpisodeStaleCritical;
 
     /// <summary>Default subscription for a new destination.</summary>
-    public static readonly string[] DefaultSubscription = [EpisodeOpened, EpisodeEscalatedSeverity, EpisodeAckOverdue, EpisodeClosed, EpisodeRoutingFailure, HubDeliveryFailure, CoverageLost, CoverageRestored, HeartbeatMissed, HeartbeatRecovered];
+    public static readonly string[] DefaultSubscription = [EpisodeOpened, EpisodeEscalatedSeverity, EpisodeAckOverdue, EpisodeFollowUpDue, EpisodeStaleCritical, EpisodeClosed, EpisodeRoutingFailure, HubDeliveryFailure, CoverageLost, CoverageRestored, HeartbeatMissed, HeartbeatRecovered];
 }
 
 /// <summary>

@@ -87,3 +87,14 @@ public sealed record DestinationPairResponse(DestinationCreatedResponse Primary,
 public sealed record DeliveryAttemptDto(Guid Id, Guid OutboxId, DateTimeOffset AttemptedAt, string Channel, string Outcome, int? HttpStatus, int LatencyMs, string? Error, bool UsedFallback, string? ResponseExcerpt);
 
 public sealed record ChangeEventDto(string Type, long Id, string Scope, System.Text.Json.JsonElement Data);
+
+// --- Milestone 5: lifecycle impact, integration health, hub health ---
+public sealed record PolicyImpactSampleDto(Guid EpisodeId, string? Summary, string Severity, DateTimeOffset LastSeen, DateTimeOffset? CurrentAutoResolveAt, DateTimeOffset? ProposedAutoResolveAt, string Note);
+public sealed record PolicyImpactDto(string Kind, Guid PolicyId, int Version, int AffectedOpenEpisodes, IReadOnlyList<PolicyImpactSampleDto> Sample, string Explanation);
+public sealed record IntegrationHealth(Guid IntegrationId, string Name, bool CoverageConfigured, string CoverageState, DateTimeOffset? CoverageSince, DateTimeOffset? LastSignalAt, int ConsecutiveSuccesses,
+    Guid? CoverageEpisodeId, DateTimeOffset? LastProcessedAlertAt, int AcceptedLast15m, int MappingFailuresLast15m, int PendingNormalise, DateTimeOffset? OldestPendingSince, int SuspendedAutoResolve, int OpenEpisodes);
+public sealed record HubComponent(string Component, string Instance, DateTimeOffset LastSeen, bool Healthy);
+public sealed record QueueDepth(string Kind, int Pending, int Reserved, int Suspended, int Failed, DateTimeOffset? OldestPending);
+public sealed record DeadmanStatus(bool Configured, DateTimeOffset? LastPingAt, bool Ok);
+public sealed record HubHealth(DateTimeOffset At, bool DatabaseOk, IReadOnlyList<HubComponent> Components, IReadOnlyList<QueueDepth> Queues, int OutboxPending, DateTimeOffset? OutboxOldestPending, int OutboxFailed, int JobsFailed, DeadmanStatus Deadman);
+public sealed record HubFailure(Guid Id, string Source, string Type, DateTimeOffset At, int Attempts, string? LastError, Guid? EpisodeId);

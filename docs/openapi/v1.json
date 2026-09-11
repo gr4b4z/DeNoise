@@ -2306,6 +2306,48 @@
         ]
       }
     },
+    "/api/v1/integrations/{id}/health": {
+      "get": {
+        "tags": [
+          "Integrations"
+        ],
+        "operationId": "GetIntegrationHealth",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationHealth"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
     "/api/v1/integrations/{id}/rotate-ingest-token": {
       "post": {
         "tags": [
@@ -2551,6 +2593,72 @@
         ]
       }
     },
+    "/api/v1/policies/{kind}/{id}/{version}/impact": {
+      "post": {
+        "tags": [
+          "Policies"
+        ],
+        "operationId": "PreviewPolicyImpact",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyImpactDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
     "/api/v1/policies/{kind}/{id}/rollback": {
       "post": {
         "tags": [
@@ -2771,6 +2879,117 @@
                   "items": {
                     "$ref": "#/components/schemas/DeliveryAttemptDto"
                   }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/hub/health": {
+      "get": {
+        "tags": [
+          "Hub"
+        ],
+        "operationId": "GetHubHealth",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HubHealth"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/hub/failures": {
+      "get": {
+        "tags": [
+          "Hub"
+        ],
+        "operationId": "ListHubFailures",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HubFailure"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/hub/failures/{id}/retry": {
+      "post": {
+        "tags": [
+          "Hub"
+        ],
+        "operationId": "RetryHubFailure",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -3224,6 +3443,29 @@
         "properties": {
           "token": {
             "type": "string"
+          }
+        }
+      },
+      "DeadmanStatus": {
+        "required": [
+          "configured",
+          "lastPingAt",
+          "ok"
+        ],
+        "type": "object",
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "lastPingAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "ok": {
+            "type": "boolean"
           }
         }
       },
@@ -3727,6 +3969,132 @@
           }
         }
       },
+      "HubComponent": {
+        "required": [
+          "component",
+          "instance",
+          "lastSeen",
+          "healthy"
+        ],
+        "type": "object",
+        "properties": {
+          "component": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          },
+          "lastSeen": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "healthy": {
+            "type": "boolean"
+          }
+        }
+      },
+      "HubFailure": {
+        "required": [
+          "id",
+          "source",
+          "type",
+          "at",
+          "attempts",
+          "lastError",
+          "episodeId"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastError": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "episodeId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "HubHealth": {
+        "required": [
+          "at",
+          "databaseOk",
+          "components",
+          "queues",
+          "outboxPending",
+          "outboxOldestPending",
+          "outboxFailed",
+          "jobsFailed",
+          "deadman"
+        ],
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "databaseOk": {
+            "type": "boolean"
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HubComponent"
+            }
+          },
+          "queues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueueDepth"
+            }
+          },
+          "outboxPending": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "outboxOldestPending": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "outboxFailed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "jobsFailed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "deadman": {
+            "$ref": "#/components/schemas/DeadmanStatus"
+          }
+        }
+      },
       "IdentityComponentDto": {
         "required": [
           "name",
@@ -3758,6 +4126,100 @@
           },
           "ingestToken": {
             "type": "string"
+          }
+        }
+      },
+      "IntegrationHealth": {
+        "required": [
+          "integrationId",
+          "name",
+          "coverageConfigured",
+          "coverageState",
+          "coverageSince",
+          "lastSignalAt",
+          "consecutiveSuccesses",
+          "coverageEpisodeId",
+          "lastProcessedAlertAt",
+          "acceptedLast15m",
+          "mappingFailuresLast15m",
+          "pendingNormalise",
+          "oldestPendingSince",
+          "suspendedAutoResolve",
+          "openEpisodes"
+        ],
+        "type": "object",
+        "properties": {
+          "integrationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "coverageConfigured": {
+            "type": "boolean"
+          },
+          "coverageState": {
+            "type": "string"
+          },
+          "coverageSince": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastSignalAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "consecutiveSuccesses": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "coverageEpisodeId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "lastProcessedAlertAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "acceptedLast15m": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mappingFailuresLast15m": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pendingNormalise": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "oldestPendingSince": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "suspendedAutoResolve": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "openEpisodes": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -4016,6 +4478,91 @@
           }
         }
       },
+      "PolicyImpactDto": {
+        "required": [
+          "kind",
+          "policyId",
+          "version",
+          "affectedOpenEpisodes",
+          "sample",
+          "explanation"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "policyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "affectedOpenEpisodes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sample": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PolicyImpactSampleDto"
+            }
+          },
+          "explanation": {
+            "type": "string"
+          }
+        }
+      },
+      "PolicyImpactSampleDto": {
+        "required": [
+          "episodeId",
+          "summary",
+          "severity",
+          "lastSeen",
+          "currentAutoResolveAt",
+          "proposedAutoResolveAt",
+          "note"
+        ],
+        "type": "object",
+        "properties": {
+          "episodeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "summary": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "severity": {
+            "type": "string"
+          },
+          "lastSeen": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "currentAutoResolveAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "proposedAutoResolveAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
       "PolicyVersionDto": {
         "required": [
           "id",
@@ -4169,6 +4716,45 @@
           },
           "selfServiceReset": {
             "type": "boolean"
+          }
+        }
+      },
+      "QueueDepth": {
+        "required": [
+          "kind",
+          "pending",
+          "reserved",
+          "suspended",
+          "failed",
+          "oldestPending"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "pending": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reserved": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "suspended": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "oldestPending": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -4816,6 +5402,9 @@
     },
     {
       "name": "Destinations"
+    },
+    {
+      "name": "Hub"
     }
   ]
 }

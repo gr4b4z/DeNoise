@@ -52,6 +52,52 @@ public interface IProcessingSession
     Task<int> CancelJobsAsync(Guid episodeId, IReadOnlyCollection<string> kinds, CancellationToken ct = default);
     /// <summary>Destinations that already received a notification about the episode (for <c>episode.closed</c> to prior recipients, 04 §6).</summary>
     Task<IReadOnlyList<Guid>> PriorRecipientsAsync(Guid episodeId, CancellationToken ct = default);
+
+    // --- Lifecycle and coverage (milestone 5) ---
+
+    /// <summary>Open episodes of an integration, locked <c>FOR UPDATE</c> (coverage transitions touch all of them, 04 §2.1).</summary>
+    Task<IReadOnlyList<Episode>> ListOpenEpisodesForIntegrationForUpdateAsync(Guid integrationId, CancellationToken ct = default);
+    /// <summary>Pending timers of the given kinds for an integration become <c>suspended</c> (coverage lost). Returns the number affected.</summary>
+    Task<int> SuspendJobsAsync(Guid integrationId, IReadOnlyCollection<string> kinds, CancellationToken ct = default);
+    /// <summary>Suspended timers of the given kinds become <c>pending</c>, due no earlier than <paramref name="notBefore"/> (coverage restored). Returns the number affected.</summary>
+    Task<int> ResumeJobsAsync(Guid integrationId, IReadOnlyCollection<string> kinds, DateTimeOffset notBefore, CancellationToken ct = default);
+    /// <summary>Marks one job suspended (auto-resolve guard 3, 04 §5.3).</summary>
+    Task<bool> SuspendJobAsync(Guid jobId, CancellationToken ct = default);
+    /// <summary>Moves a claimed job back to <c>pending</c> at a new time with fresh guards — the same row, since only one live timer per episode and kind may exist.</summary>
+    Task<bool> RescheduleJobAsync(Guid jobId, DateTimeOffset notBefore, int expectedVersion, DateTimeOffset expectedLastSeen, string payload, CancellationToken ct = default);
+    /// <summary>The integration's coverage row, locked <c>FOR UPDATE</c>; null when no signal has ever been recorded.</summary>
+    Task<Domain.Ops.CoverageState?> GetCoverageForUpdateAsync(Guid integrationId, CancellationToken ct = default);
+    void AddCoverage(Domain.Ops.CoverageState state);
+    /// <summary>Mapping failures recorded for the integration since <paramref name="since"/> (guard 5: mapping health).</summary>
+    Task<int> CountMappingFailuresAsync(Guid integrationId, DateTimeOffset since, CancellationToken ct = default);
+    /// <summary>Oldest unprocessed <c>normalise</c> job of the integration (guard 4: processing backlog); null when the queue is empty.</summary>
+    Task<DateTimeOffset?> OldestPendingNormaliseAsync(Guid integrationId, CancellationToken ct = default);
+    /// <summary>Open episodes carrying the given lifecycle policy (impact preview and rescheduling on activation).</summary>
+    Task<IReadOnlyList<Episode>> ListOpenEpisodesByLifecyclePolicyForUpdateAsync(Guid policyId, CancellationToken ct = default);
+}
+
+/// <summary>What a source-state query returned (04 §5.3 guard 7).</summary>
+public enum StateQueryOutcome
+{
+    /// <summary>The integration has no <c>state_query</c> capability or no adapter is registered.</summary>
+    Unsupported,
+    Active,
+    NotActive,
+    Error,
+}
+
+public sealed record StateQueryResult(StateQueryOutcome Outcome, string? Detail = null);
+
+/// <summary>Asks the source whether the condition is still active (<c>queryable_state</c>, spec §12.1). Adapters arrive with milestone 8.</summary>
+public interface IStateQueryAdapter
+{
+    Task<StateQueryResult> QueryAsync(Domain.Integrations.Integration integration, Episode episode, CancellationToken ct = default);
+}
+
+public sealed class NoStateQueryAdapter : IStateQueryAdapter
+{
+    public Task<StateQueryResult> QueryAsync(Domain.Integrations.Integration integration, Episode episode, CancellationToken ct = default)
+        => Task.FromResult(new StateQueryResult(StateQueryOutcome.Unsupported, "no state query adapter for this integration type"));
 }
 
 /// <summary>Runs one processing transaction. Conflicts surface as <see cref="ProcessingConflictException"/>.</summary>
@@ -70,6 +116,9 @@ public sealed class ProcessingConflictException(string message, Exception? inner
 public interface ITransitionHook
 {
     Task OnTransitionAsync(Episode episode, NormalisedEvent evt, EpisodeTransition transition, IProcessingSession session, CancellationToken ct);
+
+    /// <summary>A closure without a source event (auto-resolve, expiry, coverage): cancel timers and notify prior recipients (04 §6 "resolved / cancelled / expired").</summary>
+    Task OnSystemClosureAsync(Episode episode, IProcessingSession session, CancellationToken ct) => Task.CompletedTask;
 }
 
 /// <summary>Best-effort post-commit notification for the UI stream (ADR-12). Never inside the transaction.</summary>

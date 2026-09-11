@@ -35,8 +35,11 @@ public sealed class Episode
     public Guid? AcknowledgedBy { get; private set; }
     public DateTimeOffset? FollowUpAt { get; set; }
     public DateTimeOffset? AutoResolveAt { get; set; }
+    public Guid? LifecyclePolicyId { get; set; }
     public int? LifecyclePolicyVersion { get; set; }
     public string? LifecycleProfile { get; set; }
+    /// <summary>Set by the <c>stale_review</c> timer (spec §12.5): the episode has waited past its review window without verification.</summary>
+    public DateTimeOffset? StaleSince { get; set; }
     public DateTimeOffset? ClosedAt { get; private set; }
     public string? ClosureReason { get; private set; }
     public string? ResolutionEvidence { get; private set; }
@@ -138,6 +141,15 @@ public sealed class Episode
         Close(Episodes.ClosureReason.SourceCancelled, Evidence.Source, null, now);
         Touch(now);
         return new EpisodeTransition(EpisodeTransitionKind.Cancelled, previousCondition, ConditionState, Severity, Severity);
+    }
+
+    /// <summary>Raises severity without a source event (coverage episode <c>degraded</c> → <c>unavailable</c>, 04 §9). Never lowers it.</summary>
+    public bool RaiseSeverity(Severity severity, DateTimeOffset now)
+    {
+        if (!IsOpen || severity.Rank() <= Severity.Rank()) return false;
+        Severity = severity;
+        Touch(now);
+        return true;
     }
 
     /// <summary>Coverage of the integration degraded: condition becomes <c>unknown</c> (04 §2.1); auto-resolve timers are suspended by the caller.</summary>

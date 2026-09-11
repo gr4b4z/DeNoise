@@ -629,6 +629,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/{id}/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetIntegrationHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/integrations/{id}/rotate-ingest-token": {
         parameters: {
             query?: never;
@@ -693,6 +709,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/policies/{kind}/{id}/{version}/impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PreviewPolicyImpact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/policies/{kind}/{id}/rollback": {
         parameters: {
             query?: never;
@@ -751,6 +783,54 @@ export interface paths {
         get: operations["ListDestinationDeliveries"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hub/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetHubHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hub/failures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListHubFailures"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hub/failures/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["RetryHubFailure"];
         delete?: never;
         options?: never;
         head?: never;
@@ -861,6 +941,12 @@ export interface components {
         };
         CsrfResponse: {
             token: string;
+        };
+        DeadmanStatus: {
+            configured: boolean;
+            /** Format: date-time */
+            lastPingAt: null | string;
+            ok: boolean;
         };
         DeliveryAttemptDto: {
             /** Format: uuid */
@@ -977,6 +1063,42 @@ export interface components {
             /** Format: int32 */
             version: number;
         };
+        HubComponent: {
+            component: string;
+            instance: string;
+            /** Format: date-time */
+            lastSeen: string;
+            healthy: boolean;
+        };
+        HubFailure: {
+            /** Format: uuid */
+            id: string;
+            source: string;
+            type: string;
+            /** Format: date-time */
+            at: string;
+            /** Format: int32 */
+            attempts: number;
+            lastError: null | string;
+            /** Format: uuid */
+            episodeId: null | string;
+        };
+        HubHealth: {
+            /** Format: date-time */
+            at: string;
+            databaseOk: boolean;
+            components: components["schemas"]["HubComponent"][];
+            queues: components["schemas"]["QueueDepth"][];
+            /** Format: int32 */
+            outboxPending: number;
+            /** Format: date-time */
+            outboxOldestPending: null | string;
+            /** Format: int32 */
+            outboxFailed: number;
+            /** Format: int32 */
+            jobsFailed: number;
+            deadman: components["schemas"]["DeadmanStatus"];
+        };
         IdentityComponentDto: {
             name: string;
             value: string;
@@ -985,6 +1107,35 @@ export interface components {
             integration: components["schemas"]["IntegrationSummary"];
             ingestPath: string;
             ingestToken: string;
+        };
+        IntegrationHealth: {
+            /** Format: uuid */
+            integrationId: string;
+            name: string;
+            coverageConfigured: boolean;
+            coverageState: string;
+            /** Format: date-time */
+            coverageSince: null | string;
+            /** Format: date-time */
+            lastSignalAt: null | string;
+            /** Format: int32 */
+            consecutiveSuccesses: number;
+            /** Format: uuid */
+            coverageEpisodeId: null | string;
+            /** Format: date-time */
+            lastProcessedAlertAt: null | string;
+            /** Format: int32 */
+            acceptedLast15m: number;
+            /** Format: int32 */
+            mappingFailuresLast15m: number;
+            /** Format: int32 */
+            pendingNormalise: number;
+            /** Format: date-time */
+            oldestPendingSince: null | string;
+            /** Format: int32 */
+            suspendedAutoResolve: number;
+            /** Format: int32 */
+            openEpisodes: number;
         };
         IntegrationSummary: {
             /** Format: uuid */
@@ -1049,6 +1200,30 @@ export interface components {
             /** Format: int32 */
             total: null | number;
         };
+        PolicyImpactDto: {
+            kind: string;
+            /** Format: uuid */
+            policyId: string;
+            /** Format: int32 */
+            version: number;
+            /** Format: int32 */
+            affectedOpenEpisodes: number;
+            sample: components["schemas"]["PolicyImpactSampleDto"][];
+            explanation: string;
+        };
+        PolicyImpactSampleDto: {
+            /** Format: uuid */
+            episodeId: string;
+            summary: null | string;
+            severity: string;
+            /** Format: date-time */
+            lastSeen: string;
+            /** Format: date-time */
+            currentAutoResolveAt: null | string;
+            /** Format: date-time */
+            proposedAutoResolveAt: null | string;
+            note: string;
+        };
         PolicyVersionDto: {
             /** Format: uuid */
             id: string;
@@ -1085,6 +1260,19 @@ export interface components {
             local: boolean;
             oidc: null | components["schemas"]["OidcProvider"];
             selfServiceReset: boolean;
+        };
+        QueueDepth: {
+            kind: string;
+            /** Format: int32 */
+            pending: number;
+            /** Format: int32 */
+            reserved: number;
+            /** Format: int32 */
+            suspended: number;
+            /** Format: int32 */
+            failed: number;
+            /** Format: date-time */
+            oldestPending: null | string;
         };
         RelatedEpisodes: {
             /** Format: uuid */
@@ -2769,6 +2957,35 @@ export interface operations {
             };
         };
     };
+    GetIntegrationHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationHealth"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     RotateIngestToken: {
         parameters: {
             query?: never;
@@ -2893,6 +3110,39 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PreviewPolicyImpact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: string;
+                id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyImpactDto"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3042,6 +3292,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DeliveryAttemptDto"][];
+                };
+            };
+        };
+    };
+    GetHubHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HubHealth"];
+                };
+            };
+        };
+    };
+    ListHubFailures: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HubFailure"][];
+                };
+            };
+        };
+    };
+    RetryHubFailure: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };

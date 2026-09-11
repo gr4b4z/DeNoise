@@ -9,7 +9,7 @@ using AlertHub.Domain.Teams;
 namespace AlertHub.Application.Routing;
 
 /// <summary>Outcome of routing one episode (04 §7.1, spec §16.1). <see cref="Why"/> is shown in the UI as "which rule applied and why".</summary>
-public sealed record RoutingDecision(Guid? TeamId, Guid? RuleId, string? RuleName, IReadOnlyList<Guid> ExtraDestinations, Guid? EscalationPolicyId, bool CorrectionRequired, string Why)
+public sealed record RoutingDecision(Guid? TeamId, Guid? RuleId, string? RuleName, IReadOnlyList<Guid> ExtraDestinations, Guid? EscalationPolicyId, bool CorrectionRequired, string Why, Guid? LifecyclePolicyId = null)
 {
     public bool IsRoutingFailure => CorrectionRequired;
 }
@@ -23,6 +23,7 @@ public static class RoutingEngine
         Guid? ruleId = null;
         string? ruleName = null;
         Guid? escalation = null;
+        Guid? lifecycle = null;
         var destinations = new List<Guid>();
         var trail = new List<string>();
 
@@ -44,6 +45,7 @@ public static class RoutingEngine
                     ruleId = rule.RuleId;
                     ruleName = rule.Name;
                     escalation = rule.EscalationPolicyId;
+                    lifecycle = rule.LifecyclePolicyId;
                     trail.Add($"rule '{rule.Name ?? rule.RuleId.ToString()}' (priority {rule.Priority}) matched → team {rule.TeamId}");
                 }
                 else
@@ -60,7 +62,7 @@ public static class RoutingEngine
 
         if (team is not null)
         {
-            return new RoutingDecision(team, ruleId, ruleName, destinations.Distinct().ToList(), escalation, false, string.Join("; ", trail));
+            return new RoutingDecision(team, ruleId, ruleName, destinations.Distinct().ToList(), escalation, false, string.Join("; ", trail), lifecycle);
         }
 
         // No match: fallback triage team, visibly flagged (spec §7.2). Never discarded.

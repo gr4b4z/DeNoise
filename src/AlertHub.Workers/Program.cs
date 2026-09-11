@@ -30,6 +30,10 @@ if (roles.Scheduler)
 {
     builder.Services.AddHostedService<PartitionCreateWorker>();
     builder.Services.AddHostedService<QueueReaperWorker>();
+    builder.Services.AddHostedService<CoverageCheckWorker>();
+    builder.Services.AddOptions<DeadmanOptions>().Bind(builder.Configuration.GetSection(DeadmanOptions.Section));
+    builder.Services.AddHttpClient(DeadmanPingWorker.Component);
+    builder.Services.AddHostedService<DeadmanPingWorker>();
     builder.Services.AddHostedService(sp => new JobRunner(
         sp.GetRequiredService<IServiceScopeFactory>(), sp.GetRequiredService<IOptions<JobQueueOptions>>(),
         sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<AlertHubMetrics>(), sp.GetRequiredService<ILogger<JobRunner>>(),

@@ -6,6 +6,7 @@ using AlertHub.Application.Processing;
 using AlertHub.Domain.Alerts;
 using AlertHub.Domain.Common;
 using AlertHub.Domain.Episodes;
+using AlertHub.Domain.Ops;
 using AlertHub.Infrastructure.Persistence;
 using AlertHub.Integration.Tests.Support;
 using Microsoft.EntityFrameworkCore;
@@ -262,7 +263,8 @@ public sealed class ProcessingScenarios(PostgresFixture postgres) : IAsyncLifeti
 
         await using var db = PostgresFixture.CreateContext(_cs);
         (await db.AppliedEvents.SingleAsync(a => a.DeliveryKey.StartsWith("evt:e-unseen"))).Outcome.Should().Be("replayed");
-        (await db.Jobs.CountAsync(j => j.Kind != "normalise")).Should().Be(0, "no timers, no escalations");
+        (await db.Jobs.CountAsync(j => j.Kind != "normalise" && (j.Status == JobStatus.Pending || j.Status == JobStatus.Reserved || j.Status == JobStatus.Suspended)))
+            .Should().Be(0, "replay stages no live timers and no escalations (the opened episode's own timers were cancelled by its closure)");
     }
 
     [Fact]

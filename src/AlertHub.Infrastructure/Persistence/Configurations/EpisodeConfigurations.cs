@@ -200,6 +200,8 @@ internal sealed class EpisodeConfiguration : IEntityTypeConfiguration<Episode>
         b.Property(x => x.AutoResolveAt).HasColumnName("auto_resolve_at");
         b.Property(x => x.LifecyclePolicyVersion).HasColumnName("lifecycle_policy_version");
         b.Property(x => x.LifecycleProfile).HasColumnName("lifecycle_profile");
+        b.Property(x => x.LifecyclePolicyId).HasColumnName("lifecycle_policy_id");
+        b.Property(x => x.StaleSince).HasColumnName("stale_since");
         b.Property(x => x.ClosedAt).HasColumnName("closed_at");
         b.Property(x => x.ClosureReason).HasColumnName("closure_reason");
         b.Property(x => x.ResolutionEvidence).HasColumnName("resolution_evidence");

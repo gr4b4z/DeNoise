@@ -14,4 +14,10 @@ public sealed class JobContext(string workerId, Func<TimeSpan, CancellationToken
 {
     public string WorkerId { get; } = workerId;
     public Task<bool> ExtendLeaseAsync(TimeSpan lease, CancellationToken ct) => extendLease(lease, ct);
+
+    /// <summary>
+    /// Set by a handler that moved the job itself inside its transaction (rescheduled or suspended the same row, because the
+    /// one-live-timer-per-episode index forbids a second row): the runner must then not mark it done.
+    /// </summary>
+    public bool Retained { get; set; }
 }

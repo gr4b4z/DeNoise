@@ -33,7 +33,8 @@ public sealed class EpisodeQueries(AlertHubDbContext db, NpgsqlDataSource dataSo
                (SELECT min(j.not_before) FROM ops.job j WHERE j.episode_id = e.episode_id AND j.kind = 'escalation_step' AND j.status = 'pending') AS next_escalation,
                EXISTS (SELECT 1 FROM ops.job j WHERE j.episode_id = e.episode_id AND j.kind = 'auto_resolve' AND j.status = 'suspended') AS auto_suspended,
                EXISTS (SELECT 1 FROM ops.outbox o WHERE o.episode_id = e.episode_id AND o.status = 'failed') AS delivery_failure,
-               coalesce(cs.state, 'unknown') AS coverage_state
+               coalesce(cs.state, 'unknown') AS coverage_state,
+               (e.stale_since IS NOT NULL) AS stale_reviewed
         FROM alert.episode e
         LEFT JOIN cfg.team t ON t.team_id = e.owning_team_id
         LEFT JOIN cfg."user" u ON u.user_id = e.assignee_id
@@ -69,7 +70,7 @@ public sealed class EpisodeQueries(AlertHubDbContext db, NpgsqlDataSource dataSo
                 where.Add("e.handling_state = 'acknowledged'");
                 break;
             case QueueViews.Stale:
-                where.Add("((e.handling_state <> 'closed' AND e.condition_state = 'unknown') OR (e.handling_state = 'closed' AND e.closure_reason = 'expired_unverified'))");
+                where.Add("((e.handling_state <> 'closed' AND (e.condition_state = 'unknown' OR e.stale_since IS NOT NULL)) OR (e.handling_state = 'closed' AND e.closure_reason = 'expired_unverified'))");
                 break;
             case QueueViews.Suppressed:
                 where.Add("e.handling_state <> 'closed' AND e.suppressed_until IS NOT NULL AND e.suppressed_until >= @now");
@@ -258,7 +259,7 @@ public sealed class EpisodeQueries(AlertHubDbContext db, NpgsqlDataSource dataSo
               count(*) FILTER (WHERE e.handling_state <> 'closed' AND e.owning_team_id = ANY(@teams)) AS my_teams,
               count(*) FILTER (WHERE e.handling_state <> 'closed' AND e.assignee_id IS NULL) AS unassigned,
               count(*) FILTER (WHERE e.handling_state = 'acknowledged') AS acknowledged,
-              count(*) FILTER (WHERE (e.handling_state <> 'closed' AND e.condition_state = 'unknown') OR (e.handling_state = 'closed' AND e.closure_reason = 'expired_unverified')) AS stale,
+              count(*) FILTER (WHERE (e.handling_state <> 'closed' AND (e.condition_state = 'unknown' OR e.stale_since IS NOT NULL)) OR (e.handling_state = 'closed' AND e.closure_reason = 'expired_unverified')) AS stale,
               count(*) FILTER (WHERE e.handling_state <> 'closed' AND e.suppressed_until >= @now) AS suppressed
             FROM alert.episode e WHERE {string.Join(" AND ", where)}
             """;
@@ -411,7 +412,7 @@ public sealed class EpisodeQueries(AlertHubDbContext db, NpgsqlDataSource dataSo
             assigneeId is { } a ? new UserRef(a, Str(11) ?? string.Empty, Str(12) ?? string.Empty) : null,
             new DateTimeOffset(r.GetDateTime(13), TimeSpan.Zero), new DateTimeOffset(r.GetDateTime(14), TimeSpan.Zero), r.GetInt32(15), !r.GetBoolean(29),
             ackDeadline, handling == HandlingState.New && ackDeadline is { } d && d < now, Dto(30), Dto(17), r.GetBoolean(31),
-            r.GetString(33), r.GetString(6) == ConditionState.Unknown, Dto(18), r.GetBoolean(32), Gid(19), r.GetBoolean(20),
+            r.GetString(33), r.GetString(6) == ConditionState.Unknown || r.GetBoolean(34), Dto(18), r.GetBoolean(32), Gid(19), r.GetBoolean(20),
             r.GetGuid(21), r.GetString(22), r.GetString(23), r.GetBoolean(24), Dto(25), Str(26), Str(27), r.GetInt32(28));
     }
 }
@@ -438,10 +439,21 @@ public static class EpisodeExplanation
         if (episode.ClosureReason is not null)
         {
             sb.Append("Closed as ").Append(episode.ClosureReason).Append(" with evidence ").Append(episode.ResolutionEvidence ?? Evidence.None).Append(". ");
+            if (episode.ClosureReason == ClosureReason.InactivityTimeout && episode.ClosedAt is { } closedAt)
+            {
+                // Required UI text (spec §12.3): inferred, not reported; say whether delivery stayed verified.
+                var minutes = Math.Max(1, (int)Math.Round((closedAt - episode.LastSeen).TotalMinutes));
+                sb.Append("Automatically resolved after ").Append(minutes).Append(" minutes without another signal. ");
+                sb.Append(episode.ResolutionEvidence == Evidence.HeartbeatAndInactivity
+                    ? "Source delivery remained verified healthy throughout. "
+                    : "Source delivery was not verified during the silence. ");
+                sb.Append("Recovery was inferred from the configured repetition policy, not reported by the source. ");
+            }
             if (episode.ResolutionEvidence == Evidence.InactivityUnverified) sb.Append("Recovery was inferred from silence; coverage of the source was never verified. ");
             if (episode.ClosureReason == ClosureReason.ExpiredUnverified) sb.Append("This is an administrative expiry, not a confirmed recovery: the last known condition was ").Append(episode.ConditionState).Append(". ");
         }
         if (episode.ConditionState == ConditionState.Unknown) sb.Append("The condition is unknown because the source's coverage is degraded; the last known state was firing. ");
+        if (episode.IsOpen && episode.StaleSince is { } stale) sb.Append("Under review since ").Append(stale.ToString("u", CultureInfo.InvariantCulture)).Append(": no verification for the review window; it expires by policy unless a signal or a person acts. ");
         return sb.ToString().TrimEnd();
     }
 }

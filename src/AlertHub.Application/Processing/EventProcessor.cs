@@ -36,7 +36,7 @@ public sealed record ProcessingResult(ProcessingOutcome Outcome, Guid? EpisodeId
 /// </summary>
 public sealed class EventProcessor(
     IRawEventReader rawEvents, IIntegrationRepository integrations, IMappingResolver mappings, IProcessingUnitOfWork uow,
-    ITransitionHook transitionHook, IEpisodeChangePublisher publisher, TimeProvider time, ILogger<EventProcessor> logger)
+    ITransitionHook transitionHook, IEpisodeChangePublisher publisher, Coverage.ICoverageSignalSink coverage, TimeProvider time, ILogger<EventProcessor> logger)
 {
     public const int MaxConflictRetries = 5;
 
@@ -134,6 +134,7 @@ public sealed class EventProcessor(
                 return (new ProcessingResult(ProcessingOutcome.Duplicate), null);
             }
             session.AddNormalisedEvent(evt);
+            await coverage.OnSignalAsync(integration, evt, session, now, ct);
             return (new ProcessingResult(ProcessingOutcome.CoverageSignal), null);
         }
 
