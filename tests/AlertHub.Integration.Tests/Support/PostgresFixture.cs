@@ -44,17 +44,20 @@ public sealed class PostgresFixture : IAsyncLifetime
         }
         _databases.Add(name);
 
-        var cs = new NpgsqlConnectionStringBuilder(_adminConnectionString) { Database = name }.ConnectionString;
+        // Small pools: many throw-away databases share one server (max_connections is 100 by default).
+        var cs = new NpgsqlConnectionStringBuilder(_adminConnectionString) { Database = name, MaxPoolSize = 8, ConnectionIdleLifetime = 5, ConnectionPruningInterval = 2 }.ConnectionString;
         await using var db = CreateContext(cs);
         await db.Database.MigrateAsync();
         await new RawEventPartitions(db, TimeProvider.System, NullLogger<RawEventPartitions>.Instance).EnsureAsync();
         return cs;
     }
 
+    /// <summary>Unpooled context for assertions, so fixture connections never linger in a pool.</summary>
     public static AlertHubDbContext CreateContext(string connectionString)
     {
+        var unpooled = new NpgsqlConnectionStringBuilder(connectionString) { Pooling = false }.ConnectionString;
         var options = new DbContextOptionsBuilder<AlertHubDbContext>()
-            .UseNpgsql(connectionString, n => n.MigrationsHistoryTable(AlertHubDbContext.MigrationsHistoryTable, AlertHubDbContext.MigrationsHistorySchema))
+            .UseNpgsql(unpooled, n => n.MigrationsHistoryTable(AlertHubDbContext.MigrationsHistoryTable, AlertHubDbContext.MigrationsHistorySchema))
             .Options;
         return new AlertHubDbContext(options);
     }

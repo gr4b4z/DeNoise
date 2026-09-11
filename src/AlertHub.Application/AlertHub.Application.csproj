@@ -5,5 +5,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="YamlDotNet" />
+    <PackageReference Include="JsonPath.Net" />
   </ItemGroup>
 </Project>

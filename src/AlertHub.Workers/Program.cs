@@ -21,7 +21,7 @@ builder.Services.AddHostedService<QueueGauges>();
 if (roles.Processing)
 {
     builder.Services.AddHostedService(sp => new JobRunner(
-        sp.GetRequiredService<IServiceScopeFactory>(), sp.GetServices<IJobHandler>(), sp.GetRequiredService<IOptions<JobQueueOptions>>(),
+        sp.GetRequiredService<IServiceScopeFactory>(), sp.GetRequiredService<IOptions<JobQueueOptions>>(),
         sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<AlertHubMetrics>(), sp.GetRequiredService<ILogger<JobRunner>>(),
         JobKinds.Processing, "processing"));
 }
@@ -31,7 +31,7 @@ if (roles.Scheduler)
     builder.Services.AddHostedService<PartitionCreateWorker>();
     builder.Services.AddHostedService<QueueReaperWorker>();
     builder.Services.AddHostedService(sp => new JobRunner(
-        sp.GetRequiredService<IServiceScopeFactory>(), sp.GetServices<IJobHandler>(), sp.GetRequiredService<IOptions<JobQueueOptions>>(),
+        sp.GetRequiredService<IServiceScopeFactory>(), sp.GetRequiredService<IOptions<JobQueueOptions>>(),
         sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<AlertHubMetrics>(), sp.GetRequiredService<ILogger<JobRunner>>(),
         JobKinds.Scheduler, "scheduler"));
 }

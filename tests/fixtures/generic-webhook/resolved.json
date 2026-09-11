@@ -1,0 +1,3 @@
+{ "eventType":"resolved", "alertId":"orders-api-5xx", "eventId":"7b8c9d0e-1f2a-4b3c-8d4e-5f6a7b8c9d0e", "occurredAt":"2026-09-11T10:20:00Z", "severity":"high",
+  "resource":{"id":"orders-api","name":"Orders API"}, "rule":{"id":"5xx-rate","name":"5xx rate > 2%"},
+  "environment":"production", "service":"orders", "summary":"5xx rate back to 0.3%", "dimensions":{"region":"weu"} }

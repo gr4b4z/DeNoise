@@ -15,23 +15,35 @@ namespace AlertHub.Infrastructure.Ops;
 /// marking the job done, which is why handlers must be idempotent (a crash between the two re-runs the job).
 /// </summary>
 public sealed class JobRunner(
-    IServiceScopeFactory scopes, IEnumerable<IJobHandler> handlers, IOptions<JobQueueOptions> options,
+    IServiceScopeFactory scopes, IOptions<JobQueueOptions> options,
     TimeProvider time, AlertHubMetrics metrics, ILogger<JobRunner> logger, IReadOnlyCollection<string> kinds, string role) : BackgroundService
 {
-    private readonly Dictionary<string, IJobHandler> _handlers = handlers.Where(h => kinds.Contains(h.Kind)).ToDictionary(h => h.Kind);
+    private string[]? _handled;
 
     public string WorkerId { get; } = $"{role}@{Environment.GetEnvironmentVariable("HOSTNAME") ?? Environment.MachineName}#{Guid.NewGuid():N}";
 
-    public IReadOnlyCollection<string> HandledKinds => _handlers.Keys;
+    /// <summary>Kinds this runner both owns (by role) and has a registered <see cref="IJobHandler"/> for. Handlers are scoped, so they are discovered from a throw-away scope.</summary>
+    public IReadOnlyCollection<string> HandledKinds
+    {
+        get
+        {
+            if (_handled is null)
+            {
+                using var scope = scopes.CreateScope();
+                _handled = scope.ServiceProvider.GetServices<IJobHandler>().Select(h => h.Kind).Where(kinds.Contains).Distinct().ToArray();
+            }
+            return _handled;
+        }
+    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (_handlers.Count == 0)
+        if (HandledKinds.Count == 0)
         {
             logger.LogWarning("JobRunner {Role} has no handlers for kinds {Kinds}; idle", role, string.Join(",", kinds));
             return;
         }
-        logger.LogInformation("JobRunner {Role} ({WorkerId}) handling {Kinds}", role, WorkerId, string.Join(",", _handlers.Keys));
+        logger.LogInformation("JobRunner {Role} ({WorkerId}) handling {Kinds}", role, WorkerId, string.Join(",", HandledKinds));
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -70,7 +82,7 @@ public sealed class JobRunner(
         await using (var claimScope = scopes.CreateAsyncScope())
         {
             var queue = claimScope.ServiceProvider.GetRequiredService<IJobQueue>();
-            batch = await queue.ClaimAsync(_handlers.Keys.ToArray(), WorkerId, options.Value.Lease, options.Value.BatchSize, ct);
+            batch = await queue.ClaimAsync(HandledKinds, WorkerId, options.Value.Lease, options.Value.BatchSize, ct);
         }
 
         foreach (var job in batch)
@@ -82,7 +94,6 @@ public sealed class JobRunner(
 
     private async Task RunOneAsync(Job job, CancellationToken ct)
     {
-        var handler = _handlers[job.Kind];
         var started = Stopwatch.GetTimestamp();
         metrics.SchedulerLag.Record(Math.Max(0, (time.GetUtcNow() - job.NotBefore).TotalSeconds), new KeyValuePair<string, object?>("kind", job.Kind));
 
@@ -91,6 +102,7 @@ public sealed class JobRunner(
             await using (var scope = scopes.CreateAsyncScope())
             {
                 var queue = scope.ServiceProvider.GetRequiredService<IJobQueue>();
+                var handler = scope.ServiceProvider.GetServices<IJobHandler>().First(h => h.Kind == job.Kind);
                 var context = new JobContext(WorkerId, (lease, token) => queue.ExtendAsync(job.JobId, WorkerId, lease, token));
                 await handler.HandleAsync(job, context, ct);
             }

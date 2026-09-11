@@ -11,6 +11,7 @@ using AlertHub.Infrastructure.Persistence;
 using AlertHub.Integration.Tests.Support;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
@@ -34,7 +35,7 @@ public sealed class WorkerFailureScenarios(PostgresFixture postgres) : IAsyncLif
         _cs = await postgres.CreateDatabaseAsync("workerfail");
         _time = new FakeTimeProvider(T0);
         _handler = new ScriptedHandler();
-        _services = TestServices.Build(_cs, _time, s => s.AddSingleton<IJobHandler>(_handler),
+        _services = TestServices.Build(_cs, _time, s => { s.RemoveAll<IJobHandler>(); s.AddSingleton<IJobHandler>(_handler); },
             new Dictionary<string, string?> { ["JobQueue:Lease"] = "00:02:00", ["JobQueue:BatchSize"] = "10" });
         _integration = await TestServices.CreateIntegrationAsync(_services);
     }
@@ -42,7 +43,7 @@ public sealed class WorkerFailureScenarios(PostgresFixture postgres) : IAsyncLif
     public async Task DisposeAsync() => await _services.DisposeAsync();
 
     private JobRunner NewRunner(string role = "processing") => new(
-        _services.GetRequiredService<IServiceScopeFactory>(), _services.GetServices<IJobHandler>(), _services.GetRequiredService<IOptions<JobQueueOptions>>(),
+        _services.GetRequiredService<IServiceScopeFactory>(), _services.GetRequiredService<IOptions<JobQueueOptions>>(),
         _time, _services.GetRequiredService<AlertHubMetrics>(), _services.GetRequiredService<ILogger<JobRunner>>(), JobKinds.Processing, role);
 
     private async Task<Guid> IngestAsync(string body)
