@@ -36,6 +36,13 @@ docker compose up -d postgres mailpit
 Integration tests use Testcontainers by default. Set `ALERTHUB_TEST_CONNECTION` to a PostgreSQL
 connection string to run them against an existing server instead (used in environments without Docker).
 
+## Operations
+
+- Hub health screen: `/hub` (component heartbeats, queues, outbox lag, failure queue, retention). The hub must never be the only monitor of itself — see `docs/runbooks/hub-failure.md` for the independent signals and the response.
+- Retention runs daily at 02:00 UTC on the scheduler role (`Retention:*`, Helm `retention.*`); `POST /api/v1/hub/retention/run` runs it on demand.
+- Load test: `k6 run -e INGEST_URL=… -e TOKEN=… -e BASELINE_RPS=<C9> build/loadtest/ingest-k6.js`.
+- Backup/restore drill: `build/backup-restore-drill.sh <database>` (quarterly; keep the output).
+
 ## Status
 
 Milestone progress is tracked in [`CHANGELOG.md`](CHANGELOG.md) and in the milestone READMEs under `docs/`.

@@ -3338,6 +3338,62 @@
         ]
       }
     },
+    "/api/v1/hub/retention": {
+      "get": {
+        "tags": [
+          "Hub"
+        ],
+        "operationId": "GetRetentionStatus",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/hub/retention/run": {
+      "post": {
+        "tags": [
+          "Hub"
+        ],
+        "operationId": "RunRetention",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionReportDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
     "/api/v1/heartbeats": {
       "get": {
         "tags": [
@@ -8833,6 +8889,153 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "RetentionReportDto": {
+        "required": [
+          "at",
+          "rawBoundary",
+          "droppedPartitions",
+          "deleted",
+          "durationMs",
+          "totalDeleted"
+        ],
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "rawBoundary": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "droppedPartitions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "deleted": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "durationMs": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalDeleted": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "RetentionSettingsDto": {
+        "required": [
+          "rawDays",
+          "normalisedClosedDays",
+          "episodeClosedMonths",
+          "deliveryAttemptDays",
+          "auditMonths",
+          "sessionExpiredDays",
+          "loginAttemptDays",
+          "batchSize",
+          "runAtUtcHour"
+        ],
+        "type": "object",
+        "properties": {
+          "rawDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "normalisedClosedDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "episodeClosedMonths": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "deliveryAttemptDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "auditMonths": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sessionExpiredDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "loginAttemptDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "batchSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "runAtUtcHour": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "RetentionStatusDto": {
+        "required": [
+          "settings",
+          "rawBoundary",
+          "oldestPartition",
+          "newestPartition",
+          "partitionCount",
+          "lastRun",
+          "nextRunAt"
+        ],
+        "type": "object",
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/RetentionSettingsDto"
+          },
+          "rawBoundary": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "oldestPartition": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "newestPartition": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "partitionCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastRun": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RetentionReportDto"
+              }
+            ]
+          },
+          "nextRunAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },

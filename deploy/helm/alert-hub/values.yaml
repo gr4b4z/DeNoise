@@ -49,10 +49,16 @@ retention:
   episodeClosedMonths: 12
   deliveryAttemptDays: 30
   auditMonths: 12
+  sessionExpiredDays: 7
+  loginAttemptDays: 30
+  batchSize: 5000          # rows per delete statement (05 §7)
+  runAtUtcHour: 2          # daily run, UTC
 
 limits:
   payloadBytes: 262144      # 256 KiB
   ingestRps: 10             # per integration, initial (600/min)
+  apiPerMinutePerUser: 600  # application API, per authenticated user (06 §6)
+  loginPerMinutePerIp: 10   # /auth/login, per source IP (06 §6)
 
 otel:
   endpoint: ""              # OTLP gRPC/HTTP endpoint; empty disables the exporter

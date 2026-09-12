@@ -33,6 +33,10 @@ app.kubernetes.io/instance: {{ .Release.Name }}
   value: {{ .Values.limits.payloadBytes | quote }}
 - name: Limits__IngestRps
   value: {{ .Values.limits.ingestRps | quote }}
+- name: Limits__ApiPerMinutePerUser
+  value: {{ .Values.limits.apiPerMinutePerUser | quote }}
+- name: Limits__LoginPerMinutePerIp
+  value: {{ .Values.limits.loginPerMinutePerIp | quote }}
 - name: Retention__RawDays
   value: {{ .Values.retention.rawDays | quote }}
 - name: Retention__NormalisedClosedDays
@@ -43,6 +47,14 @@ app.kubernetes.io/instance: {{ .Release.Name }}
   value: {{ .Values.retention.deliveryAttemptDays | quote }}
 - name: Retention__AuditMonths
   value: {{ .Values.retention.auditMonths | quote }}
+- name: Retention__SessionExpiredDays
+  value: {{ .Values.retention.sessionExpiredDays | quote }}
+- name: Retention__LoginAttemptDays
+  value: {{ .Values.retention.loginAttemptDays | quote }}
+- name: Retention__BatchSize
+  value: {{ .Values.retention.batchSize | quote }}
+- name: Retention__RunAtUtcHour
+  value: {{ .Values.retention.runAtUtcHour | quote }}
 - name: Notifications__AllowInsecureDestinations
   value: {{ .Values.allowInsecureDestinations | quote }}
 {{- end -}}

@@ -53,6 +53,18 @@ public sealed class RawEventPartitions(AlertHubDbContext db, TimeProvider time, 
         return true;
     }
 
+    /// <summary><c>retention_raw</c>: drops one day's partition (05 §7). Returns the partition name. Callers enforce the "never today−1 or newer" rule.</summary>
+    public async Task<string> DropAsync(DateOnly day, CancellationToken ct = default)
+    {
+        var name = PartitionName(day);
+        // Identifier derived from a DateOnly and a fixed prefix, never from user input.
+#pragma warning disable EF1002
+        await db.Database.ExecuteSqlRawAsync($"DROP TABLE IF EXISTS alert.\"{name}\"", ct);
+#pragma warning restore EF1002
+        logger.LogInformation("Dropped raw_event partition {Partition}", name);
+        return name;
+    }
+
     public async Task<IReadOnlyList<DateOnly>> ListAsync(CancellationToken ct = default)
     {
         var names = await db.Database

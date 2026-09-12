@@ -117,6 +117,10 @@ public static class InfrastructureServiceCollectionExtensions
         // Milestone 10: config-as-code and the audit read model.
         services.AddScoped<ConfigBundleService>();
         services.AddScoped<ReadModels.AuditQueries>();
+
+        // Milestone 11: retention.
+        services.AddOptions<AlertHub.Application.Retention.RetentionOptions>().Bind(configuration.GetSection(AlertHub.Application.Retention.RetentionOptions.Section));
+        services.AddScoped<AlertHub.Application.Retention.IRetentionRunner, Retention.RetentionService>();
         services.AddSingleton<IPolicyValidator, AlertHub.Application.Grouping.GroupingPolicyValidator>();
         services.AddScoped<IJobHandler, AlertHub.Application.Grouping.GroupWindowCloseJobHandler>();
         services.AddScoped<AlertHub.Application.Heartbeats.HeartbeatEffects>();

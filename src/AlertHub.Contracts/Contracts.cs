@@ -173,3 +173,8 @@ public sealed record ConfigImportEntryDto(string Kind, Guid PolicyId, string? Na
 public sealed record ConfigImportResponse(bool DryRun, IReadOnlyList<ConfigImportEntryDto> Entries, IReadOnlyList<string> Errors, bool HasChanges);
 public sealed record AuditEntryDto(Guid Id, DateTimeOffset At, string ActorType, string ActorId, string? ActorDisplay, string Action, string TargetType, string TargetId, string? AccessScope,
     System.Text.Json.JsonElement? Before, System.Text.Json.JsonElement? After, string? Reason, string CorrelationId, string? RequestIp);
+
+// --- Milestone 11: retention and hub health ---
+public sealed record RetentionReportDto(DateTimeOffset At, DateTimeOffset RawBoundary, IReadOnlyList<string> DroppedPartitions, IReadOnlyDictionary<string, int> Deleted, long DurationMs, int TotalDeleted);
+public sealed record RetentionSettingsDto(int RawDays, int NormalisedClosedDays, int EpisodeClosedMonths, int DeliveryAttemptDays, int AuditMonths, int SessionExpiredDays, int LoginAttemptDays, int BatchSize, int RunAtUtcHour);
+public sealed record RetentionStatusDto(RetentionSettingsDto Settings, DateTimeOffset RawBoundary, DateOnly? OldestPartition, DateOnly? NewestPartition, int PartitionCount, RetentionReportDto? LastRun, DateTimeOffset NextRunAt);

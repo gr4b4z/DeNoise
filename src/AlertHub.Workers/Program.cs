@@ -29,6 +29,7 @@ if (roles.Processing)
 if (roles.Scheduler)
 {
     builder.Services.AddHostedService<PartitionCreateWorker>();
+    builder.Services.AddHostedService<RetentionWorker>();
     builder.Services.AddHostedService<QueueReaperWorker>();
     builder.Services.AddHostedService<CoverageCheckWorker>();
     builder.Services.AddHostedService<HeartbeatCheckWorker>();
