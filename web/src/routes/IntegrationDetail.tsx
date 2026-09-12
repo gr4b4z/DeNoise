@@ -13,6 +13,7 @@ import { YamlEditor } from '@/components/YamlEditor';
 import { teamsQuery } from '@/episodes/queries';
 import {
   failuresQuery,
+  integrationDivergenceQuery,
   integrationHealthQuery,
   integrationQuery,
   mappingVersionsQuery,
@@ -23,6 +24,7 @@ import {
   useDismissFailure,
   usePreviewMapping,
   useRotateIngestToken,
+  useRunDivergence,
   useStartReplay,
   useUpdateIntegration,
   type IntegrationSummary,
@@ -84,7 +86,7 @@ export function IntegrationDetailPage({ id }: { id: string }) {
           <Tab value="settings">{t('integrations.tabs.settings')}</Tab>
         </Tabs.List>
         <Tabs.Content value="health" className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-          <Health id={i.id} />
+          <Health id={i.id} canManage={canManage} />
         </Tabs.Content>
         <Tabs.Content value="mappings" className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
           <Mappings integration={i} canMap={canMap} />
@@ -100,7 +102,7 @@ export function IntegrationDetailPage({ id }: { id: string }) {
   );
 }
 
-function Health({ id }: { id: string }) {
+function Health({ id, canManage }: { id: string; canManage: boolean }) {
   const { t } = useTranslation();
   const health = useQuery(integrationHealthQuery(id));
   const h = health.data;
@@ -117,24 +119,94 @@ function Health({ id }: { id: string }) {
     [t('integrations.health.open'), h.openEpisodes],
   ];
   return (
-    <dl className="m-0 grid max-w-xl grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm" data-testid="integration-health-panel">
-      {rows.map(([k, v]) => (
-        <div key={k} className="contents">
-          <dt className="text-ink-2">{k}</dt>
-          <dd className="m-0">{v}</dd>
+    <div className="grid gap-4">
+      <dl className="m-0 grid max-w-xl grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm" data-testid="integration-health-panel">
+        {rows.map(([k, v]) => (
+          <div key={k} className="contents">
+            <dt className="text-ink-2">{k}</dt>
+            <dd className="m-0">{v}</dd>
+          </div>
+        ))}
+        {h.coverageEpisodeId && (
+          <>
+            <dt className="text-ink-2">{t('integrations.health.coverageEpisode')}</dt>
+            <dd className="m-0">
+              <Link to="/episodes/$id" params={{ id: h.coverageEpisodeId }}>
+                {t('heartbeats.openEpisode')}
+              </Link>
+            </dd>
+          </>
+        )}
+      </dl>
+      <Divergence id={id} canManage={canManage} />
+    </div>
+  );
+}
+
+/** 09 M12 / spec §21: hub state vs source state for the shadow gate; the report is stored and the last one shown. */
+function Divergence({ id, canManage }: { id: string; canManage: boolean }) {
+  const { t } = useTranslation();
+  const last = useQuery(integrationDivergenceQuery(id));
+  const run = useRunDivergence(id);
+  const [problem, setProblem] = useState<Problem | null>(null);
+  const r = last.data;
+  return (
+    <section className="max-w-3xl rounded-md border border-line p-3 text-sm" data-testid="integration-divergence">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="m-0 text-xs text-ink-2">{t('integrations.divergence.title')}</h3>
+        <span className="text-xs text-ink-2">{t('integrations.divergence.about')}</span>
+        {canManage && (
+          <button type="button" className="btn btn-sm ml-auto" onClick={() => run.mutate(undefined, { onError: (e) => setProblem(e as unknown as Problem) })} disabled={run.isPending} data-testid="divergence-run">
+            {run.isPending ? t('integrations.divergence.running') : t('integrations.divergence.run')}
+          </button>
+        )}
+      </div>
+      {problem && <ProblemBanner problem={problem} onDismiss={() => setProblem(null)} />}
+      {last.isPending ? (
+        <p className="m-0 mt-2 text-ink-2">{t('detail.loading')}</p>
+      ) : !r ? (
+        <p className="m-0 mt-2 text-ink-2" data-testid="divergence-none">
+          {t('integrations.divergence.never')}
+        </p>
+      ) : (
+        <div className="mt-2 grid gap-2" data-testid="divergence-report" data-supported={r.supported} data-within={r.withinThreshold ?? 'unknown'}>
+          <p className="m-0 text-xs text-ink-2">
+            <RelativeTime iso={r.at} mode="sentence" /> · {t('integrations.divergence.open', { count: r.openEpisodes })} · {r.durationMs} ms
+          </p>
+          {!r.supported ? (
+            <p className="m-0">
+              <span className="badge border-dashed">{t('integrations.divergence.unsupported')}</span> <span className="text-ink-2">{r.detail}</span>
+            </p>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-2">
+                <span className="badge">{t('integrations.divergence.agree', { count: r.agree })}</span>
+                <span className="badge">{t('integrations.divergence.diverged', { count: r.diverged })}</span>
+                <span className="badge border-dashed">{t('integrations.divergence.unknown', { count: r.unknown })}</span>
+                <span className="badge" data-testid="divergence-verdict">
+                  {r.divergenceShare === null
+                    ? t('integrations.divergence.noVerdict')
+                    : t(r.withinThreshold ? 'integrations.divergence.within' : 'integrations.divergence.above', { share: (r.divergenceShare * 100).toFixed(1), threshold: (r.threshold * 100).toFixed(0) })}
+                </span>
+              </div>
+              {r.samples.length > 0 && (
+                <ul className="m-0 list-none p-0 text-xs">
+                  {r.samples.map((s) => (
+                    <li key={s.episodeId} className="flex flex-wrap items-center gap-2 border-t border-line py-1">
+                      <span className={`badge ${s.outcome === 'diverged' ? '' : 'border-dashed'}`}>{s.outcome}</span>
+                      <Link to="/episodes/$id" params={{ id: s.episodeId }} className="min-w-0 flex-1 truncate text-ink hover:underline">
+                        {s.summary ?? s.episodeId}
+                      </Link>
+                      <span className="text-ink-2">{s.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
         </div>
-      ))}
-      {h.coverageEpisodeId && (
-        <>
-          <dt className="text-ink-2">{t('integrations.health.coverageEpisode')}</dt>
-          <dd className="m-0">
-            <Link to="/episodes/$id" params={{ id: h.coverageEpisodeId }}>
-              {t('heartbeats.openEpisode')}
-            </Link>
-          </dd>
-        </>
       )}
-    </dl>
+    </section>
   );
 }
 

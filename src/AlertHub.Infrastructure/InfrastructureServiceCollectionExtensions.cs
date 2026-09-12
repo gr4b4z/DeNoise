@@ -121,6 +121,10 @@ public static class InfrastructureServiceCollectionExtensions
         // Milestone 11: retention.
         services.AddOptions<AlertHub.Application.Retention.RetentionOptions>().Bind(configuration.GetSection(AlertHub.Application.Retention.RetentionOptions.Section));
         services.AddScoped<AlertHub.Application.Retention.IRetentionRunner, Retention.RetentionService>();
+
+        // Milestone 12: shadow-mode divergence report.
+        services.AddOptions<AlertHub.Application.Divergence.PilotOptions>().Bind(configuration.GetSection(AlertHub.Application.Divergence.PilotOptions.Section));
+        services.AddScoped<AlertHub.Application.Divergence.IDivergenceReporter, Integrations.DivergenceReporter>();
         services.AddSingleton<IPolicyValidator, AlertHub.Application.Grouping.GroupingPolicyValidator>();
         services.AddScoped<IJobHandler, AlertHub.Application.Grouping.GroupWindowCloseJobHandler>();
         services.AddScoped<AlertHub.Application.Heartbeats.HeartbeatEffects>();

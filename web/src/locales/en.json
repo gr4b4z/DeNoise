@@ -499,6 +499,25 @@
         "coverage": "How the Hub knows the source is still evaluating.",
         "dryRun": "Everything that will be saved; activation is not blocked by a missing coverage method."
       }
+    },
+    "divergence": {
+      "title": "Divergence (shadow gate)",
+      "about": "hub state vs the source's answer for every open episode",
+      "run": "Run check",
+      "running": "Checking…",
+      "never": "No divergence check has run yet.",
+      "open_one": "{{count}} open episode",
+      "open_other": "{{count}} open episodes",
+      "unsupported": "not supported",
+      "agree_one": "{{count}} agrees",
+      "agree_other": "{{count}} agree",
+      "diverged_one": "{{count}} diverged",
+      "diverged_other": "{{count}} diverged",
+      "unknown_one": "{{count}} unknown",
+      "unknown_other": "{{count}} unknown",
+      "noVerdict": "no verdict (nothing answered)",
+      "within": "{{share}} % diverged — within the {{threshold}} % threshold",
+      "above": "{{share}} % diverged — above the {{threshold}} % threshold"
     }
   },
   "history": {

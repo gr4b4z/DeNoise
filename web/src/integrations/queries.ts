@@ -196,3 +196,32 @@ export function safeJson(text: string): Record<string, unknown> | null {
     return null;
   }
 }
+
+// ---- shadow-mode divergence (09 M12) -------------------------------------------------------------------------------
+
+export type DivergenceReport = Schemas['DivergenceReportDto'];
+
+/** Last stored report, or null when none has run yet (204). */
+export const integrationDivergenceQuery = (id: string) =>
+  queryOptions({
+    queryKey: ['coverage', 'integration-divergence', id],
+    queryFn: async (): Promise<DivergenceReport | null> => {
+      const { data, error, response } = await api.GET('/api/v1/integrations/{id}/divergence', { params: { path: { id } } });
+      if (response.status === 401) throw new UnauthorizedError();
+      if (response.status === 204) return null;
+      if (data === undefined) throw asProblem(error, response.status);
+      return data;
+    },
+    staleTime: 30_000,
+  });
+
+export function useRunDivergence(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => unwrap(api.POST('/api/v1/integrations/{id}/divergence', { params: { path: { id } } })),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['coverage', 'integration-divergence', id] });
+      void qc.invalidateQueries({ queryKey: ['audit'] });
+    },
+  });
+}

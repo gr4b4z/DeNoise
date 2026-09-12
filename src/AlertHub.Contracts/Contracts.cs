@@ -178,3 +178,8 @@ public sealed record AuditEntryDto(Guid Id, DateTimeOffset At, string ActorType,
 public sealed record RetentionReportDto(DateTimeOffset At, DateTimeOffset RawBoundary, IReadOnlyList<string> DroppedPartitions, IReadOnlyDictionary<string, int> Deleted, long DurationMs, int TotalDeleted);
 public sealed record RetentionSettingsDto(int RawDays, int NormalisedClosedDays, int EpisodeClosedMonths, int DeliveryAttemptDays, int AuditMonths, int SessionExpiredDays, int LoginAttemptDays, int BatchSize, int RunAtUtcHour);
 public sealed record RetentionStatusDto(RetentionSettingsDto Settings, DateTimeOffset RawBoundary, DateOnly? OldestPartition, DateOnly? NewestPartition, int PartitionCount, RetentionReportDto? LastRun, DateTimeOffset NextRunAt);
+
+// --- Milestone 12: shadow mode divergence report ---
+public sealed record DivergenceSampleDto(Guid EpisodeId, string? Summary, string Severity, DateTimeOffset LastSeen, string Outcome, string? Detail);
+public sealed record DivergenceReportDto(Guid IntegrationId, DateTimeOffset At, bool Supported, string? Detail, int OpenEpisodes, int Agree, int Diverged, int Unknown,
+    double? DivergenceShare, double Threshold, bool? WithinThreshold, IReadOnlyList<DivergenceSampleDto> Samples, long DurationMs);

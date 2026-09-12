@@ -66,6 +66,20 @@ public static class ConfigEndpoints
             var i = await repo.GetCurrentAsync(id, http.RequestAborted);
             return i is null || !http.Principal().CanSeeScope(i.AccessScope) ? Results.NotFound() : Results.Ok(ToSummary(i));
         }).RequirePermission(Permissions.IntegrationRead).WithName("GetIntegration").Produces<IntegrationSummary>().Produces(404);
+        // Milestone 12: hub state vs source state (spec §21 shadow gate). GET = last report, POST = run now.
+        integrations.MapGet("/{id:guid}/divergence", async (Guid id, HttpContext http, IIntegrationRepository repo, Application.Divergence.IDivergenceReporter reporter) =>
+        {
+            var existing = await repo.GetCurrentAsync(id, http.RequestAborted);
+            if (existing is null || !http.Principal().CanSeeScope(existing.AccessScope)) return Results.NotFound();
+            var last = await reporter.LastAsync(id, http.RequestAborted);
+            return last is null ? Results.NoContent() : Results.Ok(ToDto(last));
+        }).RequirePermission(Permissions.IntegrationRead).WithName("GetIntegrationDivergence").Produces<DivergenceReportDto>().Produces(204).Produces(404);
+        integrations.MapPost("/{id:guid}/divergence", async (Guid id, HttpContext http, IIntegrationRepository repo, Application.Divergence.IDivergenceReporter reporter) =>
+        {
+            var existing = await repo.GetCurrentAsync(id, http.RequestAborted);
+            if (existing is null || !http.Principal().CanSeeScope(existing.AccessScope)) return Results.NotFound();
+            return Results.Ok(ToDto(await reporter.RunAsync(id, http.RequestAborted)));
+        }).RequirePermission(Permissions.IntegrationManage).AddEndpointFilter<CsrfFilter>().WithName("RunIntegrationDivergence").Produces<DivergenceReportDto>().Produces(404);
         integrations.MapGet("/{id:guid}/health", async (Guid id, HttpContext http, IIntegrationRepository repo, Infrastructure.ReadModels.HealthQueries health) =>
         {
             var i = await repo.GetCurrentAsync(id, http.RequestAborted);
@@ -198,6 +212,10 @@ public static class ConfigEndpoints
         var p = http.Principal();
         return new Application.Abstractions.Actor(Domain.Audit.ActorTypes.User, p.UserId.ToString(), p.Username, http.CorrelationId(), http.ClientIp());
     }
+
+    private static DivergenceReportDto ToDto(Application.Divergence.DivergenceReport r)
+        => new(r.IntegrationId, r.At, r.Supported, r.Detail, r.OpenEpisodes, r.Agree, r.Diverged, r.Unknown, r.DivergenceShare, r.Threshold, r.WithinThreshold,
+            r.Samples.Select(s => new DivergenceSampleDto(s.EpisodeId, s.Summary, s.Severity, s.LastSeen, s.Outcome, s.Detail)).ToList(), r.DurationMs);
 
     internal static IntegrationSummary ToSummary(Integration i)
     {

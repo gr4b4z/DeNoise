@@ -2396,6 +2396,91 @@
         ]
       }
     },
+    "/api/v1/integrations/{id}/divergence": {
+      "get": {
+        "tags": [
+          "Integrations"
+        ],
+        "operationId": "GetIntegrationDivergence",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DivergenceReportDto"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "operationId": "RunIntegrationDivergence",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DivergenceReportDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
     "/api/v1/integrations/{id}/health": {
       "get": {
         "tags": [
@@ -6698,6 +6783,125 @@
             "$ref": "#/components/schemas/DestinationSummary"
           },
           "signingSecret": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "DivergenceReportDto": {
+        "required": [
+          "integrationId",
+          "at",
+          "supported",
+          "detail",
+          "openEpisodes",
+          "agree",
+          "diverged",
+          "unknown",
+          "divergenceShare",
+          "threshold",
+          "withinThreshold",
+          "samples",
+          "durationMs"
+        ],
+        "type": "object",
+        "properties": {
+          "integrationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "supported": {
+            "type": "boolean"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "openEpisodes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "agree": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "diverged": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unknown": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "divergenceShare": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "threshold": {
+            "type": "number",
+            "format": "double"
+          },
+          "withinThreshold": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "samples": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DivergenceSampleDto"
+            }
+          },
+          "durationMs": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "DivergenceSampleDto": {
+        "required": [
+          "episodeId",
+          "summary",
+          "severity",
+          "lastSeen",
+          "outcome",
+          "detail"
+        ],
+        "type": "object",
+        "properties": {
+          "episodeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "summary": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "severity": {
+            "type": "string"
+          },
+          "lastSeen": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "detail": {
             "type": [
               "null",
               "string"

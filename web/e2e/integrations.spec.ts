@@ -67,4 +67,13 @@ test('onboard an Azure Monitor integration through the wizard', async ({ page, r
   await page.getByRole('tab', { name: 'Failures' }).click();
   await expect(page.getByTestId('failures-empty')).toBeVisible();
   await noSeriousViolations(page);
+
+  // 09 M12 shadow gate: Azure Monitor has no state-query API, so the divergence check reports "not supported" with the reason.
+  await page.getByRole('tab', { name: 'Health' }).click();
+  await expect(page.getByTestId('divergence-none')).toBeVisible();
+  await page.getByTestId('divergence-run').click();
+  const report = page.getByTestId('divergence-report');
+  await expect(report).toHaveAttribute('data-supported', 'false');
+  await expect(report).toContainText('not supported');
+  await noSeriousViolations(page);
 });

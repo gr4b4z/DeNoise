@@ -629,6 +629,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/{id}/divergence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetIntegrationDivergence"];
+        put?: never;
+        post: operations["RunIntegrationDivergence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/integrations/{id}/health": {
         parameters: {
             query?: never;
@@ -1701,6 +1717,40 @@ export interface components {
         DestinationUpdatedResponse: {
             destination: components["schemas"]["DestinationSummary"];
             signingSecret: null | string;
+        };
+        DivergenceReportDto: {
+            /** Format: uuid */
+            integrationId: string;
+            /** Format: date-time */
+            at: string;
+            supported: boolean;
+            detail: null | string;
+            /** Format: int32 */
+            openEpisodes: number;
+            /** Format: int32 */
+            agree: number;
+            /** Format: int32 */
+            diverged: number;
+            /** Format: int32 */
+            unknown: number;
+            /** Format: double */
+            divergenceShare: null | number;
+            /** Format: double */
+            threshold: number;
+            withinThreshold: null | boolean;
+            samples: components["schemas"]["DivergenceSampleDto"][];
+            /** Format: int64 */
+            durationMs: number;
+        };
+        DivergenceSampleDto: {
+            /** Format: uuid */
+            episodeId: string;
+            summary: null | string;
+            severity: string;
+            /** Format: date-time */
+            lastSeen: string;
+            outcome: string;
+            detail: null | string;
         };
         EpisodeDetail: {
             item: components["schemas"]["EpisodeListItem"];
@@ -4200,6 +4250,71 @@ export interface operations {
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
+            };
+        };
+    };
+    GetIntegrationDivergence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DivergenceReportDto"];
+                };
+            };
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    RunIntegrationDivergence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DivergenceReportDto"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
