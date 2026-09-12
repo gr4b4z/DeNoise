@@ -46,6 +46,8 @@ public static class WellKnownPolicies
 {
     /// <summary>The one routing rule set; routing has exactly one document (04 §7.1 evaluates one ordered list).</summary>
     public static readonly Guid Routing = Guid.Parse("00000000-0000-0000-0000-00000000c0de");
+    /// <summary>The one grouping rule set (04 §7.4 evaluates one ordered list).</summary>
+    public static readonly Guid Grouping = Guid.Parse("00000000-0000-0000-0000-00000000c0df");
 }
 
 public sealed record CreatePolicyVersion(string Kind, string Yaml, Guid? PolicyId = null, string? Name = null);
@@ -58,7 +60,7 @@ public sealed class PolicyService(IPolicyRepository repository, IEnumerable<IPol
         if (!PolicyKinds.All.Contains(request.Kind)) throw new ArgumentException($"Unknown policy kind '{request.Kind}'.", nameof(request));
         var validator = validators.FirstOrDefault(v => v.Kind == request.Kind)
             ?? throw new NotSupportedException($"Policies of kind '{request.Kind}' are not supported yet.");
-        var policyId = request.PolicyId ?? (request.Kind == PolicyKinds.Routing ? WellKnownPolicies.Routing : Ids.New(time));
+        var policyId = request.PolicyId ?? (request.Kind == PolicyKinds.Routing ? WellKnownPolicies.Routing : request.Kind == PolicyKinds.Grouping ? WellKnownPolicies.Grouping : Ids.New(time));
         var version = await repository.NextVersionAsync(request.Kind, policyId, ct);
         var body = YamlJson.Parse(request.Yaml) ?? throw new MappingValidationException([new MappingValidationError("$", "document is empty")]);
         validator.Validate(body, version);

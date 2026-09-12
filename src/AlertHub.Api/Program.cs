@@ -142,6 +142,7 @@ app.MapHub();
 app.MapHeartbeats();
 app.MapTemplates();
 app.MapMappings();
+app.MapSuppressions();
 app.MapEvents();
 
 // Bootstrap admin on first start (06 §6): a generated password is printed once to stdout, never logged.

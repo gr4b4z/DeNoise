@@ -52,6 +52,8 @@ public sealed class AlertHubDbContext(DbContextOptions<AlertHubDbContext> option
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
     public DbSet<TeamMember> TeamMembers => Set<TeamMember>();
     public DbSet<SavedFilter> SavedFilters => Set<SavedFilter>();
+    public DbSet<AlertGroup> AlertGroups => Set<AlertGroup>();
+    public DbSet<Domain.Policies.Suppression> Suppressions => Set<Domain.Policies.Suppression>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

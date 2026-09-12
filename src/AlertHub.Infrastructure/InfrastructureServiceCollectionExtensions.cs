@@ -108,7 +108,13 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddOptions<AlertHub.Application.Heartbeats.HeartbeatOptions>().Bind(configuration.GetSection(AlertHub.Application.Heartbeats.HeartbeatOptions.Section));
         services.AddScoped<AlertHub.Application.Heartbeats.IHeartbeatRepository, Heartbeats.EfHeartbeatRepository>();
         services.AddScoped<AlertHub.Application.Heartbeats.IHeartbeatPingAuthenticator, Heartbeats.HeartbeatPingAuthenticator>();
-        services.TryAddScoped<AlertHub.Application.Heartbeats.IMaintenanceWindows, AlertHub.Application.Heartbeats.NoMaintenanceWindows>();
+        services.AddScoped<AlertHub.Application.Suppressions.ISuppressionRepository, Policies.EfSuppressionRepository>();
+        services.AddScoped<AlertHub.Application.Suppressions.SuppressionService>();
+        services.AddScoped<IJobHandler, AlertHub.Application.Suppressions.SuppressionJobHandler>();
+        services.TryAddScoped<AlertHub.Application.Heartbeats.IMaintenanceWindows, AlertHub.Application.Suppressions.SuppressionMaintenanceWindows>();
+        services.AddScoped<AlertHub.Application.Grouping.GroupingService>();
+        services.AddSingleton<IPolicyValidator, AlertHub.Application.Grouping.GroupingPolicyValidator>();
+        services.AddScoped<IJobHandler, AlertHub.Application.Grouping.GroupWindowCloseJobHandler>();
         services.AddScoped<AlertHub.Application.Heartbeats.HeartbeatEffects>();
         services.AddScoped<AlertHub.Application.Heartbeats.HeartbeatPingService>();
         services.AddScoped<AlertHub.Application.Heartbeats.HeartbeatMonitor>();

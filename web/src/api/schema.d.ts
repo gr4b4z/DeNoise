@@ -1269,6 +1269,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/suppressions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListSuppressions"];
+        put?: never;
+        post: operations["CreateSuppression"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/suppressions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetSuppression"];
+        put?: never;
+        post?: never;
+        delete: operations["CancelSuppression"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/suppressions/preview-scope": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PreviewSuppressionScope"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/groups/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetGroup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1276,6 +1356,23 @@ export interface components {
         AckRequest: {
             /** @default false */
             force: boolean;
+        };
+        AlertGroupDto: {
+            /** Format: uuid */
+            id: string;
+            accessScope: string;
+            /** Format: uuid */
+            ruleId: string;
+            keyValues: components["schemas"]["JsonElement"];
+            /** Format: date-time */
+            openedAt: string;
+            /** Format: date-time */
+            windowEndsAt: string;
+            severity: string;
+            /** Format: int32 */
+            memberCount: number;
+            /** Format: date-time */
+            closedAt: null | string;
         };
         AssignRequest: {
             /** Format: uuid */
@@ -1367,6 +1464,23 @@ export interface components {
             /** Format: uuid */
             policyId: null | string;
             name: null | string;
+        };
+        CreateSuppressionRequest: {
+            kind: string;
+            scope: components["schemas"]["JsonElement"];
+            timeZone: string;
+            reason: string;
+            /** Format: date-time */
+            startsAt?: null | string;
+            /** Format: date-time */
+            endsAt?: null | string;
+            /** Format: date-time */
+            startsLocal?: null | string;
+            /** Format: date-time */
+            endsLocal?: null | string;
+            /** @default true */
+            autoPauseHeartbeats: boolean;
+            name?: null | string;
         };
         CreateTeamRequest: {
             name: string;
@@ -2102,6 +2216,42 @@ export interface components {
              * @default 5000
              */
             limit: number;
+        };
+        SuppressionDto: {
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            name: null | string;
+            scope: components["schemas"]["JsonElement"];
+            scopeText: string;
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: date-time */
+            endsAt: string;
+            timeZone: string;
+            window: string;
+            reason: string;
+            autoPauseHeartbeats: boolean;
+            createdBy: null | string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            cancelledAt: null | string;
+            /** Format: date-time */
+            startedAt: null | string;
+            /** Format: date-time */
+            summarySentAt: null | string;
+            active: boolean;
+        };
+        SuppressionEndedResponse: {
+            /** Format: int32 */
+            episodesReleased: number;
+            /** Format: int32 */
+            notificationsMuted: number;
+            /** Format: int32 */
+            teamsSummarised: number;
+            /** Format: int32 */
+            summaryRows: number;
         };
         TeamOverview: {
             team: components["schemas"]["TeamSummary"];
@@ -5517,6 +5667,224 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReplayStatus"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ListSuppressions: {
+        parameters: {
+            query?: {
+                all?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuppressionDto"][];
+                };
+            };
+        };
+    };
+    CreateSuppression: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSuppressionRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuppressionDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetSuppression: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuppressionDto"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CancelSuppression: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuppressionEndedResponse"];
+                };
+            };
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PreviewSuppressionScope: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JsonElement"];
+            };
+        };
+        responses: {
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListHistory: {
+        parameters: {
+            query?: {
+                severity?: string[];
+                team?: string;
+                scope?: string;
+                environment?: string;
+                service?: string;
+                integration?: string;
+                q?: string;
+                closureReason?: string;
+                evidence?: string;
+                sort?: string;
+                limit?: number;
+                cursor?: string;
+                includeTotal?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedResponseOfEpisodeListItem"];
+                };
+            };
+        };
+    };
+    GetGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertGroupDto"];
                 };
             };
             /** @description Not Found */

@@ -158,3 +158,11 @@ public sealed record DestinationUpdatedResponse(DestinationSummary Destination, 
 public sealed record TestSendResponse(string Outcome, int? HttpStatus, int LatencyMs, string? Error, string? ResponseExcerpt, string RenderedBody, string ContentType);
 public sealed record RevealUrlRequest(string Password);
 public sealed record RevealUrlResponse(string? Url, Dictionary<string, string> Headers);
+
+public sealed record SuppressionDto(Guid Id, string Kind, string? Name, System.Text.Json.JsonElement Scope, string ScopeText, DateTimeOffset StartsAt, DateTimeOffset EndsAt, string TimeZone, string Window,
+    string Reason, bool AutoPauseHeartbeats, string? CreatedBy, DateTimeOffset CreatedAt, DateTimeOffset? CancelledAt, DateTimeOffset? StartedAt, DateTimeOffset? SummarySentAt, bool Active);
+/// <summary>Either instants (<c>startsAt</c>/<c>endsAt</c>) or wall-clock times in <c>timeZone</c> (<c>startsLocal</c>/<c>endsLocal</c>, no offset); the zone is always required.</summary>
+public sealed record CreateSuppressionRequest(string Kind, System.Text.Json.JsonElement Scope, string TimeZone, string Reason, DateTimeOffset? StartsAt = null, DateTimeOffset? EndsAt = null,
+    DateTime? StartsLocal = null, DateTime? EndsLocal = null, bool AutoPauseHeartbeats = true, string? Name = null);
+public sealed record SuppressionEndedResponse(int EpisodesReleased, int NotificationsMuted, int TeamsSummarised, int SummaryRows);
+public sealed record AlertGroupDto(Guid Id, string AccessScope, Guid RuleId, System.Text.Json.JsonElement KeyValues, DateTimeOffset OpenedAt, DateTimeOffset WindowEndsAt, string Severity, int MemberCount, DateTimeOffset? ClosedAt);

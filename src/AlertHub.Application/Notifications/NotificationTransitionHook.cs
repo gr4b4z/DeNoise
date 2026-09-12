@@ -28,7 +28,8 @@ namespace AlertHub.Application.Notifications;
 /// </summary>
 public sealed class NotificationTransitionHook(
     IPolicyRepository policies, ITeamRepository teams, IDestinationRepository destinations, IIntegrationRepository integrations, Lifecycle.LifecycleScheduler lifecycle,
-    IOptions<NotificationOptions> options, TimeProvider time, ILogger<NotificationTransitionHook> logger) : ITransitionHook
+    IOptions<NotificationOptions> options, TimeProvider time, ILogger<NotificationTransitionHook> logger,
+    Grouping.GroupingService grouping, Suppressions.SuppressionService suppressions) : ITransitionHook
 {
     private static readonly IReadOnlyList<string> AllTimers = [JobKinds.AckDeadline, JobKinds.FollowUp, JobKinds.EscalationStep, JobKinds.AutoResolve, JobKinds.VerifyState, JobKinds.StaleReview, JobKinds.AdminExpiry, JobKinds.InformationalExpiry];
 
@@ -48,6 +49,7 @@ public sealed class NotificationTransitionHook(
                     // Every effective signal moves last_seen: reschedule the lifecycle timers from it (04 §2.1 row 2).
                     var effective = await lifecycle.ResolveAsync(episode, integration, null, ct);
                     await lifecycle.ScheduleAsync(episode, integration, effective, session, now, ct);
+                    if (transition.IsMaterialSeverityIncrease) await grouping.OnSeverityRaisedAsync(episode, session, ct);
                     if (transition.IsMaterialSeverityIncrease && episode.IsActionable)
                     {
                         var team = episode.OwningTeamId is { } t ? await teams.GetAsync(t, ct) : null;
@@ -133,14 +135,22 @@ public sealed class NotificationTransitionHook(
 
         if (!episode.IsActionable) return; // informational: queue only (spec §2.1)
 
+        // Suppression (04 §2.3) and grouping (04 §7.4) decide how the opened notification is staged: muted, skipped as a quiet group member, or sent.
+        await suppressions.ApplyToNewEpisodeAsync(episode, evt, integration, session, now, ct);
+        var grouped = await grouping.ApplyAsync(episode, evt, integration, session, now, ct);
+
         var targets = await TeamDestinationsAsync(decision.TeamId, ct);
         foreach (var extra in decision.ExtraDestinations)
         {
             if (targets.All(d => d.DestinationId != extra) && await destinations.GetAsync(extra, ct) is { } d) targets.Add(d);
         }
 
-        var opened = NotificationModel.ForEpisode(NotificationTypes.EpisodeOpened, episode, evt, integration, team, options.Value.PublicBaseUrl);
-        Stage(session, episode, NotificationTypes.EpisodeOpened, opened, targets, integration, now);
+        if (grouped.Notify)
+        {
+            var opened = NotificationModel.ForEpisode(NotificationTypes.EpisodeOpened, episode, evt, integration, team, options.Value.PublicBaseUrl,
+                previous: grouped.Group is null ? null : new { groupId = grouped.Group.GroupId, groupSeverity = grouped.Group.Severity, groupMembers = grouped.Group.MemberCount, groupRule = grouped.RuleName });
+            Stage(session, episode, NotificationTypes.EpisodeOpened, opened, targets, integration, now);
+        }
 
         if (decision.IsRoutingFailure)
         {

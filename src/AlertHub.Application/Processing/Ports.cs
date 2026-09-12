@@ -89,6 +89,16 @@ public interface IProcessingSession
     Task<IReadOnlyList<Domain.Heartbeats.Heartbeat>> ListMaintenanceCandidatesForUpdateAsync(CancellationToken ct = default);
     Task<long> NextHeartbeatRunSeqAsync(Guid heartbeatId, CancellationToken ct = default);
     void AddHeartbeatRun(Domain.Heartbeats.HeartbeatRun run);
+    /// <summary>The open group for (rule, key), locked <c>FOR UPDATE</c> (04 §7.4: one open group per rule and key).</summary>
+    Task<Domain.Episodes.AlertGroup?> FindOpenGroupForUpdateAsync(Guid ruleId, string keyValues, CancellationToken ct = default);
+    Task<Domain.Episodes.AlertGroup?> FindGroupForUpdateAsync(Guid groupId, CancellationToken ct = default);
+    void AddGroup(Domain.Episodes.AlertGroup group);
+    /// <summary>Every open episode, locked <c>FOR UPDATE</c> — suppression start/end re-evaluates all of them (spec §16.3).</summary>
+    Task<IReadOnlyList<Episode>> ListOpenEpisodesForUpdateAsync(CancellationToken ct = default);
+    /// <summary>Pending outbox rows of an episode become <c>suppressed</c> (a suppression began after they were staged).</summary>
+    Task<int> SuppressPendingOutboxAsync(Guid episodeId, CancellationToken ct = default);
+    /// <summary>Suppressed outbox rows of an episode become <c>coalesced</c>: muted notifications are never replayed (spec §16.3).</summary>
+    Task<int> CoalesceSuppressedOutboxAsync(Guid episodeId, string reason, CancellationToken ct = default);
     /// <summary>Keeps the last <paramref name="keep"/> runs of a heartbeat (the ring of spec §13.3.3).</summary>
     Task<int> TrimHeartbeatRunsAsync(Guid heartbeatId, int keep, CancellationToken ct = default);
 }

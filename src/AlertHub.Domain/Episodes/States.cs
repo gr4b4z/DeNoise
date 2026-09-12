@@ -62,4 +62,6 @@ public static class EpisodeEventKind
     public const string StaleReview = "stale_review";
     public const string Expire = "expire";
     public const string Coverage = "coverage";
+    public const string Grouped = "grouped";
+    public const string SuppressionSummary = "suppression_summary";
 }

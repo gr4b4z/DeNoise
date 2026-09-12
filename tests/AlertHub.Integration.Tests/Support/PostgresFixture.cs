@@ -44,8 +44,9 @@ public sealed class PostgresFixture : IAsyncLifetime
         }
         _databases.Add(name);
 
-        // Small pools: many throw-away databases share one server (max_connections is 100 by default).
-        var cs = new NpgsqlConnectionStringBuilder(_adminConnectionString) { Database = name, MaxPoolSize = 8, ConnectionIdleLifetime = 5, ConnectionPruningInterval = 2 }.ConnectionString;
+        // Small pools: many throw-away databases share one server (max_connections is 100 by default). A normalise in flight needs
+        // two connections (its transaction + the hook's read side), so the pool must hold twice the worker concurrency.
+        var cs = new NpgsqlConnectionStringBuilder(_adminConnectionString) { Database = name, MaxPoolSize = 16, ConnectionIdleLifetime = 5, ConnectionPruningInterval = 2 }.ConnectionString;
         await using var db = CreateContext(cs);
         await db.Database.MigrateAsync();
         await new RawEventPartitions(db, TimeProvider.System, NullLogger<RawEventPartitions>.Instance).EnsureAsync();

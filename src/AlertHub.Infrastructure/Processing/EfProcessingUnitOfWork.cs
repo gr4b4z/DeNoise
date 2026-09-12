@@ -170,6 +170,23 @@ internal sealed class EfProcessingSession(AlertHubDbContext db) : IProcessingSes
     public async Task<IReadOnlyList<Episode>> ListOpenEpisodesByLifecyclePolicyForUpdateAsync(Guid policyId, CancellationToken ct = default)
         => await db.Episodes.FromSqlInterpolated($"SELECT * FROM alert.episode WHERE lifecycle_policy_id = {policyId} AND handling_state <> 'closed' ORDER BY first_seen FOR UPDATE").ToListAsync(ct);
 
+    public Task<Domain.Episodes.AlertGroup?> FindOpenGroupForUpdateAsync(Guid ruleId, string keyValues, CancellationToken ct = default)
+        => db.AlertGroups.FromSqlInterpolated($"SELECT * FROM alert.alert_group WHERE rule_id = {ruleId} AND key_values = {keyValues}::jsonb AND closed_at IS NULL FOR UPDATE").SingleOrDefaultAsync(ct);
+
+    public Task<Domain.Episodes.AlertGroup?> FindGroupForUpdateAsync(Guid groupId, CancellationToken ct = default)
+        => db.AlertGroups.FromSqlInterpolated($"SELECT * FROM alert.alert_group WHERE group_id = {groupId} FOR UPDATE").SingleOrDefaultAsync(ct);
+
+    public void AddGroup(Domain.Episodes.AlertGroup group) => db.AlertGroups.Add(group);
+
+    public async Task<IReadOnlyList<Episode>> ListOpenEpisodesForUpdateAsync(CancellationToken ct = default)
+        => await db.Episodes.FromSqlInterpolated($"SELECT * FROM alert.episode WHERE handling_state <> 'closed' ORDER BY created_at FOR UPDATE").ToListAsync(ct);
+
+    public Task<int> SuppressPendingOutboxAsync(Guid episodeId, CancellationToken ct = default)
+        => db.Database.ExecuteSqlInterpolatedAsync($"UPDATE ops.outbox SET status = 'suppressed' WHERE episode_id = {episodeId} AND status = 'pending'", ct);
+
+    public Task<int> CoalesceSuppressedOutboxAsync(Guid episodeId, string reason, CancellationToken ct = default)
+        => db.Database.ExecuteSqlInterpolatedAsync($"UPDATE ops.outbox SET status = 'coalesced', last_error = {reason} WHERE episode_id = {episodeId} AND status = 'suppressed'", ct);
+
     public Task<Domain.Heartbeats.Heartbeat?> FindHeartbeatForUpdateAsync(Guid heartbeatId, CancellationToken ct = default)
         => db.Heartbeats.FromSqlInterpolated($"SELECT * FROM hb.heartbeat WHERE heartbeat_id = {heartbeatId} FOR UPDATE").SingleOrDefaultAsync(ct);
 
