@@ -12,6 +12,7 @@ export const P = {
   episodeSilence: 'episode.silence',
   episodeBulk: 'episode.bulk',
   rawPayloadRead: 'episode.raw_payload.read',
+  heartbeatManage: 'heartbeat.manage',
   integrationRead: 'integration.read',
   integrationManage: 'integration.manage',
   policyManage: 'policy.manage',

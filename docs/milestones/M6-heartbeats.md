@@ -1,6 +1,6 @@
-# Milestone 6 (backend) — Registered heartbeats
+# Milestone 6 — Registered heartbeats
 
-Status: **backend done**; the heartbeat list/create/detail screens (08 §3.4) follow with the next UI slice. No open owner inputs.
+Status: **done** (backend and the 08 §3.4 screens). No open owner inputs.
 
 ## What exists
 
@@ -16,6 +16,8 @@ Status: **backend done**; the heartbeat list/create/detail screens (08 §3.4) fo
 | Management API | `Api/Endpoints/HeartbeatEndpoints.cs`, `HeartbeatService` | `GET/POST /api/v1/heartbeats`, `GET/PUT/DELETE /{id}` (`If-Match`), `POST /{id}/pause { reason }`, `/resume`, `/rotate-token` (new secret, same key id, identity/history/state kept; old token dead at commit), `POST /preview` (next runs for the form), `GET /export?team=` (YAML, tokens never exported), `POST /import { yaml, dryRun }` (by name within a team: create / update / unchanged with a field diff; never deletes; ping URLs returned once for created ones). Permissions: `heartbeat.manage` for mutations, `episode.read` for reads, scope-checked; CSRF on mutations. Ping URL = `Heartbeats:IngestPublicBaseUrl` (Helm `ingestPublicBaseUrl` via `AlertHub:IngestPublicBaseUrl`) + `/hb/{keyId}.{secret}`, shown at creation and rotation only. |
 | Realtime | `heartbeat.changed` SSE event | `{ id, state, version, expectedNext, lastPingAt }` after every committed transition; touched episodes publish as usual. |
 
+| UI (`web/`) | `src/heartbeats/queries.ts`, `src/routes/Heartbeats.tsx`, `HeartbeatForm.tsx`, `HeartbeatDetail.tsx`, `src/components/OneTimeSecretDialog.tsx` | List with state filter chips, schedule in words, last ping, owner, bound integration, next expected; paused rows show the reason or "maintenance". Create/edit form: schedule kind toggle (interval / cron with an IANA zone picker), live "next 5 runs" preview from `POST /heartbeats/preview`, grace, severity on miss, recovery pings, binding, auto-pause. On create the **one-time dialog** shows the ping URL with copy buttons and snippets (curl, curl with `/start` + `/exit/$?`, PowerShell, GitHub Actions step, cron line) and will not close until "I have stored it". Detail: run history ring (kind, time, duration, exit code, source, output tail), pause with a mandatory reason, resume, rotate token (confirm → one-time dialog), edit, delete; link to the open miss episode. `heartbeat.changed` SSE invalidates the `heartbeat` queries, so pings appear without a refresh. Rail gets a Heartbeats entry. |
+
 ## Acceptance scenarios (spec §22)
 
 | Scenario | Test (`Milestone6/`) |
@@ -29,7 +31,7 @@ Status: **backend done**; the heartbeat list/create/detail screens (08 §3.4) fo
 | Maintenance window covers a heartbeat's scope | `Scenario_MaintenanceWindowCoversHeartbeatScope_*` — scripted calendar: auto-pause by maintenance (no actor), resume at window end, no false miss. |
 | Alert Hub scheduler stops | covered by the milestone-5 dead-man ping and `/hub/health` `deadman` status; the external switch, not the Hub, reports the stop (spec §13.7). |
 
-Also: bound heartbeat drives integration coverage (degraded on miss, healthy after two pings), YAML export/import round trip with dry-run diff, ping contract on the ingest host (200 body, 404 for both failure kinds, per-key 429).
+Also: bound heartbeat drives integration coverage (degraded on miss, healthy after two pings), YAML export/import round trip with dry-run diff, ping contract on the ingest host (200 body, 404 for both failure kinds, per-key 429). UI: Playwright `e2e/heartbeats.spec.ts` registers a heartbeat through the form, reads the one-time URL, pings it through the ingest host and sees the run and the healthy state appear live; Vitest covers the TimeSpan helpers and the snippet generator.
 
 ## Decisions made
 
@@ -40,6 +42,7 @@ Also: bound heartbeat drives integration coverage (degraded on miss, healthy aft
 - **Cron occurrences are stored in UTC** even though Cronos computes them in the declared zone (Npgsql accepts only offset 0 for `timestamptz`).
 - **Import never deletes.** A heartbeat missing from the YAML is left alone; deleting is an explicit API call with `If-Match`.
 - **Delete closes an open miss episode as `manual_close`** with the reason "heartbeat deleted" — the alert must not outlive its definition.
+- **Every accepted ping is announced over SSE**, not only state changes, so the detail screen's run history and last-ping time are live.
 - **Ping URLs come from `Heartbeats:IngestPublicBaseUrl`**, falling back to the Helm-provided `AlertHub:IngestPublicBaseUrl`; the same fallback now applies to `Notifications:PublicBaseUrl` ← `AlertHub:PublicBaseUrl`.
 
 ## Configuration

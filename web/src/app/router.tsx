@@ -11,6 +11,9 @@ import { QueuePage } from '@/routes/Queue';
 import type { QueueSearch } from '@/routes/queueSearch';
 import { EpisodePage } from '@/routes/Episode';
 import { ForbiddenPage, NotFoundPage } from '@/routes/Errors';
+import { HeartbeatsPage, type HeartbeatsSearch } from '@/routes/Heartbeats';
+import { HeartbeatFormPage } from '@/routes/HeartbeatForm';
+import { HeartbeatDetailPage } from '@/routes/HeartbeatDetail';
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -92,6 +95,33 @@ const episodeRoute = createRoute({
   },
 });
 
+const heartbeatsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/heartbeats',
+  validateSearch: (s: Record<string, unknown>): HeartbeatsSearch => ({ state: str(s.state), team: str(s.team), q: str(s.q) }),
+  component: HeartbeatsPage,
+});
+
+const heartbeatNewRoute = createRoute({ getParentRoute: () => shellRoute, path: '/heartbeats/new', component: () => <HeartbeatFormPage /> });
+
+const heartbeatRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/heartbeats/$id',
+  component: function HeartbeatRoute() {
+    const { id } = heartbeatRoute.useParams();
+    return <HeartbeatDetailPage id={id} />;
+  },
+});
+
+const heartbeatEditRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/heartbeats/$id/edit',
+  component: function HeartbeatEditRoute() {
+    const { id } = heartbeatEditRoute.useParams();
+    return <HeartbeatDetailPage id={id} edit />;
+  },
+});
+
 const forbiddenRoute = createRoute({ getParentRoute: () => rootRoute, path: '/403', component: ForbiddenPage });
 const notFoundRoute = createRoute({ getParentRoute: () => rootRoute, path: '/404', component: NotFoundPage });
 
@@ -105,7 +135,7 @@ const logoutRoute = createRoute({
   },
 });
 
-const routeTree = rootRoute.addChildren([loginRoute, changePasswordRoute, forbiddenRoute, notFoundRoute, logoutRoute, shellRoute.addChildren([indexRoute, queueRoute, historyRoute, episodeRoute])]);
+const routeTree = rootRoute.addChildren([loginRoute, changePasswordRoute, forbiddenRoute, notFoundRoute, logoutRoute, shellRoute.addChildren([indexRoute, queueRoute, historyRoute, episodeRoute, heartbeatsRoute, heartbeatNewRoute, heartbeatRoute, heartbeatEditRoute])]);
 
 export const router = createRouter({ routeTree, context: { queryClient }, defaultPreload: 'intent', scrollRestoration: true });
 

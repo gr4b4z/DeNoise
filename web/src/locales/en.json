@@ -1,6 +1,16 @@
 {
-  "app": { "name": "Alert Hub" },
-  "nav": { "views": "Views", "teams": "Teams", "admin": "Admin", "signOut": "Sign out", "theme": "Theme", "density": "Density" },
+  "app": {
+    "name": "Alert Hub"
+  },
+  "nav": {
+    "views": "Views",
+    "teams": "Teams",
+    "admin": "Admin",
+    "signOut": "Sign out",
+    "theme": "Theme",
+    "density": "Density",
+    "heartbeats": "Heartbeats"
+  },
   "views": {
     "needsAttention": "Needs attention",
     "mine": "My alerts",
@@ -29,7 +39,17 @@
   "queue": {
     "search": "Search summary, resource, service",
     "severity": "Severity",
-    "columns": { "summary": "Summary", "resource": "Resource / service", "env": "Env", "condition": "Condition", "handling": "Handling", "owner": "Owner", "age": "Age", "seen": "Last seen", "flags": "" },
+    "columns": {
+      "summary": "Summary",
+      "resource": "Resource / service",
+      "env": "Env",
+      "condition": "Condition",
+      "handling": "Handling",
+      "owner": "Owner",
+      "age": "Age",
+      "seen": "Last seen",
+      "flags": ""
+    },
     "emptyHealthy": "Nothing needs attention.",
     "emptyCoverage": "Nothing in this view — but coverage is not verified for {{count}} integration(s).",
     "emptyFiltered": "No episodes match these filters.",
@@ -78,5 +98,76 @@
     "polling": "Live connection lost — refreshing every 30 s",
     "lastEvent": "last event {{when}}"
   },
-  "errors": { "forbidden": "You do not have access to this scope.", "notFound": "This page or episode does not exist, or is not visible to you." }
+  "errors": {
+    "forbidden": "You do not have access to this scope.",
+    "notFound": "This page or episode does not exist, or is not visible to you."
+  },
+  "heartbeats": {
+    "title": "Heartbeats",
+    "new": "New heartbeat",
+    "edit": "Edit",
+    "save": "Save changes",
+    "create": "Create heartbeat",
+    "search": "Search heartbeats",
+    "empty": "No heartbeats registered.",
+    "emptyDetail": "Register one to have Alert Hub notice when a scheduled job stops running.",
+    "emptyFiltered": "No heartbeats match these filters.",
+    "columns": {
+      "name": "Name",
+      "state": "State",
+      "schedule": "Schedule",
+      "lastPing": "Last ping",
+      "owner": "Owner",
+      "bound": "Bound integration",
+      "next": "Next expected"
+    },
+    "form": {
+      "name": "Name",
+      "description": "Description",
+      "team": "Owning team",
+      "schedule": "Schedule",
+      "scheduleKind": "Schedule kind",
+      "interval": "Interval",
+      "cron": "Cron",
+      "intervalLabel": "Every",
+      "cronLabel": "Cron expression",
+      "timezone": "Timezone (IANA)",
+      "nextRuns": "next 5 runs",
+      "invalidSchedule": "Schedule is not valid",
+      "grace": "Grace",
+      "severity": "Severity on miss",
+      "recovery": "Pings to recover",
+      "bind": "Bind to integration (id)",
+      "bindHint": "optional — declares this heartbeat as the coverage signal of a source",
+      "autoPause": "Pause automatically during maintenance windows covering this scope",
+      "noTeams": "No team exists yet. A platform administrator has to create one before a heartbeat can be owned."
+    },
+    "pingUrlTitle": "Ping URL",
+    "pingUrl": "Ping URL (the token is the secret)",
+    "runs": "Run history",
+    "noRuns": "No pings received yet.",
+    "runColumns": {
+      "kind": "Kind",
+      "at": "At (UTC)",
+      "duration": "Duration",
+      "exit": "Exit",
+      "source": "Source",
+      "body": "Output"
+    },
+    "pause": "Pause",
+    "resume": "Resume",
+    "rotate": "Rotate token",
+    "delete": "Delete",
+    "missEpisode": "Open miss",
+    "openEpisode": "Open the episode",
+    "keyId": "Key id",
+    "pausedBy": "Paused: {{reason}}",
+    "pausedByMaintenance": "Paused by a maintenance window",
+    "pauseTitle": "Pause “{{name}}”",
+    "pauseWhy": "A paused heartbeat raises nothing and is reported as a coverage gap, not as healthy. Say why.",
+    "rotateTitle": "Rotate the token of “{{name}}”",
+    "rotateWhy": "The current ping URL stops working immediately. The heartbeat keeps its identity, state and history; you will see the new URL once.",
+    "deleteTitle": "Delete “{{name}}”",
+    "deleteWhy": "Pings to its URL will be rejected and any open miss episode is closed. This cannot be undone."
+  }
 }

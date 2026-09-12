@@ -62,6 +62,19 @@ async function apiLogin(request: APIRequestContext): Promise<ApiSession> {
   return bootstrap;
 }
 
+/** Makes sure at least one team exists (a fresh stack has none); heartbeats and routing need one. Returns its id. */
+export async function ensureTeam(request: APIRequestContext, name = 'e2e-team'): Promise<string> {
+  const session = await apiLogin(request);
+  const headers = { Cookie: session.cookie, 'X-CSRF-Token': session.csrf };
+  const existing = await request.get(`${API}/api/v1/teams`, { headers });
+  const teams = (await existing.json()) as { id: string; name: string }[];
+  const found = teams.find((t) => t.name === name);
+  if (found) return found.id;
+  const created = await request.post(`${API}/api/v1/teams`, { headers, data: { name, accessScopes: ['e2e'], isTriage: teams.length === 0 } });
+  expect(created.status(), 'create team').toBe(201);
+  return ((await created.json()) as { id: string }).id;
+}
+
 /** Creates a generic-webhook integration through the API and fires one alert through the Ingest host; returns the alert id. */
 export async function fireAlert(request: APIRequestContext, summary: string): Promise<string> {
   const session = await apiLogin(request);

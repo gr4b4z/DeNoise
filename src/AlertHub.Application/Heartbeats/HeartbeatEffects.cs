@@ -264,7 +264,8 @@ public sealed class HeartbeatPingService(IHeartbeatPingAuthenticator authenticat
             var episodes = await effects.ApplyAsync(locked, transition, session, now, detail, ct, pingSuccess);
             return new HeartbeatOutcome(locked, transition, episodes);
         }, ct);
-        if (outcome is { Transition.Changed: true } || outcome?.Episodes.Count > 0) await effects.AnnounceAsync(outcome.Heartbeat, outcome.Episodes, ct);
+        // Every accepted ping is announced: the detail screen shows last ping and run history live, not only state changes (08 §3.4).
+        if (outcome is not null) await effects.AnnounceAsync(outcome.Heartbeat, outcome.Episodes, ct);
         return outcome is not null;
     }
 
