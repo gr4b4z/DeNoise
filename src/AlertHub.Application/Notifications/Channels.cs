@@ -4,7 +4,7 @@ using AlertHub.Domain.Ops;
 namespace AlertHub.Application.Notifications;
 
 /// <summary>Decrypted view of a destination for one send; never persisted or logged.</summary>
-public sealed record ResolvedDestination(Destination Destination, string? Url, IReadOnlyDictionary<string, string> Headers, string? SigningSecret);
+public sealed record ResolvedDestination(Destination Destination, string? Url, IReadOnlyDictionary<string, string> Headers, string? SigningSecret, string ContentType = "application/json");
 
 /// <summary>Result of one channel send. The dispatcher records it as a <see cref="DeliveryAttempt"/> and decides the outbox transition.</summary>
 public sealed record ChannelResult(string Outcome, int? HttpStatus = null, string? Error = null, string? ResponseExcerpt = null, TimeSpan? RetryAfter = null)

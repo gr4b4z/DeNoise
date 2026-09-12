@@ -130,6 +130,36 @@ public static class ConfigEndpoints
             return Results.Created($"/api/v1/destinations/{primary.Destination.DestinationId}", new DestinationPairResponse(
                 new DestinationCreatedResponse(ToSummary(primary.Destination, service), primary.SigningSecret), new DestinationCreatedResponse(ToSummary(fallback.Destination, service), fallback.SigningSecret)));
         }).RequirePermission(Permissions.DestinationManage).AddEndpointFilter<CsrfFilter>().WithName("CreateDestinationPair").Produces<DestinationPairResponse>(201).ProducesProblem(400);
+        destinations.MapGet("/{id:guid}", async (Guid id, HttpContext http, IDestinationRepository repo, DestinationService service) =>
+        {
+            var d = await repo.GetAsync(id, http.RequestAborted);
+            if (d is null) return Results.NotFound();
+            http.Response.Headers.ETag = $"\"{d.Version}\"";
+            return Results.Ok(ToSummary(d, service));
+        }).RequirePermission(Permissions.EpisodeRead).WithName("GetDestination").Produces<DestinationSummary>().Produces(404);
+        destinations.MapPut("/{id:guid}", async (Guid id, UpdateDestinationRequest request, HttpContext http, DestinationService service) =>
+        {
+            var updated = await service.UpdateAsync(id, IfMatchFilter.Version(http), new UpdateDestination(request.Name, request.TeamId, request.FallbackDestinationId, request.Url, request.Method, request.Headers,
+                request.RotateSigningSecret, request.Timeout is null ? null : TimeSpan.Parse(request.Timeout, System.Globalization.CultureInfo.InvariantCulture), request.EventTypes, request.EmailTo,
+                request.BodyTemplateId, request.ClearBodyTemplate, request.Active), Actor(http), http.RequestAborted);
+            http.Response.Headers.ETag = $"\"{updated.Version}\"";
+            return Results.Ok(new DestinationUpdatedResponse(ToSummary(updated, service), service.TakeRotatedSecret()));
+        }).RequirePermission(Permissions.DestinationManage).AddEndpointFilter<CsrfFilter>().AddEndpointFilter<IfMatchFilter>().WithName("UpdateDestination").Produces<DestinationUpdatedResponse>().ProducesProblem(400).ProducesProblem(404).ProducesProblem(409).ProducesProblem(428);
+        destinations.MapPost("/{id:guid}/test", async (Guid id, HttpContext http, DestinationService service) =>
+        {
+            var r = await service.TestSendAsync(id, Actor(http), http.RequestAborted);
+            return Results.Ok(new TestSendResponse(r.Outcome, r.HttpStatus, r.LatencyMs, r.Error, r.ResponseExcerpt, r.RenderedBody, r.ContentType));
+        }).RequirePermission(Permissions.DestinationManage).AddEndpointFilter<CsrfFilter>().WithName("TestDestination").Produces<TestSendResponse>().ProducesProblem(404);
+        destinations.MapPost("/{id:guid}/reveal", async (Guid id, RevealUrlRequest request, HttpContext http, IDestinationRepository repo, DestinationService service, IUserRepository users, ISecretHasher hasher) =>
+        {
+            // 08 §3.7b: revealing the URL and header values requires re-typing the password; PATs cannot reveal.
+            var p = http.Principal();
+            var user = p.Credential == CredentialKind.Session ? await users.GetAsync(p.UserId, http.RequestAborted) : null;
+            if (user?.PasswordHash is null || !hasher.Verify(request.Password ?? string.Empty, user.PasswordHash)) return Problems.Result(http, 403, "forbidden", "Password required", "Re-type your password to reveal destination secrets.");
+            var d = await repo.GetAsync(id, http.RequestAborted);
+            if (d is null) return Results.NotFound();
+            return Results.Ok(new RevealUrlResponse(service.RevealUrl(d), service.RevealHeaders(d)));
+        }).RequirePermission(Permissions.DestinationManage).AddEndpointFilter<CsrfFilter>().WithName("RevealDestination").Produces<RevealUrlResponse>().ProducesProblem(403).Produces(404);
         destinations.MapGet("/{id:guid}/deliveries", async (Guid id, int? limit, HttpContext http, Infrastructure.Persistence.AlertHubDbContext db) =>
         {
             var rows = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
@@ -155,7 +185,8 @@ public static class ConfigEndpoints
         var url = service.RevealUrl(d);
         string? masked = null;
         if (url is not null && Uri.TryCreate(url, UriKind.Absolute, out var uri)) masked = $"{uri.Scheme}://{uri.Host}/…";
-        return new DestinationSummary(d.DestinationId, d.Name, d.ChannelType, d.TeamId, d.Method, d.EventTypes, d.FallbackDestinationId, d.Active, d.LastSuccessAt, d.LastFailureAt, d.ConsecutiveFailures, d.EmailTo, masked, d.Version);
+        return new DestinationSummary(d.DestinationId, d.Name, d.ChannelType, d.TeamId, d.Method, d.EventTypes, d.FallbackDestinationId, d.Active, d.LastSuccessAt, d.LastFailureAt, d.ConsecutiveFailures, d.EmailTo, masked, d.Version,
+            d.BodyTemplateId, d.Timeout.ToString(), d.HeadersEnc is not null, d.SigningSecretEnc is not null);
     }
 
     private static CreateDestination ToCreate(CreateDestinationRequest r) => new(r.Name, r.ChannelType, r.TeamId, r.FallbackDestinationId, r.Url, r.Method, r.Headers, r.SigningSecret,

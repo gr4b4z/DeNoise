@@ -5,6 +5,7 @@ using AlertHub.Domain.Alerts;
 using AlertHub.Domain.Common;
 using AlertHub.Domain.Episodes;
 using AlertHub.Domain.Integrations;
+using AlertHub.Domain.Notifications;
 using AlertHub.Domain.Teams;
 
 namespace AlertHub.Application.Notifications;
@@ -62,6 +63,44 @@ public static class NotificationModel
         };
         return model;
     }
+
+    /// <summary>A realistic <c>episode.opened</c> model (06 §7) used to validate templates and to preview them without a real episode.</summary>
+    public static JsonObject Sample(DateTimeOffset now, string eventType = NotificationTypes.EpisodeOpened) => new()
+    {
+        ["event"] = eventType,
+        ["deliveryId"] = "00000000-0000-0000-0000-00000000d001",
+        ["sentAt"] = now.ToString("O"),
+        ["episode"] = new JsonObject
+        {
+            ["id"] = "00000000-0000-0000-0000-00000000e001",
+            ["url"] = "https://alert-hub.example.invalid/episodes/00000000-0000-0000-0000-00000000e001",
+            ["severity"] = "critical",
+            ["summary"] = "Orders API 5xx rate > 2% (sample: \"quotes\" and <tags> are escaped)",
+            ["conditionState"] = "firing",
+            ["handlingState"] = "new",
+            ["resource"] = new JsonObject { ["id"] = "/subscriptions/…/orders-api", ["name"] = "orders-api" },
+            ["rule"] = new JsonObject { ["id"] = "orders-5xx", ["name"] = "Orders 5xx rate" },
+            ["service"] = "orders",
+            ["environment"] = "production",
+            ["integration"] = new JsonObject { ["id"] = "00000000-0000-0000-0000-00000000a001", ["name"] = "Azure Monitor Production", ["type"] = "azure_monitor" },
+            ["owningTeam"] = new JsonObject { ["id"] = "00000000-0000-0000-0000-00000000c001", ["name"] = "MPT DevOps" },
+            ["assignee"] = null,
+            ["firstSeen"] = now.AddMinutes(-12).ToString("O"),
+            ["lastSeen"] = now.ToString("O"),
+            ["occurrenceCount"] = 3,
+            ["ackDeadlineAt"] = now.AddMinutes(15).ToString("O"),
+            ["sourceUrl"] = "https://portal.azure.com/#alerts/sample",
+            ["runbookUrl"] = "https://runbooks.example.invalid/orders-5xx",
+            ["closure"] = null,
+            ["coverageState"] = "healthy",
+            ["groupId"] = null,
+            ["routingCorrectionRequired"] = false,
+            ["labels"] = new JsonObject { ["team"] = "mpt" },
+            ["dimensions"] = new JsonObject { ["region"] = "westeurope" },
+        },
+        ["escalation"] = null,
+        ["previous"] = null,
+    };
 
     /// <summary>Envelope for hub-level notifications (delivery failure) — same shape with a <c>hub</c> object instead of <c>episode</c>.</summary>
     public static JsonObject ForHub(string eventType, object detail)

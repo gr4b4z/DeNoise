@@ -52,7 +52,7 @@ public enum DispatchOutcome
 /// </summary>
 public sealed class OutboxDispatcher(
     IOutboxQueue outbox, IEpisodeReader episodes, IDestinationRepository destinations, ISecretProtector protector,
-    IEnumerable<INotificationChannel> channels, IOptions<NotificationOptions> options, TimeProvider time, ILogger<OutboxDispatcher> logger)
+    IEnumerable<INotificationChannel> channels, Templates.TemplateService templates, IOptions<NotificationOptions> options, TimeProvider time, ILogger<OutboxDispatcher> logger)
 {
     public static readonly TimeSpan Lease = TimeSpan.FromMinutes(2);
     private const string FallbackOfKey = "_fallbackOf";
@@ -96,8 +96,39 @@ public sealed class OutboxDispatcher(
             return await FailAsync(message, destination, workerId, $"no channel for '{destination.ChannelType}'", now, permanent: true, ct);
         }
 
-        var body = Render(message, now);
+        // Body = rendered template (ADR-7); webhook destinations pick their template, e-mail keeps the model (the channel composes the mail).
+        string body;
         var resolved = Resolve(destination);
+        if (destination.ChannelType == ChannelTypes.Webhook && destination.BodyTemplateId is not null)
+        {
+            try
+            {
+                var rendered = await templates.RenderForDestinationAsync(destination, Templates.OutboxModel.Of(message, now), ct);
+                body = rendered.Body;
+                resolved = resolved with { ContentType = rendered.ContentType };
+            }
+            catch (Templates.TemplateRenderException ex)
+            {
+                // A template that cannot render is a permanent failure of this destination: the fallback gets the generic body.
+                var error = $"template render failed: {ex.Message}";
+                await outbox.RecordAttemptAsync(new DeliveryAttempt
+                {
+                    Id = Ids.New(time),
+                    OutboxId = message.OutboxId,
+                    AttemptedAt = now,
+                    Channel = destination.ChannelType,
+                    Outcome = DeliveryOutcomes.Permanent,
+                    LatencyMs = 0,
+                    Error = error,
+                    UsedFallback = IsFallback(message),
+                }, ct);
+                return await FailAsync(message, destination, workerId, error, now, permanent: true, ct);
+            }
+        }
+        else
+        {
+            body = Render(message, now);
+        }
         var started = Stopwatch.GetTimestamp();
         ChannelResult result;
         try
@@ -232,7 +263,7 @@ public sealed class OutboxDispatcher(
         }
     }
 
-    /// <summary>The <c>generic-json</c> body: the notification model with delivery id and send time filled in. Templates arrive with milestone 7.</summary>
+    /// <summary>The <c>generic-json</c> body: the notification model with delivery id and send time filled in (destinations without a template).</summary>
     public static string Render(OutboxMessage message, DateTimeOffset sentAt)
     {
         JsonObject model;

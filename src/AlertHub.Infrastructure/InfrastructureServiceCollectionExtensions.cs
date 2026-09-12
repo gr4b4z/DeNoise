@@ -127,6 +127,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<INotificationChannel, WebhookChannel>();
         services.AddScoped<INotificationChannel, SmtpEmailChannel>();
         services.AddScoped<OutboxDispatcher>();
+        services.AddSingleton<AlertHub.Application.Notifications.Templates.TemplateRenderer>();
+        services.AddScoped<AlertHub.Application.Notifications.Templates.ITemplateRepository, EfTemplateRepository>();
+        services.AddScoped<AlertHub.Application.Notifications.Templates.TemplateService>();
 
         // Users, auth, application API read models, realtime (milestone 4)
         services.AddOptions<LocalAuthOptions>().Bind(configuration.GetSection(LocalAuthOptions.Section));

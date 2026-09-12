@@ -78,7 +78,8 @@ public sealed record CreatePolicyRequest(string Yaml, Guid? PolicyId, string? Na
 public sealed record RollbackRequest(int ToVersion);
 
 public sealed record DestinationSummary(Guid Id, string Name, string ChannelType, Guid? TeamId, string? Method, IReadOnlyList<string> EventTypes, Guid FallbackDestinationId, bool Active,
-    DateTimeOffset? LastSuccessAt, DateTimeOffset? LastFailureAt, int ConsecutiveFailures, IReadOnlyList<string>? EmailTo, string? UrlMasked, int Version);
+    DateTimeOffset? LastSuccessAt, DateTimeOffset? LastFailureAt, int ConsecutiveFailures, IReadOnlyList<string>? EmailTo, string? UrlMasked, int Version,
+    Guid? BodyTemplateId = null, string? Timeout = null, bool HasHeaders = false, bool HasSigningSecret = false);
 public sealed record CreateDestinationRequest(string Name, string ChannelType, Guid? TeamId, Guid? FallbackDestinationId, string? Url, string Method = "POST",
     Dictionary<string, string>? Headers = null, string? SigningSecret = null, string? Timeout = null, string[]? EventTypes = null, string[]? EmailTo = null);
 public sealed record CreateDestinationPairRequest(CreateDestinationRequest Primary, CreateDestinationRequest Fallback);
@@ -118,3 +119,16 @@ public sealed record SchedulePreviewResponse(IReadOnlyList<DateTimeOffset> NextR
 public sealed record HeartbeatImportRequest(string Yaml, bool DryRun = true);
 public sealed record HeartbeatImportEntryDto(string Name, string Action, Guid? HeartbeatId, IReadOnlyList<string> Changes, string? PingUrl);
 public sealed record HeartbeatImportResponse(bool DryRun, IReadOnlyList<HeartbeatImportEntryDto> Entries, IReadOnlyList<string> Errors);
+
+// --- Milestone 7: webhook templates and destination management ---
+public sealed record WebhookTemplateDto(Guid Id, int Version, string Name, string? Description, string Format, string ContentType, bool Builtin, bool Active, DateTimeOffset? ActivatedAt, DateTimeOffset? DeactivatedAt, string? CreatedBy, DateTimeOffset CreatedAt, string? Body, string? SampleOutput);
+public sealed record CreateTemplateRequest(string Name, string Format, string Body, string? ContentType = null, string? Description = null, Guid? TemplateId = null, System.Text.Json.JsonElement? SampleEvent = null);
+public sealed record RenderTemplateRequest(Guid? EpisodeId = null, System.Text.Json.JsonElement? SampleEvent = null);
+public sealed record RenderDraftRequest(string Format, string Body, string? ContentType = null, System.Text.Json.JsonElement? SampleEvent = null);
+public sealed record RenderedTemplateResponse(string Body, string ContentType);
+public sealed record UpdateDestinationRequest(string? Name = null, Guid? TeamId = null, Guid? FallbackDestinationId = null, string? Url = null, string? Method = null, Dictionary<string, string>? Headers = null,
+    bool RotateSigningSecret = false, string? Timeout = null, string[]? EventTypes = null, string[]? EmailTo = null, Guid? BodyTemplateId = null, bool ClearBodyTemplate = false, bool? Active = null);
+public sealed record DestinationUpdatedResponse(DestinationSummary Destination, string? SigningSecret);
+public sealed record TestSendResponse(string Outcome, int? HttpStatus, int LatencyMs, string? Error, string? ResponseExcerpt, string RenderedBody, string ContentType);
+public sealed record RevealUrlRequest(string Password);
+public sealed record RevealUrlResponse(string? Url, Dictionary<string, string> Headers);

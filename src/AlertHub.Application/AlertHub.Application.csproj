@@ -8,5 +8,6 @@
     <PackageReference Include="YamlDotNet" />
     <PackageReference Include="JsonPath.Net" />
     <PackageReference Include="Cronos" />
+    <PackageReference Include="Fluid.Core" />
   </ItemGroup>
 </Project>

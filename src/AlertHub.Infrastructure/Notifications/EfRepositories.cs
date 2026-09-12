@@ -22,6 +22,7 @@ public sealed class EfDestinationRepository(AlertHubDbContext db) : IDestination
     public Task<Destination?> GetAsync(Guid destinationId, CancellationToken ct = default) => db.Destinations.AsNoTracking().SingleOrDefaultAsync(d => d.DestinationId == destinationId, ct);
     public async Task<IReadOnlyList<Destination>> ListAsync(CancellationToken ct = default) => await db.Destinations.AsNoTracking().OrderBy(d => d.Name).ToListAsync(ct);
     public async Task<IReadOnlyList<Destination>> ListForTeamAsync(Guid teamId, CancellationToken ct = default) => await db.Destinations.AsNoTracking().Where(d => d.TeamId == teamId).OrderBy(d => d.Name).ToListAsync(ct);
+    public Task<Destination?> GetTrackedAsync(Guid destinationId, CancellationToken ct = default) => db.Destinations.SingleOrDefaultAsync(d => d.DestinationId == destinationId, ct);
     public void Add(Destination destination) => db.Destinations.Add(destination);
 }
 

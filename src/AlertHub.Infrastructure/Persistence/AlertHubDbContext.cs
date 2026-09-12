@@ -27,6 +27,7 @@ public sealed class AlertHubDbContext(DbContextOptions<AlertHubDbContext> option
     public DbSet<HubComponentHeartbeat> HubComponentHeartbeats => Set<HubComponentHeartbeat>();
     public DbSet<CoverageState> CoverageStates => Set<CoverageState>();
     public DbSet<Domain.Heartbeats.Heartbeat> Heartbeats => Set<Domain.Heartbeats.Heartbeat>();
+    public DbSet<Domain.Notifications.WebhookTemplate> WebhookTemplates => Set<Domain.Notifications.WebhookTemplate>();
     public DbSet<Domain.Heartbeats.HeartbeatRun> HeartbeatRuns => Set<Domain.Heartbeats.HeartbeatRun>();
     public DbSet<Integration> Integrations => Set<Integration>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();

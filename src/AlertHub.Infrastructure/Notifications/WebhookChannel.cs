@@ -36,7 +36,7 @@ public sealed class WebhookChannel(IHttpClientFactory httpClients, IOptions<Noti
         var timestamp = time.GetUtcNow().ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
         using var request = new HttpRequestMessage(new HttpMethod(destination.Destination.Method), uri)
         {
-            Content = new StringContent(body, Encoding.UTF8, "application/json"),
+            Content = new StringContent(body, Encoding.UTF8, destination.ContentType),
         };
         request.Headers.TryAddWithoutValidation("User-Agent", options.Value.UserAgent);
         request.Headers.TryAddWithoutValidation("X-AlertHub-Delivery-Id", message.OutboxId.ToString());
