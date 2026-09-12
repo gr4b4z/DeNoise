@@ -95,6 +95,10 @@ jobs:
       ConnectionStrings__AlertHub: Host=localhost;Port=5432;Database=alerthub;Username=postgres;Password=postgres
       Auth__Local__BootstrapPassword: Bootstrap-Admin-Passw0rd!
       Http__TrustForwardedHeaders: "true"
+      Heartbeats__IngestPublicBaseUrl: http://localhost:8081
+      Notifications__AllowInsecureDestinations: "true"
+      Notifications__PublicBaseUrl: http://localhost:5173
+      Limits__LoginPerMinutePerIp: "100"
       DOTNET_ENVIRONMENT: Development
     steps:
       - uses: actions/checkout@v4

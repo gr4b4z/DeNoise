@@ -45,8 +45,23 @@ async function sessionFor(request: APIRequestContext, response: import('@playwri
   return { cookie, csrf: token };
 }
 
-/** Logs the admin in over the API; on a fresh stack it completes the forced password change first (06 §6). */
+let cachedSession: ApiSession | null = null;
+
+/**
+ * Logs the admin in over the API once per worker and reuses the session (the login endpoint is rate-limited per IP,
+ * 06 §6); on a fresh stack it completes the forced password change first.
+ */
 async function apiLogin(request: APIRequestContext): Promise<ApiSession> {
+  if (cachedSession) {
+    const probe = await request.get(`${API}/api/v1/me`, { headers: { Cookie: cachedSession.cookie } });
+    if (probe.ok()) return cachedSession;
+    cachedSession = null;
+  }
+  cachedSession = await freshApiLogin(request);
+  return cachedSession;
+}
+
+async function freshApiLogin(request: APIRequestContext): Promise<ApiSession> {
   const attempt = async (password: string) => request.post(`${API}/auth/login`, { data: { username: 'admin', password, keepSignedIn: false } });
   let response = await attempt(ADMIN_FINAL_PASSWORD);
   if (response.status() === 204) return sessionFor(request, response);

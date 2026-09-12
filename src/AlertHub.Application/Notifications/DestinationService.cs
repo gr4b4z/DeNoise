@@ -53,7 +53,7 @@ public sealed class NotificationOptions
 }
 
 public sealed class DestinationService(IDestinationRepository destinations, ISecretProtector protector, IAuditWriter audit, IUnitOfWork uow, TimeProvider time, Microsoft.Extensions.Options.IOptions<NotificationOptions> options,
-    Templates.TemplateService templates, IEnumerable<INotificationChannel> channels, Templates.ITemplateRepository templateRepository)
+    Templates.TemplateService templates, IEnumerable<INotificationChannel> channels, Templates.ITemplateRepository templateRepository, IOutboxQueue outbox)
 {
     /// <summary>
     /// Creates a destination. When <paramref name="request"/> has no fallback, the destination becomes its own bootstrap
@@ -179,7 +179,11 @@ public sealed class DestinationService(IDestinationRepository destinations, ISec
             }
             catch (Templates.TemplateRenderException ex)
             {
-                return new TestSendResult(DeliveryOutcomes.Permanent, null, 0, $"template render failed: {ex.Message}", null, string.Empty, contentType);
+                var error = $"template render failed: {ex.Message}";
+                await RecordTestAsync(message, destination, ChannelResult.Permanent(error), 0, now, ct);
+                audit.Record(Entry(actor, "destination.test", destination, null, new { Outcome = DeliveryOutcomes.Permanent, error }));
+                await uow.CommitAsync(ct);
+                return new TestSendResult(DeliveryOutcomes.Permanent, null, 0, error, null, string.Empty, contentType);
             }
         }
         else
@@ -190,9 +194,38 @@ public sealed class DestinationService(IDestinationRepository destinations, ISec
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
         var result = await channel.SendAsync(resolved, message, body, ct);
         var latency = (int)System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+        await RecordTestAsync(message, destination, result, latency, now, ct);
         audit.Record(Entry(actor, "destination.test", destination, null, new { result.Outcome, result.HttpStatus, latency }));
         await uow.CommitAsync(ct);
         return new TestSendResult(result.Outcome, result.HttpStatus, latency, result.Error, result.ResponseExcerpt, body, contentType);
+    }
+
+    /// <summary>
+    /// A test send is never retried, so its outbox row is written already terminal (<c>sent</c> / <c>failed</c>) together with
+    /// its delivery attempt: it shows up in the destination's deliveries and moves the health counters like a real delivery.
+    /// </summary>
+    private async Task RecordTestAsync(Domain.Ops.OutboxMessage message, Destination destination, ChannelResult result, int latency, DateTimeOffset now, CancellationToken ct)
+    {
+        var success = result.Outcome == DeliveryOutcomes.Success;
+        message.Status = success ? Domain.Ops.OutboxStatus.Sent : Domain.Ops.OutboxStatus.Failed;
+        message.Attempts = 1;
+        message.SentAt = success ? now : null;
+        message.LastError = result.Error;
+        await outbox.EnqueueAsync(message, ct);
+        await outbox.RecordAttemptAsync(new DeliveryAttempt
+        {
+            Id = Ids.New(time),
+            OutboxId = message.OutboxId,
+            AttemptedAt = now,
+            Channel = destination.ChannelType,
+            Outcome = result.Outcome,
+            HttpStatus = result.HttpStatus,
+            LatencyMs = latency,
+            Error = result.Error,
+            UsedFallback = false,
+            ResponseExcerpt = result.ResponseExcerpt,
+        }, ct);
+        await outbox.UpdateDestinationHealthAsync(destination.DestinationId, success, now, ct);
     }
 
     public Dictionary<string, string> RevealHeaders(Destination destination) => new(Headers(destination));

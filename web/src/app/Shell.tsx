@@ -60,6 +60,19 @@ export function Shell() {
                   </Link>
                 </li>
               </ul>
+              <RailHeading>{t('nav.notifications')}</RailHeading>
+              <ul className="m-0 list-none p-0">
+                <li>
+                  <Link to="/destinations" className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }}>
+                    {t('nav.destinations')}
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/templates" className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }}>
+                    {t('nav.templates')}
+                  </Link>
+                </li>
+              </ul>
               {teams.data && teams.data.length > 0 && (
                 <>
                   <RailHeading>{t('nav.teams')}</RailHeading>

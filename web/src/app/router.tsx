@@ -14,6 +14,10 @@ import { ForbiddenPage, NotFoundPage } from '@/routes/Errors';
 import { HeartbeatsPage, type HeartbeatsSearch } from '@/routes/Heartbeats';
 import { HeartbeatFormPage } from '@/routes/HeartbeatForm';
 import { HeartbeatDetailPage } from '@/routes/HeartbeatDetail';
+import { DestinationsPage } from '@/routes/Destinations';
+import { DestinationPage } from '@/routes/DestinationForm';
+import { TemplatesPage } from '@/routes/Templates';
+import { TemplateEditorPage } from '@/routes/TemplateEditor';
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -122,6 +126,36 @@ const heartbeatEditRoute = createRoute({
   },
 });
 
+const destinationsRoute = createRoute({ getParentRoute: () => shellRoute, path: '/destinations', component: DestinationsPage });
+const destinationNewRoute = createRoute({ getParentRoute: () => shellRoute, path: '/destinations/new', component: () => <DestinationPage /> });
+const destinationRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/destinations/$id',
+  component: function DestinationRoute() {
+    const { id } = destinationRoute.useParams();
+    return <DestinationPage id={id} />;
+  },
+});
+
+const templatesRoute = createRoute({ getParentRoute: () => shellRoute, path: '/templates', component: TemplatesPage });
+const templateNewRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/templates/new',
+  validateSearch: (s: Record<string, unknown>): { from?: string } => ({ from: str(s.from) }),
+  component: function TemplateNewRoute() {
+    const { from } = templateNewRoute.useSearch();
+    return <TemplateEditorPage from={from} />;
+  },
+});
+const templateRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/templates/$id',
+  component: function TemplateRoute() {
+    const { id } = templateRoute.useParams();
+    return <TemplateEditorPage id={id} />;
+  },
+});
+
 const forbiddenRoute = createRoute({ getParentRoute: () => rootRoute, path: '/403', component: ForbiddenPage });
 const notFoundRoute = createRoute({ getParentRoute: () => rootRoute, path: '/404', component: NotFoundPage });
 
@@ -135,7 +169,7 @@ const logoutRoute = createRoute({
   },
 });
 
-const routeTree = rootRoute.addChildren([loginRoute, changePasswordRoute, forbiddenRoute, notFoundRoute, logoutRoute, shellRoute.addChildren([indexRoute, queueRoute, historyRoute, episodeRoute, heartbeatsRoute, heartbeatNewRoute, heartbeatRoute, heartbeatEditRoute])]);
+const routeTree = rootRoute.addChildren([loginRoute, changePasswordRoute, forbiddenRoute, notFoundRoute, logoutRoute, shellRoute.addChildren([indexRoute, queueRoute, historyRoute, episodeRoute, heartbeatsRoute, heartbeatNewRoute, heartbeatRoute, heartbeatEditRoute, destinationsRoute, destinationNewRoute, destinationRoute, templatesRoute, templateNewRoute, templateRoute])]);
 
 export const router = createRouter({ routeTree, context: { queryClient }, defaultPreload: 'intent', scrollRestoration: true });
 

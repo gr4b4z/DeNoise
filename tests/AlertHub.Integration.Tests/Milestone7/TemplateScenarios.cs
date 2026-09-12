@@ -156,7 +156,10 @@ public sealed class TemplateScenarios(PostgresFixture postgres) : IAsyncLifetime
         var sent = _channel.Sent.Single();
         sent.Message.Type.Should().Be(NotificationTypes.DestinationTest);
         await using var db = PostgresFixture.CreateContext(_cs);
-        (await db.Outbox.CountAsync()).Should().Be(0, "a test send is never queued");
+        var row = await db.Outbox.AsNoTracking().SingleAsync(o => o.Type == NotificationTypes.DestinationTest);
+        row.Status.Should().Be(OutboxStatus.Sent, "a test send is recorded terminal: visible in deliveries, never retried");
+        (await db.DeliveryAttempts.AsNoTracking().SingleAsync(a => a.OutboxId == row.OutboxId)).HttpStatus.Should().Be(202);
+        (await db.Destinations.AsNoTracking().SingleAsync(d => d.DestinationId == _teams)).LastSuccessAt.Should().Be(_time.GetUtcNow());
     }
 
     [Fact]
