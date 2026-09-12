@@ -24,6 +24,9 @@ import { IntegrationDetailPage } from '@/routes/IntegrationDetail';
 import { SuppressionsPage } from '@/routes/Suppressions';
 import { TeamOverviewPage } from '@/routes/TeamOverview';
 import { HistoryPage, type HistorySearch } from '@/routes/History';
+import { PoliciesRoute, PolicyRoute } from '@/routes/PolicyRoutes';
+import { ConfigPage } from '@/routes/ConfigPage';
+import { AuditPage, type AuditSearch } from '@/routes/Audit';
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -188,6 +191,16 @@ const integrationRoute = createRoute({
   },
 });
 
+const policiesRoute = createRoute({ getParentRoute: () => shellRoute, path: '/policies/$kind', component: PoliciesRoute });
+const policyRoute = createRoute({ getParentRoute: () => shellRoute, path: '/policies/$kind/$id', component: PolicyRoute });
+const configRoute = createRoute({ getParentRoute: () => shellRoute, path: '/config', component: ConfigPage });
+const auditRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/audit',
+  validateSearch: (s: Record<string, unknown>): AuditSearch => ({ target: str(s.target), targetType: str(s.targetType), actor: str(s.actor), action: str(s.action), from: str(s.from), to: str(s.to) }),
+  component: AuditPage,
+});
+
 const forbiddenRoute = createRoute({ getParentRoute: () => rootRoute, path: '/403', component: ForbiddenPage });
 const notFoundRoute = createRoute({ getParentRoute: () => rootRoute, path: '/404', component: NotFoundPage });
 
@@ -201,7 +214,7 @@ const logoutRoute = createRoute({
   },
 });
 
-const routeTree = rootRoute.addChildren([loginRoute, changePasswordRoute, forbiddenRoute, notFoundRoute, logoutRoute, shellRoute.addChildren([indexRoute, queueRoute, historyRoute, episodeRoute, heartbeatsRoute, heartbeatNewRoute, heartbeatRoute, heartbeatEditRoute, destinationsRoute, destinationNewRoute, destinationRoute, templatesRoute, templateNewRoute, templateRoute, integrationsRoute, integrationNewRoute, integrationRoute, suppressionsRoute, teamRoute])]);
+const routeTree = rootRoute.addChildren([loginRoute, changePasswordRoute, forbiddenRoute, notFoundRoute, logoutRoute, shellRoute.addChildren([indexRoute, queueRoute, historyRoute, episodeRoute, heartbeatsRoute, heartbeatNewRoute, heartbeatRoute, heartbeatEditRoute, destinationsRoute, destinationNewRoute, destinationRoute, templatesRoute, templateNewRoute, templateRoute, integrationsRoute, integrationNewRoute, integrationRoute, suppressionsRoute, teamRoute, policiesRoute, policyRoute, configRoute, auditRoute])]);
 
 export const router = createRouter({ routeTree, context: { queryClient }, defaultPreload: 'intent', scrollRestoration: true });
 

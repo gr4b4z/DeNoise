@@ -24,6 +24,7 @@ export const P = {
   destinationManage: 'destination.manage',
   suppressionCreate: 'suppression.create',
   suppressionCreateLong: 'suppression.create.long',
+  auditRead: 'audit.read',
   hubHealthRead: 'hub.health.read',
   userManage: 'user.manage',
   meTokens: 'me.tokens',

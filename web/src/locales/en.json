@@ -17,7 +17,10 @@
     "integrations": "Integrations",
     "suppressions": "Suppressions",
     "history": "History",
-    "savedFilters": "Saved filters"
+    "savedFilters": "Saved filters",
+    "policies": "Policies",
+    "config": "Config as code",
+    "audit": "Audit log"
   },
   "views": {
     "needsAttention": "Needs attention",
@@ -574,5 +577,127 @@
       "autoPause": "Pause heartbeats in scope while the window is active",
       "invalidTimes": "Start and end must be complete date-times."
     }
+  },
+  "policies": {
+    "title": "Policies",
+    "kind": "Kind",
+    "new": "New policy",
+    "newOf": "New {{kind}} policy",
+    "create": "Create policy",
+    "saveVersion": "Save as new version",
+    "activate": "Activate",
+    "rollback": "Roll back",
+    "rollbackTo": "Roll back to v{{version}}",
+    "active": "active",
+    "inactive": "inactive",
+    "unnamed": "(unnamed)",
+    "versions": "Versions",
+    "compareWith": "Compare with",
+    "diffLabel": "Changes from v{{from}} to v{{to}}",
+    "readOnly": "read-only",
+    "unsaved": "unsaved draft",
+    "deactivated": "deactivated",
+    "impactFirst": "The impact preview must load before this version can be activated.",
+    "empty": "No active {{kind}} policy yet.",
+    "kinds": {
+      "routing": "Routing",
+      "escalation": "Escalation",
+      "lifecycle": "Lifecycle",
+      "grouping": "Grouping"
+    },
+    "about": {
+      "routing": "One ordered rule set decides the owning team and escalation policy of every new episode; unmatched episodes go to the triage team.",
+      "escalation": "Acknowledgement deadlines and notification steps; referenced from routing rules by id.",
+      "lifecycle": "Auto-resolve and expiry behaviour per profile; referenced from routing rules, integration defaults or mapping hints.",
+      "grouping": "One ordered rule set that groups related episodes by key within a window and decides which members notify."
+    },
+    "hints": {
+      "title": "Document hints",
+      "routing": "routing.rules[]: name, priority (lower first), match (07 §5 predicate: eq / in / regex / all / any / not / exists), team (uuid), optional escalation_policy and lifecycle_policy (uuid).",
+      "escalation": "escalation.ack_deadline (e.g. 15m), steps[] with after and targets (team_destinations), repeat_last_step_every, max_repeats.",
+      "lifecycle": "lifecycle.profile: repeating_while_active | explicit_recovery | informational | heartbeat; auto_resolve.after_silence or the inactivity formula fields; expiry settings.",
+      "grouping": "grouping.rules[]: name, match (predicate), key (field list), window (≤ 24h), notify: first_only | first_and_new_critical."
+    },
+    "columns": {
+      "name": "Name",
+      "id": "Policy id",
+      "version": "Active version",
+      "activated": "Activated",
+      "createdBy": "Created by"
+    },
+    "form": {
+      "name": "Name",
+      "document": "Document (YAML)"
+    },
+    "impact": {
+      "title": "Impact of activating v{{version}}",
+      "loading": "Computing impact…",
+      "affected_one": "open episode affected",
+      "affected_other": "open episodes affected",
+      "proposed": "new deadline"
+    },
+    "activateTitle": "Activate version {{version}}?",
+    "rollbackTitle": "Roll back to version {{version}}?",
+    "activateWhy": {
+      "routing": "New episodes are routed by this version from now on; open episodes keep their team.",
+      "escalation": "Escalation timers created from now on follow this version; running timers are unchanged.",
+      "lifecycle": "Every open episode on this policy gets its auto-resolve deadline recomputed (never earlier than one minute from now).",
+      "grouping": "New episodes are grouped by this version from now on; open groups are unchanged."
+    }
+  },
+  "config": {
+    "title": "Config as code",
+    "about": "Every active policy as one YAML bundle: keep it in git, review a dry run, apply.",
+    "export": "Export (active versions)",
+    "refresh": "Refresh",
+    "copy": "Copy",
+    "copied": "Copied",
+    "useAsImport": "Edit as import",
+    "exportHint": "Deterministic order (name, id) so exports diff cleanly. Import the same shape back; policies not in the bundle are left alone.",
+    "import": "Import",
+    "chooseFile": "Choose file…",
+    "dryRun": "Dry run",
+    "apply": "Apply",
+    "applyHint": "Run a dry run with changes and no errors first.",
+    "importNeedsPermission": "Importing needs the policy.manage permission.",
+    "previewTitle": "Dry run — nothing written",
+    "appliedTitle": "Applied",
+    "summary": "{{changed}} changed · {{unchanged}} unchanged",
+    "action": "Action",
+    "changes": "Changes",
+    "actions": {
+      "unchanged": "unchanged",
+      "new_version": "new version",
+      "create": "create"
+    },
+    "confirmTitle": "Apply {{count}} change(s)?",
+    "confirmWhy": "Each changed policy gets a new version that is activated immediately; the audit log records every step."
+  },
+  "audit": {
+    "title": "Audit log",
+    "targetType": "Target type",
+    "anyType": "Any target type",
+    "target": "Target id",
+    "actor": "Actor",
+    "action": "Action (prefix)",
+    "from": "From",
+    "to": "To",
+    "filter": "Filter",
+    "clear": "Clear",
+    "shown_one": "{{count}} entry",
+    "shown_other": "{{count}} entries",
+    "empty": "Nothing has been audited yet.",
+    "emptyFiltered": "No entries match these filters.",
+    "when": "When",
+    "targetCol": "Target",
+    "scope": "Scope",
+    "reason": "Reason",
+    "details": "Details",
+    "hide": "Hide",
+    "before": "Before",
+    "after": "After",
+    "correlation": "Correlation",
+    "ip": "IP",
+    "more": "Load more"
   }
 }

@@ -89,6 +89,25 @@ export function Shell() {
                     {t('nav.templates')}
                   </Link>
                 </li>
+                <li>
+                  <Link to="/policies/$kind" params={{ kind: 'routing' }} className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }} data-testid="nav-policies">
+                    {t('nav.policies')}
+                  </Link>
+                </li>
+                {can(me.data, P.policyManage) && (
+                  <li>
+                    <Link to="/config" className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }}>
+                      {t('nav.config')}
+                    </Link>
+                  </li>
+                )}
+                {can(me.data, P.auditRead) && (
+                  <li>
+                    <Link to="/audit" search={{}} className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }} data-testid="nav-audit">
+                      {t('nav.audit')}
+                    </Link>
+                  </li>
+                )}
               </ul>
               {teams.data && teams.data.length > 0 && (
                 <>
