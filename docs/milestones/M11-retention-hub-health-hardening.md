@@ -1,6 +1,6 @@
 # Milestone 11 — Retention, hub health, hardening
 
-Status: **backend done**; UI half (08 §3.9 hub screen, failure queue, payload-retention flag) in progress. Owner inputs still open: **C9** (measured peak, to parameterise the load test) and **C10** (Helm/GitOps conventions).
+Status: **done** (backend, hub health screen, failure queue UI, payload-retention flag, hardening scripts and runbook). Owner inputs still open: **C9** (measured peak, to parameterise the load test) and **C10** (Helm/GitOps conventions).
 
 ## What exists
 

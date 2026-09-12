@@ -26,6 +26,7 @@ export const P = {
   suppressionCreateLong: 'suppression.create.long',
   auditRead: 'audit.read',
   hubHealthRead: 'hub.health.read',
+  hubAdmin: 'hub.admin',
   userManage: 'user.manage',
   meTokens: 'me.tokens',
   meSessions: 'me.sessions',

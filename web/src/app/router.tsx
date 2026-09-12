@@ -27,6 +27,7 @@ import { HistoryPage, type HistorySearch } from '@/routes/History';
 import { PoliciesRoute, PolicyRoute } from '@/routes/PolicyRoutes';
 import { ConfigPage } from '@/routes/ConfigPage';
 import { AuditPage, type AuditSearch } from '@/routes/Audit';
+import { HubPage } from '@/routes/Hub';
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -193,6 +194,7 @@ const integrationRoute = createRoute({
 
 const policiesRoute = createRoute({ getParentRoute: () => shellRoute, path: '/policies/$kind', component: PoliciesRoute });
 const policyRoute = createRoute({ getParentRoute: () => shellRoute, path: '/policies/$kind/$id', component: PolicyRoute });
+const hubRoute = createRoute({ getParentRoute: () => shellRoute, path: '/hub', component: HubPage });
 const configRoute = createRoute({ getParentRoute: () => shellRoute, path: '/config', component: ConfigPage });
 const auditRoute = createRoute({
   getParentRoute: () => shellRoute,
@@ -214,7 +216,7 @@ const logoutRoute = createRoute({
   },
 });
 
-const routeTree = rootRoute.addChildren([loginRoute, changePasswordRoute, forbiddenRoute, notFoundRoute, logoutRoute, shellRoute.addChildren([indexRoute, queueRoute, historyRoute, episodeRoute, heartbeatsRoute, heartbeatNewRoute, heartbeatRoute, heartbeatEditRoute, destinationsRoute, destinationNewRoute, destinationRoute, templatesRoute, templateNewRoute, templateRoute, integrationsRoute, integrationNewRoute, integrationRoute, suppressionsRoute, teamRoute, policiesRoute, policyRoute, configRoute, auditRoute])]);
+const routeTree = rootRoute.addChildren([loginRoute, changePasswordRoute, forbiddenRoute, notFoundRoute, logoutRoute, shellRoute.addChildren([indexRoute, queueRoute, historyRoute, episodeRoute, heartbeatsRoute, heartbeatNewRoute, heartbeatRoute, heartbeatEditRoute, destinationsRoute, destinationNewRoute, destinationRoute, templatesRoute, templateNewRoute, templateRoute, integrationsRoute, integrationNewRoute, integrationRoute, suppressionsRoute, teamRoute, policiesRoute, policyRoute, configRoute, auditRoute, hubRoute])]);
 
 export const router = createRouter({ routeTree, context: { queryClient }, defaultPreload: 'intent', scrollRestoration: true });
 

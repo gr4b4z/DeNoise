@@ -308,6 +308,12 @@ function Overview({ d }: { d: EpisodeDetail }) {
         </p>
       </Section>
 
+      {!d.rawPayloadAvailable && (
+        <p className="m-0 rounded-md border border-dashed border-line px-2 py-1 text-xs text-ink-2" data-testid="payload-gone">
+          {t('detail.payloadGone')}
+        </p>
+      )}
+
       {(d.sourceUrl ?? d.runbookUrl) && (
         <Section title={t('detail.links')}>
           <ul className="m-0 list-none p-0">

@@ -20,7 +20,8 @@
     "savedFilters": "Saved filters",
     "policies": "Policies",
     "config": "Config as code",
-    "audit": "Audit log"
+    "audit": "Audit log",
+    "hub": "Hub health"
   },
   "views": {
     "needsAttention": "Needs attention",
@@ -106,7 +107,9 @@
     "back": "Back to queue",
     "loading": "Loading…",
     "group": "Group",
-    "groupExplain": "Grouped with {{count}} other episode(s) in a bounded window; each keeps its own state. Group"
+    "groupExplain": "Grouped with {{count}} other episode(s) in a bounded window; each keeps its own state. Group",
+    "payloadGone": "Original payload no longer retained — raw payloads are kept for a limited time (spec §18.2); the episode stays actionable from its normalised state.",
+    "payloadGoneShort": "payload no longer retained"
   },
   "freshness": {
     "live": "Live",
@@ -699,5 +702,67 @@
     "correlation": "Correlation",
     "ip": "IP",
     "more": "Load more"
+  },
+  "hub": {
+    "title": "Hub health",
+    "asOf": "as of",
+    "ok": "OK",
+    "down": "down",
+    "stale": "stale",
+    "healthy": "healthy",
+    "notConfigured": "not configured",
+    "cards": {
+      "database": "Database",
+      "components": "Components reporting",
+      "outbox": "Outbox pending · oldest",
+      "failed": "Failed (jobs + outbox)",
+      "deadman": "External dead-man"
+    },
+    "componentsHint": "heartbeats within 90 s",
+    "outboxHint": "green under 5 min",
+    "failedHint": "retry from the failure queue",
+    "deadmanHint": "set AlertHub:ExternalDeadmanUrl — the hub must never be the only monitor of itself (spec §13.7)",
+    "components": "Component heartbeats",
+    "noComponents": "No component has reported yet.",
+    "queues": "Job queues",
+    "noQueues": "No jobs in any queue.",
+    "queue": {
+      "kind": "Kind",
+      "pending": "Pending",
+      "reserved": "Reserved",
+      "suspended": "Suspended",
+      "failed": "Failed",
+      "oldest": "Oldest pending"
+    },
+    "retention": {
+      "title": "Retention",
+      "runNow": "Run retention now",
+      "rawBoundary": "Raw payloads kept from",
+      "rawDays_one": "{{count}} day",
+      "rawDays_other": "{{count}} days",
+      "partitions": "Raw partitions",
+      "rows": "Rows",
+      "rowsText": "normalised events {{normalisedClosedDays}} d (closed episodes), episodes {{episodeClosedMonths}} months after closing, delivery attempts {{deliveryAttemptDays}} d, audit {{auditMonths}} months, sessions {{sessionExpiredDays}} d after expiry, login attempts {{loginAttemptDays}} d; {{batchSize}} rows per statement, daily at {{runAtUtcHour}}:00 UTC",
+      "nextRun": "Next run",
+      "lastRun": "Last run",
+      "never": "never ran yet",
+      "dropped_one": "{{count}} partition dropped",
+      "dropped_other": "{{count}} partitions dropped",
+      "deleted": "deleted",
+      "nothingDeleted": "nothing to delete",
+      "confirmTitle": "Run retention now?",
+      "confirmWhy": "Drops raw-payload partitions older than the boundary and deletes rows past their retention in batches. Open episodes are never touched. The run is audited."
+    },
+    "failures": {
+      "title": "Failure queue",
+      "empty": "Nothing has failed permanently.",
+      "when": "When",
+      "source": "Source",
+      "type": "Type",
+      "attempts": "Attempts",
+      "error": "Last error",
+      "episode": "Episode",
+      "retry": "Retry"
+    }
   }
 }

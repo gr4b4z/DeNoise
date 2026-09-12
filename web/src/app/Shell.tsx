@@ -101,6 +101,13 @@ export function Shell() {
                     </Link>
                   </li>
                 )}
+                {can(me.data, P.hubHealthRead) && (
+                  <li>
+                    <Link to="/hub" className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }} data-testid="nav-hub">
+                      {t('nav.hub')}
+                    </Link>
+                  </li>
+                )}
                 {can(me.data, P.auditRead) && (
                   <li>
                     <Link to="/audit" search={{}} className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }} data-testid="nav-audit">
