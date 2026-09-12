@@ -15,7 +15,10 @@ public static class CoverageMethodTypes
 public sealed record CanaryMethod(TimeSpan ExpectedInterval, TimeSpan DelayedAfter, TimeSpan AlertAfter, TimeSpan UnavailableAfter, int RecoverySuccessesRequired);
 
 /// <summary>Parsed <c>cfg.integration.coverage</c>. <see cref="Canary"/> is null when no canary method is configured (coverage stays <c>unknown</c>, spec §12.4).</summary>
-public sealed record CoverageConfig(CanaryMethod? Canary, IReadOnlyList<string> HeartbeatIds, bool SuspendInactivityResolution)
+/// <summary>Periodic reachability check of the source API (spec §13.5): supporting evidence, degrades coverage on failure but never raises it.</summary>
+public sealed record ApiProbeMethod(TimeSpan Interval);
+
+public sealed record CoverageConfig(CanaryMethod? Canary, IReadOnlyList<string> HeartbeatIds, bool SuspendInactivityResolution, ApiProbeMethod? ApiProbe = null)
 {
     public static readonly CoverageConfig None = new(null, [], true);
 
@@ -42,6 +45,7 @@ public sealed record CoverageConfig(CanaryMethod? Canary, IReadOnlyList<string> 
         var coverage = root["coverage"] as JsonObject ?? root;
         CanaryMethod? canary = null;
         var heartbeats = new List<string>();
+        ApiProbeMethod? apiProbe = null;
         if (coverage["methods"] is JsonArray methods)
         {
             for (var i = 0; i < methods.Count; i++)
@@ -65,7 +69,12 @@ public sealed record CoverageConfig(CanaryMethod? Canary, IReadOnlyList<string> 
                         if (m["heartbeat_id"]?.ToString() is { Length: > 0 } hb) heartbeats.Add(hb);
                         break;
                     case CoverageMethodTypes.ApiProbe:
-                        break; // supporting only (spec §13.5); never raises coverage above degraded on its own
+                        {
+                            // supporting only (spec §13.5); never raises coverage above degraded on its own
+                            var interval = m["interval"] is JsonValue iv && TimeSpan.TryParse(iv.ToString(), System.Globalization.CultureInfo.InvariantCulture, out var ts) && ts >= TimeSpan.FromMinutes(1) ? ts : TimeSpan.FromMinutes(5);
+                            apiProbe = new ApiProbeMethod(interval);
+                            break;
+                        }
                     default:
                         errors.Add(new MappingValidationError($"{path}.type", "must be managed_canary, registered_heartbeat or api_probe"));
                         break;
@@ -74,6 +83,6 @@ public sealed record CoverageConfig(CanaryMethod? Canary, IReadOnlyList<string> 
         }
         var suspend = root["on_failure"] is not JsonObject of || of["suspend_inactivity_resolution"] is not JsonValue sv || !sv.TryGetValue<bool>(out var s) || s;
         if (errors.Count > 0) throw new MappingValidationException(errors);
-        return new CoverageConfig(canary, heartbeats, suspend);
+        return new CoverageConfig(canary, heartbeats, suspend, apiProbe);
     }
 }

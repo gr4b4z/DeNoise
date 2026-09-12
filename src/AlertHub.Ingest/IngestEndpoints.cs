@@ -26,7 +26,7 @@ public static class IngestEndpoints
     }
 
     private static async Task<Results<Accepted<IngestAcceptedResponse>, UnauthorizedHttpResult, StatusCodeHttpResult>> HandleAsync(
-        string integrationKeyId, HttpContext http, IIngestAuthenticator authenticator, IngestService ingest,
+        string integrationKeyId, HttpContext http, IIngestAuthenticator authenticator, IngestService ingest, IIngestSignatureVerifier signatures,
         IOptions<IngestOptions> options, AlertHubMetrics metrics, ILoggerFactory loggerFactory, CancellationToken ct)
     {
         var logger = loggerFactory.CreateLogger("AlertHub.Ingest");
@@ -74,6 +74,19 @@ public static class IngestEndpoints
             {
                 headers[name] = string.Join(",", values!);
             }
+        }
+
+        // Webhook signature (Atlas X-MMS-Signature and alike, 06 §2): an invalid signature is always refused; a missing one only when required.
+        var hmac = HmacConfig.Parse(integration.HmacConfig) ?? new HmacConfig();
+        var signatureHeaders = http.Request.Headers.TryGetValue(hmac.Header, out var sig) && sig.Count > 0
+            ? new Dictionary<string, string>(headers, StringComparer.OrdinalIgnoreCase) { [hmac.Header] = sig.ToString() }
+            : headers;
+        var verdict = signatures.Verify(integration, body, signatureHeaders);
+        if (verdict == SignatureVerdict.Invalid || (verdict == SignatureVerdict.Missing && hmac.Required))
+        {
+            metrics.IngestRejected.Add(1, new KeyValuePair<string, object?>("reason", verdict == SignatureVerdict.Invalid ? "bad_signature" : "missing_signature"));
+            logger.LogWarning("Signature {Verdict} for integration {IntegrationId} (trace {TraceId})", verdict, integration.IntegrationId, Activity.Current?.TraceId.ToString());
+            return TypedResults.Unauthorized();
         }
 
         try

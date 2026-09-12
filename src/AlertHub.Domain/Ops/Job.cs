@@ -22,6 +22,8 @@ public sealed class Job
     public string? ReservedBy { get; set; }
     public DateTimeOffset? ReservedUntil { get; set; }
     public string? LastError { get; set; }
+    /// <summary>Handler-written summary for jobs that report back (replay, spec §17.5); JSON.</summary>
+    public string? Result { get; set; }
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset UpdatedAt { get; set; }
 }

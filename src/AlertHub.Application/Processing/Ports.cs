@@ -9,6 +9,10 @@ namespace AlertHub.Application.Processing;
 public interface IRawEventReader
 {
     Task<RawEvent?> GetAsync(Guid eventId, DateTimeOffset receivedAt, CancellationToken ct = default);
+    /// <summary>Lookup without the partition key (preview by id); scans the integration's partitions.</summary>
+    Task<RawEvent?> FindAsync(Guid integrationId, Guid eventId, CancellationToken ct = default);
+    /// <summary>Raw events of an integration received in [from, to), oldest first — the historical replay selection.</summary>
+    Task<IReadOnlyList<(Guid EventId, DateTimeOffset ReceivedAt)>> ListAsync(Guid integrationId, DateTimeOffset from, DateTimeOffset to, int limit, CancellationToken ct = default);
 }
 
 /// <summary>Active mapping versions of an integration, in evaluation order (07 §1 <c>applies_when</c>: first match wins).</summary>
@@ -105,7 +109,14 @@ public sealed record StateQueryResult(StateQueryOutcome Outcome, string? Detail 
 public interface IStateQueryAdapter
 {
     Task<StateQueryResult> QueryAsync(Domain.Integrations.Integration integration, Episode episode, CancellationToken ct = default);
+
+    /// <summary>Reachability probe of the source API (<c>api_probe</c> coverage method, spec §13.5): supporting evidence only.</summary>
+    Task<ProbeResult> ProbeAsync(Domain.Integrations.Integration integration, CancellationToken ct = default)
+        => Task.FromResult(new ProbeResult(false, false, "no api probe for this integration type"));
 }
+
+/// <summary>Outcome of an <c>api_probe</c>: <see cref="Supported"/> false when the type has no adapter or no credentials.</summary>
+public sealed record ProbeResult(bool Supported, bool Ok, string? Detail);
 
 public sealed class NoStateQueryAdapter : IStateQueryAdapter
 {

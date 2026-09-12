@@ -106,6 +106,27 @@ public sealed class CoverageEvaluator(
         return changed;
     }
 
+    /// <summary>
+    /// Records an <c>api_probe</c> outcome (spec §13.5). A failed probe is an explicit coverage failure like a missed bound
+    /// heartbeat; a successful one proves reachability only and never raises coverage (the canary or heartbeat does that).
+    /// </summary>
+    public async Task<IReadOnlyList<Episode>> OnApiProbeAsync(Integration integration, ProbeResult probe, CancellationToken ct)
+    {
+        if (!probe.Supported || probe.Ok) return [];
+        try
+        {
+            var episodes = await uow.RunAsync<IReadOnlyList<Episode>>(session => OnBoundHeartbeatAsync(integration.IntegrationId, false, 1, session, time.GetUtcNow(), ct), ct);
+            foreach (var episode in episodes) await publisher.PublishAsync(episode, ct);
+            await FlushAnnouncementsAsync(ct);
+            return episodes;
+        }
+        catch (ProcessingConflictException ex)
+        {
+            logger.LogDebug(ex, "api probe result for {IntegrationId} lost a race; next probe retries", integration.IntegrationId);
+            return [];
+        }
+    }
+
     public async Task<CoverageEvaluation?> TickAsync(Integration integration, CancellationToken ct)
     {
         var config = CoverageConfig.Parse(integration.Coverage);

@@ -32,6 +32,7 @@ if (roles.Scheduler)
     builder.Services.AddHostedService<QueueReaperWorker>();
     builder.Services.AddHostedService<CoverageCheckWorker>();
     builder.Services.AddHostedService<HeartbeatCheckWorker>();
+    builder.Services.AddHostedService<ApiProbeWorker>();
     builder.Services.AddOptions<DeadmanOptions>().Bind(builder.Configuration.GetSection(DeadmanOptions.Section));
     builder.Services.AddHttpClient(DeadmanPingWorker.Component);
     builder.Services.AddHostedService<DeadmanPingWorker>();

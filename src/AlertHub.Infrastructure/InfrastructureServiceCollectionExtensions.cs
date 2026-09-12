@@ -90,7 +90,13 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IJobHandler, AlertHub.Application.Lifecycle.AdminExpiryJobHandler>();
         services.AddScoped<IJobHandler, AlertHub.Application.Lifecycle.InformationalExpiryJobHandler>();
         services.AddScoped<IPolicyValidator, AlertHub.Application.Lifecycle.LifecyclePolicyValidator>();
-        services.TryAddScoped<IStateQueryAdapter, NoStateQueryAdapter>();
+        services.AddSingleton<Integrations.AtlasStateQueryAdapter>();
+        services.TryAddScoped<IStateQueryAdapter, Integrations.StateQueryAdapterRouter>();
+        services.AddScoped<AlertHub.Application.Replay.IMappingFailureStore, Processing.EfMappingFailureStore>();
+        services.AddScoped<AlertHub.Application.Replay.ReplayService>();
+        services.AddScoped<IJobHandler, AlertHub.Application.Replay.ReplayJobHandler>();
+        services.AddScoped<AlertHub.Application.Mapping.MappingPreviewService>();
+        services.AddSingleton<AlertHub.Application.Ingest.IIngestSignatureVerifier, AlertHub.Application.Ingest.IngestSignatureVerifier>();
         services.AddScoped<AlertHub.Application.Coverage.CoverageEvaluator>();
         services.AddScoped<AlertHub.Application.Coverage.ICoverageSignalSink>(sp => sp.GetRequiredService<AlertHub.Application.Coverage.CoverageEvaluator>());
         services.AddScoped<IPolicyImpactQueries, ReadModels.PolicyImpactQueries>();

@@ -621,7 +621,7 @@ export interface paths {
             cookie?: never;
         };
         get: operations["GetIntegration"];
-        put?: never;
+        put: operations["UpdateIntegration"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1109,6 +1109,166 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/reference-mappings/{type}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetReferenceMappings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{id}/mappings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListMappingVersions"];
+        put?: never;
+        post: operations["CreateMappingVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{id}/mappings/{mappingId}/{version}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetMappingVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{id}/mappings/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PreviewMappingDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{id}/mappings/{mappingId}/{version}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PreviewMappingVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{id}/mappings/{mappingId}/{version}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ActivateMappingVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{id}/failures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListMappingFailures"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{id}/failures/{failureId}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DismissMappingFailure"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StartReplay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/replay/{jobId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetReplay"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1122,6 +1282,12 @@ export interface components {
             teamId: null | string;
             /** Format: uuid */
             userId: null | string;
+        };
+        AtlasApiCredentials: {
+            groupId: string;
+            publicKey: string;
+            privateKey: string;
+            baseUrl?: null | string;
         };
         BulkItemResult: {
             /** Format: uuid */
@@ -1181,6 +1347,20 @@ export interface components {
             accessScope: string;
             /** Format: uuid */
             ownerTeamId: null | string;
+            hmacSecret?: null | string;
+            hmac?: null | components["schemas"]["HmacSettings"];
+            capabilities?: null | string;
+            coverage?: null | string;
+            profileDefaults?: null | string;
+        };
+        CreateMappingRequest: {
+            yaml: string;
+            name?: null | string;
+            /** Format: int32 */
+            order?: null | number;
+            /** Format: uuid */
+            mappingId?: null | string;
+            samples?: unknown;
         };
         CreatePolicyRequest: {
             yaml: string;
@@ -1477,6 +1657,16 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        HmacSettings: {
+            /** @default sha1 */
+            algorithm: string;
+            /** @default X-MMS-Signature */
+            header: string;
+            /** @default base64 */
+            encoding: string;
+            /** @default false */
+            required: boolean;
+        };
         HubComponent: {
             component: string;
             instance: string;
@@ -1566,6 +1756,22 @@ export interface components {
             version: number;
             /** Format: date-time */
             activatedAt: string;
+            /** @default false */
+            hmacConfigured: boolean;
+            hmac?: null | components["schemas"]["HmacSettings"];
+            /** @default {} */
+            capabilities: string;
+            /** @default {} */
+            coverage: string;
+            /** @default {} */
+            profileDefaults: string;
+            ipAllowList?: null | string[];
+            /** @default false */
+            stateQuery: boolean;
+            atlasGroupId?: null | string;
+            atlasBaseUrl?: null | string;
+            /** @default false */
+            atlasCredentials: boolean;
         };
         JsonElement: unknown;
         LifecycleDto: {
@@ -1581,6 +1787,75 @@ export interface components {
             password: string;
             /** @default false */
             keepSignedIn: boolean;
+        };
+        MappingFailureDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            eventId: string;
+            /** Format: date-time */
+            receivedAt: string;
+            /** Format: int32 */
+            mappingVersion: null | number;
+            error: string;
+            field: null | string;
+            quarantined: boolean;
+            /** Format: date-time */
+            resolvedAt: null | string;
+            rawExcerpt: null | string;
+        };
+        MappingPreviewItemDto: {
+            source: string;
+            applies: boolean;
+            ok: boolean;
+            error: null | string;
+            errorField: null | string;
+            fields: {
+                [key: string]: string;
+            };
+            identity: components["schemas"]["IdentityComponentDto"][];
+            fingerprint: null | string;
+            deliveryKey: null | string;
+            lifecycleProfileHint: null | string;
+            routing: null | components["schemas"]["RoutingPreviewDto"];
+        };
+        MappingPreviewRequest: {
+            rawEventIds?: null | string[];
+            body?: unknown;
+            headers?: null | {
+                [key: string]: string;
+            };
+            yaml?: null | string;
+            /** @default true */
+            includeRouting: boolean;
+        };
+        MappingPreviewResponse: {
+            /** Format: int32 */
+            mappingVersion: number;
+            items: components["schemas"]["MappingPreviewItemDto"][];
+        };
+        MappingVersionDto: {
+            /** Format: uuid */
+            mappingId: string;
+            /** Format: int32 */
+            version: number;
+            /** Format: uuid */
+            integrationId: string;
+            name: null | string;
+            /** Format: int32 */
+            order: number;
+            active: boolean;
+            /** Format: date-time */
+            activatedAt: null | string;
+            /** Format: date-time */
+            deactivatedAt: null | string;
+            /** Format: int32 */
+            identityVersion: number;
+            createdBy: null | string;
+            /** Format: date-time */
+            createdAt: string;
+            yaml: null | string;
+            samples: null | components["schemas"]["JsonElement"];
         };
         MeResponse: {
             /** Format: uuid */
@@ -1694,6 +1969,13 @@ export interface components {
             /** Format: date-time */
             oldestPending: null | string;
         };
+        ReferenceMappingDto: {
+            name: string;
+            /** Format: int32 */
+            order: number;
+            yaml: string;
+            samples: components["schemas"]["JsonElement"];
+        };
         RelatedEpisodes: {
             /** Format: uuid */
             previousEpisodeId: null | string;
@@ -1717,6 +1999,22 @@ export interface components {
             episodeId?: null | string;
             sampleEvent?: unknown;
         };
+        ReplayStatus: {
+            /** Format: uuid */
+            jobId: string;
+            status: string;
+            mode: string;
+            /** Format: uuid */
+            integrationId: string;
+            /** Format: int32 */
+            attempts: number;
+            lastError: null | string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            result: null | components["schemas"]["JsonElement"];
+        };
         RestoreRequest: {
             reason: null | string;
         };
@@ -1738,6 +2036,16 @@ export interface components {
             ruleId: null | string;
             ruleName: null | string;
             why: null | string;
+        };
+        RoutingPreviewDto: {
+            /** Format: uuid */
+            teamId: null | string;
+            teamName: null | string;
+            /** Format: uuid */
+            ruleId: null | string;
+            ruleName: null | string;
+            correctionRequired: boolean;
+            why: string;
         };
         SavedFilterDto: {
             /** Format: uuid */
@@ -1777,6 +2085,23 @@ export interface components {
             /** Format: date-time */
             until: string;
             reason: string;
+        };
+        StartReplayRequest: {
+            mode: string;
+            /** Format: uuid */
+            integrationId: string;
+            eventIds?: null | string[];
+            /** Format: date-time */
+            from?: null | string;
+            /** Format: date-time */
+            to?: null | string;
+            /** Format: int32 */
+            mappingVersion?: null | number;
+            /**
+             * Format: int32
+             * @default 5000
+             */
+            limit: number;
         };
         TeamOverview: {
             team: components["schemas"]["TeamSummary"];
@@ -1886,6 +2211,25 @@ export interface components {
             /** @default false */
             clearBodyTemplate: boolean;
             active?: null | boolean;
+        };
+        UpdateIntegrationRequest: {
+            name?: null | string;
+            accessScope?: null | string;
+            /** Format: uuid */
+            ownerTeamId?: null | string;
+            /** @default false */
+            clearOwnerTeam: boolean;
+            capabilities?: null | string;
+            coverage?: null | string;
+            profileDefaults?: null | string;
+            ipAllowList?: null | string[];
+            hmacSecret?: null | string;
+            hmac?: null | components["schemas"]["HmacSettings"];
+            /** @default false */
+            clearHmac: boolean;
+            atlasApi?: null | components["schemas"]["AtlasApiCredentials"];
+            active?: null | boolean;
+            shadow?: null | boolean;
         };
         UpdateUserRequest: {
             displayName: null | string;
@@ -3436,6 +3780,15 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     GetIntegration: {
@@ -3464,6 +3817,66 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    UpdateIntegration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateIntegrationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationSummary"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
             };
         };
     };
@@ -3515,6 +3928,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["IntegrationCreatedResponse"];
                 };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -4712,6 +5132,399 @@ export interface operations {
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
+            };
+        };
+    };
+    GetReferenceMappings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferenceMappingDto"][];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ListMappingVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MappingVersionDto"][];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CreateMappingVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMappingRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MappingVersionDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    GetMappingVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                mappingId: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MappingVersionDto"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PreviewMappingDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MappingPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MappingPreviewResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PreviewMappingVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                mappingId: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MappingPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MappingPreviewResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ActivateMappingVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                mappingId: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ListMappingFailures: {
+        parameters: {
+            query?: {
+                all?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MappingFailureDto"][];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DismissMappingFailure: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                failureId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StartReplay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartReplayRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplayStatus"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    GetReplay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                jobId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplayStatus"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

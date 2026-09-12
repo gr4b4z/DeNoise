@@ -48,6 +48,18 @@ public sealed class JobQueue(AlertHubDbContext db, TimeProvider time) : IJobQueu
         return rows == 1;
     }
 
+    public async Task<bool> RecordResultAsync(Guid jobId, string workerId, string resultJson, CancellationToken ct = default)
+    {
+        var now = time.GetUtcNow();
+        var rows = await db.Database.ExecuteSqlInterpolatedAsync($"""
+            UPDATE ops.job SET result = {resultJson}::jsonb, updated_at = {now}
+            WHERE job_id = {jobId} AND status = 'reserved' AND reserved_by = {workerId} AND reserved_until > {now}
+            """, ct);
+        return rows == 1;
+    }
+
+    public Task<Job?> GetAsync(Guid jobId, CancellationToken ct = default) => db.Jobs.AsNoTracking().SingleOrDefaultAsync(j => j.JobId == jobId, ct);
+
     public async Task<JobFailureOutcome> FailAsync(Guid jobId, string workerId, string error, CancellationToken ct = default)
     {
         var now = time.GetUtcNow();

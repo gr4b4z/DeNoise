@@ -72,16 +72,39 @@ public static class ConfigEndpoints
             if (i is null || !http.Principal().CanSeeScope(i.AccessScope)) return Results.NotFound();
             return Results.Ok(await health.IntegrationAsync(i, http.RequestAborted));
         }).RequirePermission(Permissions.IntegrationRead).WithName("GetIntegrationHealth").Produces<IntegrationHealth>().Produces(404);
-        integrations.MapPost("", async (CreateIntegrationRequest request, HttpContext http, IntegrationService service) =>
+        integrations.MapPost("", async (CreateIntegrationRequest request, HttpContext http, IntegrationService service, Application.Mapping.MappingService mappings) =>
         {
-            var created = await service.CreateAsync(new CreateIntegration(request.Name, request.Type, request.AccessScope, request.OwnerTeamId), Actor(http), http.RequestAborted);
+            if (!http.Principal().CanSeeScope(request.AccessScope)) throw new ForbiddenException("access scope is not one of yours");
+            var hmac = request.Hmac is null ? null : new Application.Ingest.HmacConfig(request.Hmac.Algorithm, request.Hmac.Header, request.Hmac.Encoding, request.Hmac.Required);
+            var created = await service.CreateAsync(new CreateIntegration(request.Name, request.Type, request.AccessScope, request.OwnerTeamId, request.Capabilities, request.Coverage, request.ProfileDefaults, null, request.HmacSecret, hmac), Actor(http), http.RequestAborted);
+            // Reference mappings (07 §2–3) are seeded active so the source is interpreted from the first event; the wizard edits them as new versions.
+            await mappings.SeedReferenceAsync(created.Integration, Actor(http), http.RequestAborted);
             return Results.Created($"/api/v1/integrations/{created.Integration.IntegrationId}", new IntegrationCreatedResponse(ToSummary(created.Integration), created.IngestPath, created.IngestToken));
-        }).RequirePermission(Permissions.IntegrationManage).AddEndpointFilter<CsrfFilter>().WithName("CreateIntegration").Produces<IntegrationCreatedResponse>(201).ProducesProblem(400);
-        integrations.MapPost("/{id:guid}/rotate-ingest-token", async (Guid id, HttpContext http, IntegrationService service) =>
+        }).RequirePermission(Permissions.IntegrationManage).AddEndpointFilter<CsrfFilter>().WithName("CreateIntegration").Produces<IntegrationCreatedResponse>(201).ProducesProblem(400).ProducesProblem(403);
+        integrations.MapPut("/{id:guid}", async (Guid id, UpdateIntegrationRequest request, HttpContext http, IIntegrationRepository repo, IntegrationService service, ISecretProtector protector) =>
         {
+            var current = await repo.GetCurrentAsync(id, http.RequestAborted);
+            if (current is null || !http.Principal().CanSeeScope(current.AccessScope)) return Results.NotFound();
+            if (request.AccessScope is { } newScope && !http.Principal().CanSeeScope(newScope)) throw new ForbiddenException("access scope is not one of yours");
+            var capabilities = request.Capabilities;
+            if (request.AtlasApi is { } atlas)
+            {
+                if (current.Type != IntegrationTypes.Atlas) throw new ArgumentException("Atlas API credentials apply to atlas integrations only");
+                capabilities = Infrastructure.Integrations.AtlasCapabilities.Configure(capabilities ?? current.Capabilities, atlas.GroupId, atlas.PublicKey, atlas.PrivateKey, atlas.BaseUrl, protector);
+            }
+            var hmac = request.Hmac is null ? null : new Application.Ingest.HmacConfig(request.Hmac.Algorithm, request.Hmac.Header, request.Hmac.Encoding, request.Hmac.Required);
+            var updated = await service.UpdateAsync(id, IfMatchFilter.Version(http), new UpdateIntegration(request.Name, request.AccessScope, request.OwnerTeamId, request.ClearOwnerTeam, capabilities, request.Coverage, request.ProfileDefaults, request.IpAllowList,
+                request.HmacSecret, hmac, request.ClearHmac, request.Active, request.Shadow), Actor(http), http.RequestAborted);
+            http.Response.Headers.ETag = $"\"{updated.Version}\"";
+            return Results.Ok(ToSummary(updated));
+        }).RequirePermission(Permissions.IntegrationManage).AddEndpointFilter<CsrfFilter>().AddEndpointFilter<IfMatchFilter>().WithName("UpdateIntegration").Produces<IntegrationSummary>().ProducesProblem(400).Produces(404).ProducesProblem(409).ProducesProblem(428);
+        integrations.MapPost("/{id:guid}/rotate-ingest-token", async (Guid id, HttpContext http, IIntegrationRepository repo, IntegrationService service) =>
+        {
+            var existing = await repo.GetCurrentAsync(id, http.RequestAborted);
+            if (existing is null || !http.Principal().CanSeeScope(existing.AccessScope)) return Results.NotFound();
             var rotated = await service.RotateIngestTokenAsync(id, Actor(http), http.RequestAborted);
             return Results.Ok(new IntegrationCreatedResponse(ToSummary(rotated.Integration), rotated.IngestPath, rotated.IngestToken));
-        }).RequirePermission(Permissions.IntegrationManage).AddEndpointFilter<CsrfFilter>().WithName("RotateIngestToken").Produces<IntegrationCreatedResponse>();
+        }).RequirePermission(Permissions.IntegrationManage).AddEndpointFilter<CsrfFilter>().WithName("RotateIngestToken").Produces<IntegrationCreatedResponse>().Produces(404);
 
         var policies = app.MapGroup("/api/v1/policies/{kind}").WithTags("Policies").RequireAuthorization().AddEndpointFilter<MustChangePasswordFilter>();
         policies.MapGet("", async (string kind, HttpContext http, IPolicyRepository repo) =>
@@ -176,7 +199,14 @@ public static class ConfigEndpoints
         return new Application.Abstractions.Actor(Domain.Audit.ActorTypes.User, p.UserId.ToString(), p.Username, http.CorrelationId(), http.ClientIp());
     }
 
-    private static IntegrationSummary ToSummary(Integration i) => new(i.IntegrationId, i.Name, i.Type, i.AccessScope, i.OwnerTeamId, i.IngestKeyId, i.Active, i.Shadow, i.Version, i.ActivatedAt);
+    internal static IntegrationSummary ToSummary(Integration i)
+    {
+        var hmac = Application.Ingest.HmacConfig.Parse(i.HmacConfig);
+        var (groupId, baseUrl, hasCredentials) = Infrastructure.Integrations.AtlasCapabilities.Describe(i.Capabilities);
+        return new(i.IntegrationId, i.Name, i.Type, i.AccessScope, i.OwnerTeamId, i.IngestKeyId, i.Active, i.Shadow, i.Version, i.ActivatedAt,
+            i.HmacSecretEnc is not null, hmac is null ? null : new HmacSettings(hmac.Algorithm, hmac.Header, hmac.Encoding, hmac.Required), i.Capabilities, i.Coverage, i.ProfileDefaults, i.IpAllowList,
+            i.Capabilities.Contains("\"state_query\":true", StringComparison.Ordinal) || i.Capabilities.Contains("\"state_query\": true", StringComparison.Ordinal), groupId, baseUrl, hasCredentials);
+    }
 
     private static PolicyVersionDto ToDto(PolicyVersion v, bool includeYaml) => new(v.PolicyId, v.Kind, v.Version, v.Name, v.IsActive, v.ActivatedAt, v.DeactivatedAt, v.CreatedBy, v.CreatedAt, includeYaml ? v.SourceYaml : null);
 

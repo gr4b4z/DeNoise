@@ -8,6 +8,8 @@ using AlertHub.Application.Processing;
 using AlertHub.Domain.Audit;
 using AlertHub.Domain.Common;
 
+using AlertHub.Domain.Integrations;
+
 namespace AlertHub.Application.Mapping;
 
 public sealed record CreateMappingVersion(Guid IntegrationId, string Yaml, Guid? MappingId = null, string? Name = null, int Order = 100, IReadOnlyList<MappingSample>? Samples = null);
@@ -62,6 +64,25 @@ public sealed class MappingService(IMappingRepository repository, IIntegrationRe
         });
         await uow.CommitAsync(ct);
         return stored;
+    }
+
+    /// <summary>
+    /// Seeds the reference mappings of the integration's type (07 §2–3) as active version 1 each, once: an Azure Monitor or Atlas
+    /// integration interprets events before anyone edits a mapping. Returns how many mappings were created.
+    /// </summary>
+    public async Task<int> SeedReferenceAsync(Integration integration, Actor actor, CancellationToken ct = default)
+    {
+        var references = ReferenceMappings.For(integration.Type);
+        if (references.Count == 0) return 0;
+        if ((await repository.ListAsync(integration.IntegrationId, ct)).Count > 0) return 0;
+        var created = 0;
+        foreach (var reference in references)
+        {
+            var version = await CreateVersionAsync(new CreateMappingVersion(integration.IntegrationId, reference.Yaml, Name: reference.Name, Order: reference.Order, Samples: reference.Samples), actor, ct);
+            await ActivateAsync(version.MappingId, version.Version, actor, ct);
+            created++;
+        }
+        return created;
     }
 
     /// <summary>Activates a version after re-running its samples; deactivates the previously active version of the same mapping id.</summary>

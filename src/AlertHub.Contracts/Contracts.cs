@@ -69,8 +69,34 @@ public sealed record TeamOverview(TeamSummary Team, int Unassigned, int AckOverd
 public sealed record SavedFilterDto(Guid Id, string Name, string Query);
 public sealed record SaveFilterRequest(string Name, string Query);
 
-public sealed record IntegrationSummary(Guid Id, string Name, string Type, string AccessScope, Guid? OwnerTeamId, string IngestKeyId, bool Active, bool Shadow, int Version, DateTimeOffset ActivatedAt);
-public sealed record CreateIntegrationRequest(string Name, string Type, string AccessScope, Guid? OwnerTeamId);
+public sealed record IntegrationSummary(Guid Id, string Name, string Type, string AccessScope, Guid? OwnerTeamId, string IngestKeyId, bool Active, bool Shadow, int Version, DateTimeOffset ActivatedAt,
+    bool HmacConfigured = false, HmacSettings? Hmac = null, string Capabilities = "{}", string Coverage = "{}", string ProfileDefaults = "{}", IReadOnlyList<string>? IpAllowList = null,
+    bool StateQuery = false, string? AtlasGroupId = null, string? AtlasBaseUrl = null, bool AtlasCredentials = false);
+/// <summary>Webhook signature settings (07 §3): algorithm sha1|sha256, header name, encoding base64|hex, whether a missing signature is refused.</summary>
+public sealed record HmacSettings(string Algorithm = "sha1", string Header = "X-MMS-Signature", string Encoding = "base64", bool Required = false);
+public sealed record CreateIntegrationRequest(string Name, string Type, string AccessScope, Guid? OwnerTeamId,
+    string? HmacSecret = null, HmacSettings? Hmac = null, string? Capabilities = null, string? Coverage = null, string? ProfileDefaults = null);
+/// <summary>Atlas Admin API access for <c>queryable_state</c> and <c>api_probe</c>; the keys are stored encrypted and never returned.</summary>
+public sealed record AtlasApiCredentials(string GroupId, string PublicKey, string PrivateKey, string? BaseUrl = null);
+public sealed record UpdateIntegrationRequest(string? Name = null, string? AccessScope = null, Guid? OwnerTeamId = null, bool ClearOwnerTeam = false,
+    string? Capabilities = null, string? Coverage = null, string? ProfileDefaults = null, string[]? IpAllowList = null,
+    string? HmacSecret = null, HmacSettings? Hmac = null, bool ClearHmac = false, AtlasApiCredentials? AtlasApi = null, bool? Active = null, bool? Shadow = null);
+
+public sealed record MappingVersionDto(Guid MappingId, int Version, Guid IntegrationId, string? Name, int Order, bool Active, DateTimeOffset? ActivatedAt, DateTimeOffset? DeactivatedAt,
+    int IdentityVersion, string? CreatedBy, DateTimeOffset CreatedAt, string? Yaml, System.Text.Json.JsonElement? Samples);
+/// <summary><c>samples</c>: <c>[{ name?, body, headers?, expected: { field: value } }]</c> — verified on save and again on activation (07 §1).</summary>
+public sealed record CreateMappingRequest(string Yaml, string? Name = null, int? Order = null, Guid? MappingId = null, System.Text.Json.JsonElement? Samples = null);
+public sealed record ReferenceMappingDto(string Name, int Order, string Yaml, System.Text.Json.JsonElement Samples);
+/// <summary>Preview inputs: stored raw events by id and/or one pasted body; <c>yaml</c> previews an unsaved draft instead of a stored version.</summary>
+public sealed record MappingPreviewRequest(Guid[]? RawEventIds = null, System.Text.Json.JsonElement? Body = null, Dictionary<string, string>? Headers = null, string? Yaml = null, bool IncludeRouting = true);
+public sealed record RoutingPreviewDto(Guid? TeamId, string? TeamName, Guid? RuleId, string? RuleName, bool CorrectionRequired, string Why);
+public sealed record MappingPreviewItemDto(string Source, bool Applies, bool Ok, string? Error, string? ErrorField, Dictionary<string, string?> Fields,
+    IReadOnlyList<IdentityComponentDto> Identity, string? Fingerprint, string? DeliveryKey, string? LifecycleProfileHint, RoutingPreviewDto? Routing);
+public sealed record MappingPreviewResponse(int MappingVersion, IReadOnlyList<MappingPreviewItemDto> Items);
+public sealed record MappingFailureDto(Guid Id, Guid EventId, DateTimeOffset ReceivedAt, int? MappingVersion, string Error, string? Field, bool Quarantined, DateTimeOffset? ResolvedAt, string? RawExcerpt);
+/// <summary><c>mode</c>: <c>retry_failed</c> (quarantined events, optionally a subset) or <c>historical</c> (raw events in [from, to)); <c>preview</c> is the synchronous mapping preview.</summary>
+public sealed record StartReplayRequest(string Mode, Guid IntegrationId, Guid[]? EventIds = null, DateTimeOffset? From = null, DateTimeOffset? To = null, int? MappingVersion = null, int Limit = 5000);
+public sealed record ReplayStatus(Guid JobId, string Status, string Mode, Guid IntegrationId, int Attempts, string? LastError, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, System.Text.Json.JsonElement? Result);
 public sealed record IntegrationCreatedResponse(IntegrationSummary Integration, string IngestPath, string IngestToken);
 
 public sealed record PolicyVersionDto(Guid Id, string Kind, int Version, string? Name, bool Active, DateTimeOffset? ActivatedAt, DateTimeOffset? DeactivatedAt, string? CreatedBy, DateTimeOffset CreatedAt, string? Yaml);

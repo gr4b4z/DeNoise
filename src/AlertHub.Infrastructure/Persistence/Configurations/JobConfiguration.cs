@@ -25,6 +25,7 @@ internal sealed class JobConfiguration : IEntityTypeConfiguration<Job>
         b.Property(x => x.ReservedBy).HasColumnName("reserved_by");
         b.Property(x => x.ReservedUntil).HasColumnName("reserved_until");
         b.Property(x => x.LastError).HasColumnName("last_error");
+        b.Property(x => x.Result).HasColumnName("result").HasColumnType("jsonb");
         b.Property(x => x.CreatedAt).HasColumnName("created_at");
         b.Property(x => x.UpdatedAt).HasColumnName("updated_at");
 

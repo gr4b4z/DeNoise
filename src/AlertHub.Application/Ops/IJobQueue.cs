@@ -29,6 +29,12 @@ public interface IJobQueue
 
     /// <summary>Re-queues a job from the failure queue (operator action).</summary>
     Task<bool> RetryFailedAsync(Guid jobId, CancellationToken ct = default);
+
+    /// <summary>Stores a handler's result summary on a job it still holds (the reservation is checked); false when lost.</summary>
+    Task<bool> RecordResultAsync(Guid jobId, string workerId, string resultJson, CancellationToken ct = default);
+
+    /// <summary>Reads one job (status, attempts, error, result) — replay status endpoint.</summary>
+    Task<Job?> GetAsync(Guid jobId, CancellationToken ct = default);
 }
 
 public enum JobFailureOutcome

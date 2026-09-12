@@ -2252,6 +2252,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2294,6 +2304,86 @@
           },
           "404": {
             "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Integrations"
+        ],
+        "operationId": "UpdateIntegration",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIntegrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Precondition Required",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2375,6 +2465,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         },
         "security": [
@@ -4270,6 +4363,627 @@
           }
         ]
       }
+    },
+    "/api/v1/integrations/reference-mappings/{type}": {
+      "get": {
+        "tags": [
+          "Mappings"
+        ],
+        "operationId": "GetReferenceMappings",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReferenceMappingDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/{id}/mappings": {
+      "get": {
+        "tags": [
+          "Mappings"
+        ],
+        "operationId": "ListMappingVersions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MappingVersionDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Mappings"
+        ],
+        "operationId": "CreateMappingVersion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMappingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MappingVersionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/{id}/mappings/{mappingId}/{version}": {
+      "get": {
+        "tags": [
+          "Mappings"
+        ],
+        "operationId": "GetMappingVersion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "mappingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MappingVersionDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/{id}/mappings/preview": {
+      "post": {
+        "tags": [
+          "Mappings"
+        ],
+        "operationId": "PreviewMappingDraft",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MappingPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MappingPreviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/{id}/mappings/{mappingId}/{version}/preview": {
+      "post": {
+        "tags": [
+          "Mappings"
+        ],
+        "operationId": "PreviewMappingVersion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "mappingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MappingPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MappingPreviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/{id}/mappings/{mappingId}/{version}/activate": {
+      "post": {
+        "tags": [
+          "Mappings"
+        ],
+        "operationId": "ActivateMappingVersion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "mappingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/{id}/failures": {
+      "get": {
+        "tags": [
+          "Mappings"
+        ],
+        "operationId": "ListMappingFailures",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "all",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MappingFailureDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/{id}/failures/{failureId}/dismiss": {
+      "post": {
+        "tags": [
+          "Mappings"
+        ],
+        "operationId": "DismissMappingFailure",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "failureId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/replay": {
+      "post": {
+        "tags": [
+          "Replay"
+        ],
+        "operationId": "StartReplay",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartReplayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/replay/{jobId}": {
+      "get": {
+        "tags": [
+          "Replay"
+        ],
+        "operationId": "GetReplay",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -4303,6 +5017,31 @@
               "string"
             ],
             "format": "uuid"
+          }
+        }
+      },
+      "AtlasApiCredentials": {
+        "required": [
+          "groupId",
+          "publicKey",
+          "privateKey"
+        ],
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string"
+          },
+          "publicKey": {
+            "type": "string"
+          },
+          "privateKey": {
+            "type": "string"
+          },
+          "baseUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -4574,7 +5313,73 @@
               "string"
             ],
             "format": "uuid"
+          },
+          "hmacSecret": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "hmac": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/HmacSettings"
+              }
+            ]
+          },
+          "capabilities": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "coverage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "profileDefaults": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
+        }
+      },
+      "CreateMappingRequest": {
+        "required": [
+          "yaml"
+        ],
+        "type": "object",
+        "properties": {
+          "yaml": {
+            "type": "string"
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "order": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "mappingId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "samples": {}
         }
       },
       "CreatePolicyRequest": {
@@ -5807,6 +6612,27 @@
           }
         }
       },
+      "HmacSettings": {
+        "type": "object",
+        "properties": {
+          "algorithm": {
+            "type": "string",
+            "default": "sha1"
+          },
+          "header": {
+            "type": "string",
+            "default": "X-MMS-Signature"
+          },
+          "encoding": {
+            "type": "string",
+            "default": "base64"
+          },
+          "required": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
       "HubComponent": {
         "required": [
           "component",
@@ -6112,6 +6938,61 @@
           "activatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "hmacConfigured": {
+            "type": "boolean",
+            "default": false
+          },
+          "hmac": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/HmacSettings"
+              }
+            ]
+          },
+          "capabilities": {
+            "type": "string",
+            "default": "{}"
+          },
+          "coverage": {
+            "type": "string",
+            "default": "{}"
+          },
+          "profileDefaults": {
+            "type": "string",
+            "default": "{}"
+          },
+          "ipAllowList": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "stateQuery": {
+            "type": "boolean",
+            "default": false
+          },
+          "atlasGroupId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "atlasBaseUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "atlasCredentials": {
+            "type": "boolean",
+            "default": false
           }
         }
       },
@@ -6166,6 +7047,288 @@
           "keepSignedIn": {
             "type": "boolean",
             "default": false
+          }
+        }
+      },
+      "MappingFailureDto": {
+        "required": [
+          "id",
+          "eventId",
+          "receivedAt",
+          "mappingVersion",
+          "error",
+          "field",
+          "quarantined",
+          "resolvedAt",
+          "rawExcerpt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "mappingVersion": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "error": {
+            "type": "string"
+          },
+          "field": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "quarantined": {
+            "type": "boolean"
+          },
+          "resolvedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "rawExcerpt": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "MappingPreviewItemDto": {
+        "required": [
+          "source",
+          "applies",
+          "ok",
+          "error",
+          "errorField",
+          "fields",
+          "identity",
+          "fingerprint",
+          "deliveryKey",
+          "lifecycleProfileHint",
+          "routing"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "applies": {
+            "type": "boolean"
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errorField": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "identity": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IdentityComponentDto"
+            }
+          },
+          "fingerprint": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "deliveryKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lifecycleProfileHint": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "routing": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RoutingPreviewDto"
+              }
+            ]
+          }
+        }
+      },
+      "MappingPreviewRequest": {
+        "type": "object",
+        "properties": {
+          "rawEventIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "body": {},
+          "headers": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "yaml": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "includeRouting": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      },
+      "MappingPreviewResponse": {
+        "required": [
+          "mappingVersion",
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "mappingVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MappingPreviewItemDto"
+            }
+          }
+        }
+      },
+      "MappingVersionDto": {
+        "required": [
+          "mappingId",
+          "version",
+          "integrationId",
+          "name",
+          "order",
+          "active",
+          "activatedAt",
+          "deactivatedAt",
+          "identityVersion",
+          "createdBy",
+          "createdAt",
+          "yaml",
+          "samples"
+        ],
+        "type": "object",
+        "properties": {
+          "mappingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "integrationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "activatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "deactivatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "identityVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdBy": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "yaml": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "samples": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
           }
         }
       },
@@ -6618,6 +7781,30 @@
           }
         }
       },
+      "ReferenceMappingDto": {
+        "required": [
+          "name",
+          "order",
+          "yaml",
+          "samples"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "yaml": {
+            "type": "string"
+          },
+          "samples": {
+            "$ref": "#/components/schemas/JsonElement"
+          }
+        }
+      },
       "RelatedEpisodes": {
         "required": [
           "previousEpisodeId",
@@ -6705,6 +7892,64 @@
           "sampleEvent": {}
         }
       },
+      "ReplayStatus": {
+        "required": [
+          "jobId",
+          "status",
+          "mode",
+          "integrationId",
+          "attempts",
+          "lastError",
+          "createdAt",
+          "updatedAt",
+          "result"
+        ],
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "integrationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastError": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "result": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          }
+        }
+      },
       "RestoreRequest": {
         "required": [
           "reason"
@@ -6789,6 +8034,51 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "RoutingPreviewDto": {
+        "required": [
+          "teamId",
+          "teamName",
+          "ruleId",
+          "ruleName",
+          "correctionRequired",
+          "why"
+        ],
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "teamName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ruleId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "ruleName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "correctionRequired": {
+            "type": "boolean"
+          },
+          "why": {
+            "type": "string"
           }
         }
       },
@@ -6919,6 +8209,58 @@
           },
           "reason": {
             "type": "string"
+          }
+        }
+      },
+      "StartReplayRequest": {
+        "required": [
+          "mode",
+          "integrationId"
+        ],
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string"
+          },
+          "integrationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "from": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "to": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "mappingVersion": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int32",
+            "default": 5000
           }
         }
       },
@@ -7341,6 +8683,103 @@
           }
         }
       },
+      "UpdateIntegrationRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "accessScope": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ownerTeamId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "clearOwnerTeam": {
+            "type": "boolean",
+            "default": false
+          },
+          "capabilities": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "coverage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "profileDefaults": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ipAllowList": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "hmacSecret": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "hmac": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/HmacSettings"
+              }
+            ]
+          },
+          "clearHmac": {
+            "type": "boolean",
+            "default": false
+          },
+          "atlasApi": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AtlasApiCredentials"
+              }
+            ]
+          },
+          "active": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "shadow": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      },
       "UpdateUserRequest": {
         "required": [
           "displayName",
@@ -7611,6 +9050,12 @@
     },
     {
       "name": "Templates"
+    },
+    {
+      "name": "Mappings"
+    },
+    {
+      "name": "Replay"
     }
   ]
 }
