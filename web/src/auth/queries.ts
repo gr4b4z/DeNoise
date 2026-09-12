@@ -66,7 +66,9 @@ export function useChangePassword() {
     mutationFn: async (input: { current: string; new: string }) => {
       const { response, error } = await api.POST('/auth/change-password', { body: input });
       if (!response.ok) throw asProblem(error, response.status);
-      await qc.invalidateQueries({ queryKey: ['me'] });
+      // Drop, don't just invalidate: the shell guard reads /me with a static stale time, and a stale
+      // `mustChangePassword: true` would bounce the user straight back to this form.
+      qc.removeQueries({ queryKey: ['me'] });
     },
   });
 }

@@ -16,7 +16,7 @@ export async function loginAsAdmin(page: Page): Promise<void> {
   await page.getByLabel('Password', { exact: true }).fill(ADMIN_FINAL_PASSWORD);
   await page.getByRole('button', { name: 'Sign in' }).click();
   const outcome = await Promise.race([
-    page.waitForURL(/\/queue/).then(() => 'queue' as const),
+    page.waitForURL((u) => u.pathname === '/queue').then(() => 'queue' as const),
     page.getByText('Incorrect username or password').waitFor().then(() => 'rejected' as const),
   ]);
   if (outcome === 'queue') return;
@@ -29,7 +29,7 @@ export async function loginAsAdmin(page: Page): Promise<void> {
   await page.getByLabel('New password', { exact: true }).fill(ADMIN_FINAL_PASSWORD);
   await page.getByLabel('Confirm new password').fill(ADMIN_FINAL_PASSWORD);
   await page.getByRole('button', { name: 'Set new password' }).click();
-  await page.waitForURL(/\/queue/);
+  await page.waitForURL((u) => u.pathname === '/queue');
 }
 
 interface ApiSession {
