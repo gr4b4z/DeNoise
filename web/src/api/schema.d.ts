@@ -1349,6 +1349,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/config/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExportConfig"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/config/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ImportConfig"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListAudit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1386,6 +1434,24 @@ export interface components {
             privateKey: string;
             baseUrl?: null | string;
         };
+        AuditEntryDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            at: string;
+            actorType: string;
+            actorId: string;
+            actorDisplay: null | string;
+            action: string;
+            targetType: string;
+            targetId: string;
+            accessScope: null | string;
+            before: null | components["schemas"]["JsonElement"];
+            after: null | components["schemas"]["JsonElement"];
+            reason: null | string;
+            correlationId: string;
+            requestIp: null | string;
+        };
         BulkItemResult: {
             /** Format: uuid */
             id: string;
@@ -1415,6 +1481,27 @@ export interface components {
             at: null | string;
             by: null | components["schemas"]["UserRef"];
             restoredFromReason: null | string;
+        };
+        ConfigImportEntryDto: {
+            kind: string;
+            /** Format: uuid */
+            policyId: string;
+            name: null | string;
+            action: string;
+            /** Format: int32 */
+            version: null | number;
+            changes: string[];
+        };
+        ConfigImportRequest: {
+            yaml: string;
+            /** @default true */
+            dryRun: boolean;
+        };
+        ConfigImportResponse: {
+            dryRun: boolean;
+            entries: components["schemas"]["ConfigImportEntryDto"][];
+            errors: string[];
+            hasChanges: boolean;
         };
         CreateDestinationPairRequest: {
             primary: components["schemas"]["CreateDestinationRequest"];
@@ -1990,6 +2077,12 @@ export interface components {
         OidcProvider: {
             displayName: string;
             loginUrl: string;
+        };
+        PagedResponseOfAuditEntryDto: {
+            items: components["schemas"]["AuditEntryDto"][];
+            nextCursor: null | string;
+            /** Format: int32 */
+            total: null | number;
         };
         PagedResponseOfEpisodeListItem: {
             items: components["schemas"]["EpisodeListItem"][];
@@ -5893,6 +5986,86 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    ExportConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ImportConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigImportRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigImportResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListAudit: {
+        parameters: {
+            query?: {
+                targetType?: string;
+                target?: string;
+                actor?: string;
+                action?: string;
+                from?: string;
+                to?: string;
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedResponseOfAuditEntryDto"];
+                };
             };
         };
     };

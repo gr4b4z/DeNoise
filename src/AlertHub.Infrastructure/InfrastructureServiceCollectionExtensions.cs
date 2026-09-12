@@ -113,6 +113,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IJobHandler, AlertHub.Application.Suppressions.SuppressionJobHandler>();
         services.TryAddScoped<AlertHub.Application.Heartbeats.IMaintenanceWindows, AlertHub.Application.Suppressions.SuppressionMaintenanceWindows>();
         services.AddScoped<AlertHub.Application.Grouping.GroupingService>();
+
+        // Milestone 10: config-as-code and the audit read model.
+        services.AddScoped<ConfigBundleService>();
+        services.AddScoped<ReadModels.AuditQueries>();
         services.AddSingleton<IPolicyValidator, AlertHub.Application.Grouping.GroupingPolicyValidator>();
         services.AddScoped<IJobHandler, AlertHub.Application.Grouping.GroupWindowCloseJobHandler>();
         services.AddScoped<AlertHub.Application.Heartbeats.HeartbeatEffects>();

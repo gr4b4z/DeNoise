@@ -5379,6 +5379,164 @@
           }
         ]
       }
+    },
+    "/api/v1/config/export": {
+      "get": {
+        "tags": [
+          "Config"
+        ],
+        "operationId": "ExportConfig",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/config/import": {
+      "post": {
+        "tags": [
+          "Config"
+        ],
+        "operationId": "ImportConfig",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigImportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
+    },
+    "/api/v1/audit": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "operationId": "ListAudit",
+        "parameters": [
+          {
+            "name": "targetType",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "target",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseOfAuditEntryDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "pat": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -5485,6 +5643,97 @@
             "type": "string"
           },
           "baseUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "AuditEntryDto": {
+        "required": [
+          "id",
+          "at",
+          "actorType",
+          "actorId",
+          "actorDisplay",
+          "action",
+          "targetType",
+          "targetId",
+          "accessScope",
+          "before",
+          "after",
+          "reason",
+          "correlationId",
+          "requestIp"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "actorType": {
+            "type": "string"
+          },
+          "actorId": {
+            "type": "string"
+          },
+          "actorDisplay": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "action": {
+            "type": "string"
+          },
+          "targetType": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "accessScope": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "before": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          },
+          "after": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "correlationId": {
+            "type": "string"
+          },
+          "requestIp": {
             "type": [
               "null",
               "string"
@@ -5637,6 +5886,92 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "ConfigImportEntryDto": {
+        "required": [
+          "kind",
+          "policyId",
+          "name",
+          "action",
+          "version",
+          "changes"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "policyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "action": {
+            "type": "string"
+          },
+          "version": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ConfigImportRequest": {
+        "required": [
+          "yaml"
+        ],
+        "type": "object",
+        "properties": {
+          "yaml": {
+            "type": "string"
+          },
+          "dryRun": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      },
+      "ConfigImportResponse": {
+        "required": [
+          "dryRun",
+          "entries",
+          "errors",
+          "hasChanges"
+        ],
+        "type": "object",
+        "properties": {
+          "dryRun": {
+            "type": "boolean"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConfigImportEntryDto"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "hasChanges": {
+            "type": "boolean"
           }
         }
       },
@@ -7929,6 +8264,35 @@
           }
         }
       },
+      "PagedResponseOfAuditEntryDto": {
+        "required": [
+          "items",
+          "nextCursor",
+          "total"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEntryDto"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "total": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "PagedResponseOfEpisodeListItem": {
         "required": [
           "items",
@@ -9697,6 +10061,12 @@
     },
     {
       "name": "Groups"
+    },
+    {
+      "name": "Config"
+    },
+    {
+      "name": "Audit"
     }
   ]
 }

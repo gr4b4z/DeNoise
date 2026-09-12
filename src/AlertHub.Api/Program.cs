@@ -144,6 +144,7 @@ app.MapTemplates();
 app.MapMappings();
 app.MapSuppressions();
 app.MapEvents();
+app.MapConfigBundle();
 
 // Bootstrap admin on first start (06 §6): a generated password is printed once to stdout, never logged.
 await using (var scope = app.Services.CreateAsyncScope())

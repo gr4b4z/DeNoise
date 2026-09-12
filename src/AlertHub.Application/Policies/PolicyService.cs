@@ -105,25 +105,34 @@ public sealed class PolicyService(IPolicyRepository repository, IEnumerable<IPol
 
         var now = time.GetUtcNow();
         var current = await repository.GetActiveAsync(kind, policyId, ct);
-        if (current is not null) current.DeactivatedAt = now;
-        target.ActivatedAt = now;
-        target.DeactivatedAt = null;
-        audit.Record(new AuditEntry
+        // Two flushes in one transaction: the partial unique index (one active version per policy) must see the old
+        // version released before the new one is activated, and EF does not order updates by a filtered index.
+        await uow.InTransactionAsync(async () =>
         {
-            Id = Ids.New(time),
-            At = now,
-            ActorType = actor.Type,
-            ActorId = actor.Id,
-            ActorDisplay = actor.Display,
-            Action = $"policy.{kind}.activate",
-            TargetType = "policy",
-            TargetId = policyId.ToString(),
-            Before = JsonSerializer.Serialize(new { version = current?.Version }, JsonDefaults.Stored),
-            After = JsonSerializer.Serialize(new { version }, JsonDefaults.Stored),
-            CorrelationId = actor.CorrelationId,
-            RequestIp = actor.Ip,
-        });
-        await uow.CommitAsync(ct);
+            if (current is not null)
+            {
+                current.DeactivatedAt = now;
+                await uow.CommitAsync(ct);
+            }
+            target.ActivatedAt = now;
+            target.DeactivatedAt = null;
+            audit.Record(new AuditEntry
+            {
+                Id = Ids.New(time),
+                At = now,
+                ActorType = actor.Type,
+                ActorId = actor.Id,
+                ActorDisplay = actor.Display,
+                Action = $"policy.{kind}.activate",
+                TargetType = "policy",
+                TargetId = policyId.ToString(),
+                Before = JsonSerializer.Serialize(new { version = current?.Version }, JsonDefaults.Stored),
+                After = JsonSerializer.Serialize(new { version }, JsonDefaults.Stored),
+                CorrelationId = actor.CorrelationId,
+                RequestIp = actor.Ip,
+            });
+            await uow.CommitAsync(ct);
+        }, ct);
         foreach (var hook in activationHooks) await hook.AfterActivatedAsync(kind, policyId, version, actor, ct);
     }
 
