@@ -18,6 +18,9 @@ import { DestinationsPage } from '@/routes/Destinations';
 import { DestinationPage } from '@/routes/DestinationForm';
 import { TemplatesPage } from '@/routes/Templates';
 import { TemplateEditorPage } from '@/routes/TemplateEditor';
+import { IntegrationsPage } from '@/routes/Integrations';
+import { IntegrationWizardPage } from '@/routes/IntegrationWizard';
+import { IntegrationDetailPage } from '@/routes/IntegrationDetail';
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -156,6 +159,17 @@ const templateRoute = createRoute({
   },
 });
 
+const integrationsRoute = createRoute({ getParentRoute: () => shellRoute, path: '/integrations', component: IntegrationsPage });
+const integrationNewRoute = createRoute({ getParentRoute: () => shellRoute, path: '/integrations/new', component: IntegrationWizardPage });
+const integrationRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/integrations/$id',
+  component: function IntegrationRoute() {
+    const { id } = integrationRoute.useParams();
+    return <IntegrationDetailPage id={id} />;
+  },
+});
+
 const forbiddenRoute = createRoute({ getParentRoute: () => rootRoute, path: '/403', component: ForbiddenPage });
 const notFoundRoute = createRoute({ getParentRoute: () => rootRoute, path: '/404', component: NotFoundPage });
 
@@ -169,7 +183,7 @@ const logoutRoute = createRoute({
   },
 });
 
-const routeTree = rootRoute.addChildren([loginRoute, changePasswordRoute, forbiddenRoute, notFoundRoute, logoutRoute, shellRoute.addChildren([indexRoute, queueRoute, historyRoute, episodeRoute, heartbeatsRoute, heartbeatNewRoute, heartbeatRoute, heartbeatEditRoute, destinationsRoute, destinationNewRoute, destinationRoute, templatesRoute, templateNewRoute, templateRoute])]);
+const routeTree = rootRoute.addChildren([loginRoute, changePasswordRoute, forbiddenRoute, notFoundRoute, logoutRoute, shellRoute.addChildren([indexRoute, queueRoute, historyRoute, episodeRoute, heartbeatsRoute, heartbeatNewRoute, heartbeatRoute, heartbeatEditRoute, destinationsRoute, destinationNewRoute, destinationRoute, templatesRoute, templateNewRoute, templateRoute, integrationsRoute, integrationNewRoute, integrationRoute])]);
 
 export const router = createRouter({ routeTree, context: { queryClient }, defaultPreload: 'intent', scrollRestoration: true });
 
