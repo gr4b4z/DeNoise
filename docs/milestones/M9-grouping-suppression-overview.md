@@ -1,6 +1,6 @@
 # Milestone 9 — Grouping, suppression and maintenance windows, team overview, history, saved filters
 
-Status: **backend done**; the screens (suppressions calendar, team overview, history filters, saved filters in the queue) follow in the UI half.
+Status: **done** (backend and the 08 §3.1/§3.3/§3.7 screens). No open owner inputs.
 
 ## What exists
 
@@ -14,6 +14,7 @@ Status: **backend done**; the screens (suppressions calendar, team overview, his
 | Heartbeat auto-pause | `SuppressionMaintenanceWindows : IMaintenanceWindows` (replaces the milestone-6 no-op) | An active **maintenance** window with `autoPauseHeartbeats` whose predicate is satisfied by the heartbeat's `access_scope` alone pauses it and resumes it at the end (`HeartbeatMonitor` sweep, spec §22 *Maintenance window covers a heartbeat's scope*). |
 | History | `GET /api/v1/history` (`history.read`) | Closed episodes with the queue filters plus `closureReason` and `evidence`; same paging and scope enforcement as the queue (view fixed to `closed`). |
 | Team overview, saved filters | `GET /teams/{id}/overview`, `GET/POST/DELETE /me/filters` | Existed since milestone 4; the UI half adds the screens. |
+| UI (`web/`) | `src/suppressions/queries.ts`, `src/routes/{Suppressions, TeamOverview, History}.tsx`, `Queue.tsx`, `Shell.tsx`, `Episode.tsx` | **Suppressions** (`/suppressions`): list with window in wall-clock time and zone, kind, scope as a sentence (from `POST /suppressions/preview-scope`), reason, creator, state (scheduled / active / ended / ended early, summary sent), "Include ended"; create panel with kind, name, mandatory reason, a scope builder (field / is · is not · is one of · matches / value, team picker for `owning_team_id`) with a live sentence, start and end as local wall-clock times plus a mandatory IANA zone (DST note), heartbeat auto-pause for maintenance; **End now** with confirmation (the end semantics of the backend). **Team overview** (`/teams/$id`, rail team links now go here): cards for unassigned, ack overdue, acknowledged & active, stale, open total linking to the queue with the team filter; coverage of the team's integrations with health badges; destinations with fallback; unassigned and overdue lists. **History** (`/history`, its own screen): closed episodes with severity chips, closure reason, evidence, team and text filters in the URL; closed time, reason and evidence columns; load more. **Saved filters**: "Save filter" in the queue bar stores the current view/filters under a name (`POST /me/filters`); the rail lists them (apply by link, × deletes). Queue rows show a group indicator (⧉); the episode overview gets a **Group** section listing the other members with their own handling state (`/episodes/{id}/related`). |
 | Session port | `IProcessingSession` | `FindOpenGroupForUpdateAsync`, `FindGroupForUpdateAsync`, `AddGroup`, `ListOpenEpisodesForUpdateAsync`, `SuppressPendingOutboxAsync`, `CoalesceSuppressedOutboxAsync`. |
 
 ## Acceptance scenarios (spec §22)
@@ -24,6 +25,7 @@ Status: **backend done**; the screens (suppressions calendar, team overview, his
 | Maintenance window ends with active condition | `SuppressionScenarios.Scenario_MaintenanceWindowEndsWithActiveCondition_*` — an episode from before the window is muted at start (pending rows held), one opened inside is muted, one outside the scope is not; at the end both are released, their rows are `coalesced`, the team's two destinations each get one summary naming exactly the two actionable episodes; running the end again changes nothing; a later episode delivers normally. |
 | Maintenance crosses DST | `Scenario_MaintenanceCrossesDst_*` + unit `WallClockTests` — spring 01:30–03:30 = 1 h (00:30Z–01:30Z), autumn = 3 h; `IMaintenanceWindows.CoversAsync` true only inside the window in both directions; a future window mutes existing episodes at its start, not before. |
 | Cancel | `Cancelling_a_window_ends_it_now_*` — cancel releases, summarises and audits; the scheduled end is then a no-op. |
+| UI | Playwright `e2e/suppressions.spec.ts` — a maintenance window created in wall-clock time (Europe/Warsaw, ends tomorrow) is listed active with its sentence and zone, ended early with confirmation and shown as such under "Include ended"; the team overview shows its five cards and links to the queue; a saved filter appears in the rail; the history screen keeps its closure filter in the URL. axe passes on every screen. |
 | API | `SuppressionApiTests` — operator 2 h silence 201 with sentence and window text, 48 h ⇒ 403, missing reason / bad zone ⇒ 400 with paths, admin wall-clock window, list / `all=true`, DELETE ⇒ end result then 204; history lists only closed episodes with `closureReason` filters; groups 404. |
 
 ## Decisions made

@@ -13,6 +13,7 @@ import { RelativeTime } from '@/components/RelativeTime';
 import { episodesQuery, type QueueFilters } from '@/episodes/queries';
 import { primaryAction, useEpisodeAction } from '@/episodes/actions';
 import { useRealtime } from '@/realtime/RealtimeProvider';
+import { useSaveFilter } from '@/suppressions/queries';
 import { EpisodeView } from './Episode';
 import type { QueueSearch } from './queueSearch';
 
@@ -35,6 +36,7 @@ export function QueuePage() {
   const [cursor, setCursor] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState(search.q ?? '');
+  const saveFilter = useSaveFilter();
 
   const update = useCallback(
     (patch: Partial<QueueSearch>) => void navigate({ to: '/queue', search: (prev: Record<string, unknown>) => ({ ...(prev as unknown as QueueSearch), ...patch }), replace: true }),
@@ -142,6 +144,23 @@ export function QueuePage() {
               onChange={(e) => setDraft(e.target.value)}
             />
           </form>
+          <button
+            type="button"
+            className="btn btn-sm"
+            title={t('queue.saveFilterHint')}
+            data-testid="save-filter"
+            onClick={() => {
+              const name = window.prompt(t('queue.saveFilterPrompt'));
+              if (!name?.trim()) return;
+              const params = new URLSearchParams();
+              params.set('view', search.view);
+              for (const s of search.severity ?? []) params.append('severity', s);
+              for (const [k, v] of Object.entries({ team: search.team, environment: search.environment, service: search.service, q: search.q })) if (v) params.set(k, v);
+              saveFilter.mutate({ name: name.trim(), query: params.toString() }, { onError: (e) => setProblem(e as unknown as Problem) });
+            }}
+          >
+            {t('queue.saveFilter')}
+          </button>
           <span className="text-xs text-ink-2" aria-live="polite">
             {episodes.isFetching ? '…' : `${total}`}
           </span>
@@ -304,6 +323,7 @@ function QueueTable({ items, cursor, selectedId, pulsing, me, onOpen, onPrimary,
                       </span>
                     )}
                     {item.suppressedUntil && <span title="Silenced">⏸</span>}
+                    {item.groupId && <span title="Member of a group">⧉</span>}
                     {item.stale && <span title="Stale: not verified with the source">◌</span>}
                     {item.routingCorrectionRequired && <span title="Routing correction required">↯</span>}
                     <CoverageBadge state={item.coverageState} />

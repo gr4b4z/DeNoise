@@ -22,6 +22,7 @@ export const P = {
   policyManage: 'policy.manage',
   teamManage: 'team.manage',
   destinationManage: 'destination.manage',
+  suppressionCreate: 'suppression.create',
   suppressionCreateLong: 'suppression.create.long',
   hubHealthRead: 'hub.health.read',
   userManage: 'user.manage',

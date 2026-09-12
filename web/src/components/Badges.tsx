@@ -14,7 +14,7 @@ export function SeverityBadge({ severity, compact = false }: { severity: string;
   const key: Severity = (SEVERITY_LABEL[severity] ? severity : 'unknown') as Severity;
   const label = SEVERITY_LABEL[key] ?? 'Unknown';
   return (
-    <span className="inline-flex items-center gap-1.5 text-sm" data-severity={key} aria-label={`Severity ${label}`}>
+    <span className="inline-flex items-center gap-1.5 text-sm" data-severity={key} role="img" aria-label={`Severity ${label}`}>
       <span aria-hidden="true" className="inline-block size-2.5 rounded-full" style={key === 'unknown' ? { background: 'var(--sev-unknown)' } : { background: `var(--sev-${key})` }} />
       {!compact && <span className={key === 'critical' ? 'font-semibold' : ''}>{label}</span>}
     </span>

@@ -1,4 +1,5 @@
 import { Link, Outlet, useNavigate } from '@tanstack/react-router';
+import { savedFiltersQuery, useDeleteFilter } from '@/suppressions/queries';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,6 +53,7 @@ export function Shell() {
                   </li>
                 ))}
               </ul>
+              <SavedFiltersRail />
               <RailHeading>{t('nav.heartbeats')}</RailHeading>
               <ul className="m-0 list-none p-0">
                 <li>
@@ -65,6 +67,16 @@ export function Shell() {
                 <li>
                   <Link to="/integrations" className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }}>
                     {t('nav.integrations')}
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/suppressions" className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }}>
+                    {t('nav.suppressions')}
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/history" search={{}} className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }}>
+                    {t('nav.history')}
                   </Link>
                 </li>
                 <li>
@@ -84,11 +96,7 @@ export function Shell() {
                   <ul className="m-0 list-none p-0">
                     {teams.data.map((team) => (
                       <li key={team.id}>
-                        <Link
-                          to="/queue"
-                          search={{ view: 'needsAttention', team: team.id }}
-                          className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline"
-                        >
+                        <Link to="/teams/$id" params={{ id: team.id }} className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }}>
                           {team.name}
                         </Link>
                       </li>
@@ -142,5 +150,30 @@ function PrefSelect({ label, value, options, onChange }: { label: string; value:
         ))}
       </select>
     </label>
+  );
+}
+
+/** Saved queue filters (06 §4 `/me/filters`): each entry stores the queue URL query; applying navigates, the × deletes. */
+function SavedFiltersRail() {
+  const { t } = useTranslation();
+  const filters = useQuery(savedFiltersQuery());
+  const remove = useDeleteFilter();
+  if (!filters.data || filters.data.length === 0) return null;
+  return (
+    <>
+      <RailHeading>{t('nav.savedFilters')}</RailHeading>
+      <ul className="m-0 list-none p-0" data-testid="saved-filters">
+        {filters.data.map((f) => (
+          <li key={f.id} className="flex h-7 items-center gap-1 rounded-sm px-2 text-sm hover:bg-surface">
+            <a href={`/queue?${f.query}`} className="min-w-0 flex-1 truncate text-ink hover:no-underline">
+              {f.name}
+            </a>
+            <button type="button" className="text-xs text-ink-2 hover:text-ink" aria-label={t('queue.deleteFilter', { name: f.name })} onClick={() => remove.mutate(f.id)}>
+              ×
+            </button>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }

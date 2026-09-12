@@ -21,6 +21,9 @@ import { TemplateEditorPage } from '@/routes/TemplateEditor';
 import { IntegrationsPage } from '@/routes/Integrations';
 import { IntegrationWizardPage } from '@/routes/IntegrationWizard';
 import { IntegrationDetailPage } from '@/routes/IntegrationDetail';
+import { SuppressionsPage } from '@/routes/Suppressions';
+import { TeamOverviewPage } from '@/routes/TeamOverview';
+import { HistoryPage, type HistorySearch } from '@/routes/History';
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -88,8 +91,23 @@ const queueRoute = createRoute({
 const historyRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/history',
-  beforeLoad: () => {
-    throw redirect({ to: '/queue', search: { view: 'closed' } });
+  validateSearch: (s: Record<string, unknown>): HistorySearch => ({
+    severity: Array.isArray(s.severity) ? (s.severity as string[]) : typeof s.severity === 'string' ? [s.severity] : undefined,
+    team: str(s.team),
+    q: str(s.q),
+    closureReason: str(s.closureReason),
+    evidence: str(s.evidence),
+  }),
+  component: HistoryPage,
+});
+
+const suppressionsRoute = createRoute({ getParentRoute: () => shellRoute, path: '/suppressions', component: SuppressionsPage });
+const teamRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/teams/$id',
+  component: function TeamRoute() {
+    const { id } = teamRoute.useParams();
+    return <TeamOverviewPage id={id} />;
   },
 });
 
@@ -183,7 +201,7 @@ const logoutRoute = createRoute({
   },
 });
 
-const routeTree = rootRoute.addChildren([loginRoute, changePasswordRoute, forbiddenRoute, notFoundRoute, logoutRoute, shellRoute.addChildren([indexRoute, queueRoute, historyRoute, episodeRoute, heartbeatsRoute, heartbeatNewRoute, heartbeatRoute, heartbeatEditRoute, destinationsRoute, destinationNewRoute, destinationRoute, templatesRoute, templateNewRoute, templateRoute, integrationsRoute, integrationNewRoute, integrationRoute])]);
+const routeTree = rootRoute.addChildren([loginRoute, changePasswordRoute, forbiddenRoute, notFoundRoute, logoutRoute, shellRoute.addChildren([indexRoute, queueRoute, historyRoute, episodeRoute, heartbeatsRoute, heartbeatNewRoute, heartbeatRoute, heartbeatEditRoute, destinationsRoute, destinationNewRoute, destinationRoute, templatesRoute, templateNewRoute, templateRoute, integrationsRoute, integrationNewRoute, integrationRoute, suppressionsRoute, teamRoute])]);
 
 export const router = createRouter({ routeTree, context: { queryClient }, defaultPreload: 'intent', scrollRestoration: true });
 

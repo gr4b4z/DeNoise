@@ -14,7 +14,10 @@
     "destinations": "Destinations",
     "templates": "Templates",
     "configuration": "Configuration",
-    "integrations": "Integrations"
+    "integrations": "Integrations",
+    "suppressions": "Suppressions",
+    "history": "History",
+    "savedFilters": "Saved filters"
   },
   "views": {
     "needsAttention": "Needs attention",
@@ -59,7 +62,11 @@
     "emptyCoverage": "Nothing in this view — but coverage is not verified for {{count}} integration(s).",
     "emptyFiltered": "No episodes match these filters.",
     "selected": "{{count}} selected",
-    "keys": "j / k move · a acknowledge · o open · / search"
+    "keys": "j / k move · a acknowledge · o open · / search",
+    "saveFilter": "Save filter",
+    "saveFilterHint": "Save the current view and filters under a name in the rail",
+    "saveFilterPrompt": "Name for this filter",
+    "deleteFilter": "Delete saved filter {{name}}"
   },
   "actions": {
     "acknowledge": "Acknowledge",
@@ -94,7 +101,9 @@
     "noTimers": "No timers scheduled",
     "conflict": "Updated by someone else just now — refreshing",
     "back": "Back to queue",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "group": "Group",
+    "groupExplain": "Grouped with {{count}} other episode(s) in a bounded window; each keeps its own state. Group"
   },
   "freshness": {
     "live": "Live",
@@ -484,6 +493,86 @@
         "coverage": "How the Hub knows the source is still evaluating.",
         "dryRun": "Everything that will be saved; activation is not blocked by a missing coverage method."
       }
+    }
+  },
+  "history": {
+    "title": "History",
+    "closureReason": "Closure reason",
+    "evidence": "Evidence",
+    "team": "Team",
+    "anyReason": "Any closure reason",
+    "anyEvidence": "Any evidence",
+    "anyTeam": "Any team",
+    "closedAt": "Closed",
+    "empty": "No closed episodes yet.",
+    "more": "Load more"
+  },
+  "teams": {
+    "triage": "triage team",
+    "members": "{{count}} member(s)",
+    "coverage": "Coverage of the team's integrations",
+    "noIntegrations": "No integrations are owned by this team.",
+    "destinations": "Destinations",
+    "noDestinations": "No destinations for this team.",
+    "fallback": "fallback:",
+    "none": "None",
+    "cards": {
+      "unassigned": "Unassigned",
+      "ackOverdue": "Ack overdue",
+      "acknowledged": "Acknowledged & active",
+      "stale": "Stale / unverified",
+      "open": "Open total"
+    }
+  },
+  "suppressions": {
+    "title": "Suppressions",
+    "new": "New window",
+    "create": "Create",
+    "includeEnded": "Include ended",
+    "empty": "No silences or maintenance windows.",
+    "emptyDetail": "A window mutes delivery for a scope between two wall-clock times; ingestion, ownership and history continue.",
+    "endNow": "End now",
+    "endTitle": "End this window now?",
+    "endWhy": "Muted notifications are not replayed; every affected team gets a summary of what still needs attention.",
+    "kind": {
+      "maintenance": "Maintenance",
+      "silence": "Silence"
+    },
+    "state": {
+      "active": "active",
+      "scheduled": "scheduled",
+      "ended": "ended",
+      "cancelled": "ended early",
+      "summarySent": "summary sent"
+    },
+    "columns": {
+      "window": "Window",
+      "kind": "Kind",
+      "scope": "Scope",
+      "reason": "Reason",
+      "by": "Created",
+      "state": "State"
+    },
+    "form": {
+      "kind": "Kind",
+      "maintenanceHint": "Planned work: heartbeats in scope are paused automatically and resumed at the end.",
+      "silenceHint": "Ad-hoc quiet period for a noisy scope; heartbeats keep running.",
+      "name": "Name (optional)",
+      "reason": "Reason (required)",
+      "scope": "Scope",
+      "field": "Field",
+      "operator": "Operator",
+      "value": "Value",
+      "addRow": "Add condition",
+      "removeRow": "Remove condition",
+      "scopeReads": "Applies where {{text}}.",
+      "scopeEverything": "Applies to everything in your scopes.",
+      "starts": "Starts (local time)",
+      "ends": "Ends (local time)",
+      "timeZone": "Time zone (IANA)",
+      "timeZoneHint": "Times are wall-clock in this zone; the window keeps its meaning across DST.",
+      "autoPause": "Pause heartbeats in scope while the window is active",
+      "invalidTimes": "Start and end must be complete date-times."
     }
   }
 }

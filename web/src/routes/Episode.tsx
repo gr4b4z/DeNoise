@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { relatedQuery } from '@/suppressions/queries';
 import type { EpisodeDetail, Problem, TimelineEntry } from '@/api/types';
 import { useMe } from '@/auth/queries';
 import { can, P } from '@/auth/permissions';
@@ -262,6 +263,8 @@ function Overview({ d }: { d: EpisodeDetail }) {
         </p>
       </Section>
 
+      {item.groupId && <GroupSection id={item.id} groupId={item.groupId} />}
+
       <Section title={t('detail.lifecycle')}>
         <dl className="m-0 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1">
           <dt className="text-ink-2">profile</dt>
@@ -406,5 +409,32 @@ export function EpisodePage({ id }: { id: string }) {
     <div className="h-full overflow-hidden bg-surface">
       <EpisodeView id={id} />
     </div>
+  );
+}
+
+/** Group membership (04 §7.4): the other members of the bounded-window group, each with its own state. */
+function GroupSection({ id, groupId }: { id: string; groupId: string }) {
+  const { t } = useTranslation();
+  const related = useQuery(relatedQuery(id));
+  const members = related.data?.groupMembers.filter((m) => m.id !== id) ?? [];
+  return (
+    <Section title={t('detail.group')}>
+      <p className="m-0 text-xs text-ink-2">
+        {t('detail.groupExplain', { count: members.length })} <span className="mono">{groupId.slice(0, 8)}</span>
+      </p>
+      {members.length > 0 && (
+        <ul className="m-0 mt-1 list-none p-0">
+          {members.map((m) => (
+            <li key={m.id} className="flex items-center gap-2 border-t border-line py-1">
+              <SeverityBadge severity={m.severity} compact />
+              <Link to="/episodes/$id" params={{ id: m.id }} className="min-w-0 flex-1 truncate">
+                {m.summary ?? m.id}
+              </Link>
+              <HandlingBadge state={m.handlingState} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
   );
 }
