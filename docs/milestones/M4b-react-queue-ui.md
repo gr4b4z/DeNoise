@@ -39,9 +39,9 @@ Status: **done** for the 09 milestone-4 UI scope (shell, auth, queue, detail ove
 ## Running
 
 ```
-cd web && pnpm install && pnpm dev            # proxies /api and /auth to http://localhost:8080 (ALERTHUB_API_URL overrides)
+cd web && pnpm install && pnpm dev            # proxies /api and /auth to http://localhost:8080 (DENOISE_API_URL overrides)
 pnpm test && pnpm typecheck && pnpm lint
-pnpm generate:api                              # after UPDATE_OPENAPI=1 dotnet test tests/AlertHub.Contract.Tests
+pnpm generate:api                              # after UPDATE_OPENAPI=1 dotnet test tests/DeNoise.Contract.Tests
 
 # e2e: API on 8080, Ingest on 8081, Workers on 8082 against one database, then
 E2E_ADMIN_PASSWORD='<Auth:Local:BootstrapPassword>' pnpm e2e

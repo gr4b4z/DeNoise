@@ -1,4 +1,4 @@
-// Alert Hub ingest load test (09 M11: baseline ×1 sustained, ×3 burst).
+// DeNoise ingest load test (09 M11: baseline ×1 sustained, ×3 burst).
 //
 //   k6 run -e INGEST_URL=https://alerts.example/ingest/<keyId> -e TOKEN=<ingest token> -e BASELINE_RPS=10 build/loadtest/ingest-k6.js
 //

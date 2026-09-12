@@ -12,15 +12,15 @@ Status: **backend done**; the React shell, queue and detail screens (08) follow 
 | Password policy | `PasswordPolicy`, `LocalAuthOptions` | Min 12 chars, bundled breached list (422 `breached`), forced change on first login (`MustChangePasswordFilter` → 403 `password-change-required` on everything except `/auth/*` and `/api/v1/me`), admin reset with a one-time temporary password. |
 | Bootstrap admin | `AuthService.BootstrapAdminIfEmptyAsync`, `Program.cs` | Runs on API start when `cfg."user"` is empty; password from `Auth:Local:BootstrapPassword` or generated and printed **once to stdout**, never logged nor audited. |
 | Personal access tokens | `PersonalAccessTokenService` | `ah_pat_<keyId>.<secret>`; Argon2id-hashed secret, key-id lookup (ADR-11), optional expiry, revocation, permissions capped at the owner's; bearer requests skip CSRF. |
-| Authentication scheme | `Api/Auth/AlertHubAuthenticationHandler` | One scheme resolving cookie *or* bearer to an `AlertHubPrincipal` (roles, scopes, permission set, `MustChangePassword`). |
+| Authentication scheme | `Api/Auth/DeNoiseAuthenticationHandler` | One scheme resolving cookie *or* bearer to an `DeNoisePrincipal` (roles, scopes, permission set, `MustChangePassword`). |
 | RBAC | `Domain/Users/Rbac`, `RequirePermissionFilter` | The 04 §8 matrix as a permission set per role; endpoints declare the permission; scope checks return **404** for anything outside the caller's scopes (existence never leaks). |
 | CSRF | `Api/Auth/Csrf` | Data-Protection token bound to the session, fetched from `GET /auth/csrf`, required as `X-CSRF-Token` on every cookie-authenticated mutation (403 `csrf`). |
 | Mutation contract | `IfMatchFilter`, `IdempotencyFilter` | `If-Match: "<version>"` mandatory (428 `precondition-required`), mismatch ⇒ 409 `version-conflict` with `current` detail; `Idempotency-Key` (UUID) mandatory on actions (400), replay returns the stored body byte-for-byte with `Idempotent-Replayed: true`, reuse with another payload ⇒ 422. Records expire after 24 h. |
-| Problems | `Api/Auth/Problems` | RFC 9457, `type = urn:alerthub:error:<code>`, `traceId`, `instance`; 500 hides the message and logs it under the trace id. |
+| Problems | `Api/Auth/Problems` | RFC 9457, `type = urn:denoise:error:<code>`, `traceId`, `instance`; 500 hides the message and logs it under the trace id. |
 | Episode read model | `Infrastructure/ReadModels/EpisodeQueries` | Raw SQL over `alert.episode` with team, assignee, integration, next escalation, suspended auto-resolve, delivery failure and coverage state; queue views `needsAttention`, `mine`, `myTeams`, `unassigned`, `closed`, `all`; filters (severity, team, integration, environment, service, assignee, text search on `search_tsv`); keyset cursor on (severity rank, ack overdue, last seen, id); `includeTotal`; detail with identity components, lifecycle, routing `why`, closure block, timers, plain-language `explanation`. |
 | Episode actions | `Application/Episodes/EpisodeActionService` | ack, assign (`force` for takeover, assignment never resets the ack deadline), note, close (reason mandatory, condition untouched), restore (only `manual_close`/`expired_unverified`, refused while a newer episode for the identity is open), silence (>24 h needs `integration_admin`), refresh-state (schedules `verify_state`); all inside the processing unit of work with timeline + audit rows; concurrent losers get 409 with the winner's version. Bulk: up to 200 ids, per-item results. |
 | Admin and config API | `MeAndUsersEndpoints`, `ConfigEndpoints` | `/api/v1/me`, `/me/tokens`, `/me/sessions`, `/me/password`; `/users` CRUD + reset/unlock/disable; `/teams` (+ `overview`), `/integrations`, `/policies/{kind}`, `/destinations` read/write per the RBAC matrix. |
-| Live updates | `Infrastructure/Realtime/PgChangeBus`, `SseHub`, `EventsEndpoints` | `GET /api/v1/events/stream` (ADR-12): scope-filtered `episode.changed` events with ids, 5 min ring buffer, `Last-Event-ID` replay, `resync` when the id is unknown or from another process generation, heartbeat comments; fan-out across API replicas via PostgreSQL `LISTEN/NOTIFY` on `alerthub_changes`. |
+| Live updates | `Infrastructure/Realtime/PgChangeBus`, `SseHub`, `EventsEndpoints` | `GET /api/v1/events/stream` (ADR-12): scope-filtered `episode.changed` events with ids, 5 min ring buffer, `Last-Event-ID` replay, `resync` when the id is unknown or from another process generation, heartbeat comments; fan-out across API replicas via PostgreSQL `LISTEN/NOTIFY` on `denoise_changes`. |
 | Rate limits | `Program.cs` | 600 req/min per user (or IP), 10 login attempts / min / IP (06 §1, §4); `X-Forwarded-For` honoured for the in-cluster ingress. |
 | OpenAPI | `docs/openapi/v1.json`, `Contract.Tests` | Generated from the running API; `session` and `pat` security schemes; every non-anonymous operation declares security; the committed snapshot is compared on every test run (`UPDATE_OPENAPI=1` regenerates). |
 
@@ -49,7 +49,7 @@ Auth coverage in `AuthApiTests`: same 401 for unknown user and wrong password, e
 
 ```
 dotnet test                           # contract tests need no database
-UPDATE_OPENAPI=1 dotnet test tests/AlertHub.Contract.Tests   # refresh docs/openapi/v1.json
+UPDATE_OPENAPI=1 dotnet test tests/DeNoise.Contract.Tests   # refresh docs/openapi/v1.json
 ```
 
-Integration tests use Testcontainers, or `ALERTHUB_TEST_CONNECTION` to point at an existing PostgreSQL.
+Integration tests use Testcontainers, or `DENOISE_TEST_CONNECTION` to point at an existing PostgreSQL.

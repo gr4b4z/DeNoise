@@ -1,11 +1,11 @@
 # 06 — API Contract
 
-Two hosts. **Ingest host** (public, minimal): `/ingest/*`, `/hb/*`, `/healthz/*`. **Application host** (authenticated): `/api/v1/*`, `/healthz/*`. The OpenAPI document generated from `AlertHub.Api` is the executable contract; this file fixes what it must contain.
+Two hosts. **Ingest host** (public, minimal): `/ingest/*`, `/hb/*`, `/healthz/*`. **Application host** (authenticated): `/api/v1/*`, `/healthz/*`. The OpenAPI document generated from `DeNoise.Api` is the executable contract; this file fixes what it must contain.
 
 ## 1. Conventions (application API)
 
 - JSON, `camelCase`, RFC 3339 UTC timestamps, durations as ISO 8601 (`PT15M`).
-- Errors: RFC 9457 `application/problem+json` with `type` URN (`urn:alerthub:error:version-conflict`), `status`, `title`, `detail`, `traceId`, and `errors[]` for validation.
+- Errors: RFC 9457 `application/problem+json` with `type` URN (`urn:denoise:error:version-conflict`), `status`, `title`, `detail`, `traceId`, and `errors[]` for validation.
 - Pagination: cursor-based. Request `?limit=50&cursor=…`; response `{ items, nextCursor, total? }` (`total` only when `?includeTotal=true`, capped at 10,000).
 - Filtering: repeatable query params, e.g. `?severity=critical&severity=high&handling=new&team=…&scope=…&q=text`. Sorting: `?sort=-severity,lastSeen`.
 - Optimistic concurrency: mutating episode/heartbeat/config endpoints require `If-Match: "<version>"`; mismatch ⇒ `409` with current representation in `detail`.
@@ -30,7 +30,7 @@ POST /ingest/{integrationKeyId}
 ```
 No other status codes. Never `200` before commit. Response body is fixed-size; no echo of input.
 
-Optional `X-AlertHub-Source-Time: <RFC3339>` header lets webhook producers supply `occurred_at` when the body has none.
+Optional `X-DeNoise-Source-Time: <RFC3339>` header lets webhook producers supply `occurred_at` when the body has none.
 
 ## 3. Heartbeat ping (ingest host)
 
@@ -179,7 +179,7 @@ GET /api/v1/events/stream?scope=…                         text/event-stream
 
 ## 7. Notification payloads
 
-**Outbound webhook (primary channel).** Request as in ADR-7: `POST <url>`, headers `X-AlertHub-Delivery-Id`, `X-AlertHub-Event`, `X-AlertHub-Timestamp`, `X-AlertHub-Signature: v1=<hmac-sha256>`, plus destination headers. Body = rendered template. Receiver verification recipe (documented in UI): `hmac_sha256(secret, timestamp + "." + rawBody) == signature` and reject if `|now − timestamp| > 300 s`.
+**Outbound webhook (primary channel).** Request as in ADR-7: `POST <url>`, headers `X-DeNoise-Delivery-Id`, `X-DeNoise-Event`, `X-DeNoise-Timestamp`, `X-DeNoise-Signature: v1=<hmac-sha256>`, plus destination headers. Body = rendered template. Receiver verification recipe (documented in UI): `hmac_sha256(secret, timestamp + "." + rawBody) == signature` and reject if `|now − timestamp| > 300 s`.
 
 **Notification model** available to templates (and the body of the `generic-json` built-in):
 ```json
@@ -205,7 +205,7 @@ POST /api/v1/webhook-templates/{id}/{v}/activate
 ```
 Destinations: `POST /api/v1/destinations/{id}/test` sends a synthetic `episode.opened` to the real URL and returns status, latency, response excerpt. `GET /api/v1/destinations/{id}/deliveries` lists recent attempts.
 
-**Email:** subject `[AlertHub][{severity}] {summary} — {resourceName}`; plain-text body with the same fields and links; `Message-ID` derived from `outbox_id` for destination-side dedup; `References` header links updates to the opening mail.
+**Email:** subject `[DeNoise][{severity}] {summary} — {resourceName}`; plain-text body with the same fields and links; `Message-ID` derived from `outbox_id` for destination-side dedup; `References` header links updates to the opening mail.
 
 ## 8. Health endpoints (both hosts)
 

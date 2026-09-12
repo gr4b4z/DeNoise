@@ -1,1 +1,0 @@
-{{ include "alert-hub.deployment" (dict "root" . "host" "workers" "spec" .Values.workers) }}

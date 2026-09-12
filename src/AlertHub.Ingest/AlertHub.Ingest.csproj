@@ -1,5 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
-  <ItemGroup>
-    <ProjectReference Include="../AlertHub.Infrastructure/AlertHub.Infrastructure.csproj" />
-  </ItemGroup>
-</Project>

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local mirror of the CI pipeline. Requires .NET 10 SDK and a PostgreSQL reachable via ALERTHUB_TEST_CONNECTION
+# Local mirror of the CI pipeline. Requires .NET 10 SDK and a PostgreSQL reachable via DENOISE_TEST_CONNECTION
 # (or Docker for Testcontainers).
 set -euo pipefail
 cd "$(dirname "$0")/.."

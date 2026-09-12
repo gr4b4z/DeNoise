@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.1",
   "info": {
-    "title": "Alert Hub application API",
+    "title": "DeNoise application API",
     "description": "Authenticated operator API (docs/06-api-contract.md). Session cookie for the UI or \u0060Authorization: Bearer ah_pat_\u003CkeyId\u003E.\u003Csecret\u003E\u0060 for API clients.",
     "version": "v1"
   },
@@ -10410,7 +10410,7 @@
       "session": {
         "type": "apiKey",
         "description": "Server-side session cookie set by POST /auth/login.",
-        "name": "alerthub_session",
+        "name": "denoise_session",
         "in": "cookie"
       },
       "pat": {

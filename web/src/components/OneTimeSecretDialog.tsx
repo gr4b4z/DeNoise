@@ -22,7 +22,7 @@ export function OneTimeSecretDialog({ open, title, secret, secretLabel, snippets
         <Dialog.Overlay className="fixed inset-0 bg-black/30" />
         <Dialog.Content className="fixed top-1/2 left-1/2 max-h-[90dvh] w-[min(720px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-md border border-line bg-surface p-4" style={{ boxShadow: 'var(--shadow-menu)' }} onEscapeKeyDown={(e) => e.preventDefault()} onPointerDownOutside={(e) => e.preventDefault()}>
           <Dialog.Title className="text-md font-semibold">{title}</Dialog.Title>
-          <Dialog.Description className="mt-1 text-sm text-ink-2">This is shown once. Alert Hub stores only a hash; if you lose it, rotate the token.</Dialog.Description>
+          <Dialog.Description className="mt-1 text-sm text-ink-2">This is shown once. DeNoise stores only a hash; if you lose it, rotate the token.</Dialog.Description>
           <div className="mt-3">
             <div className="text-xs text-ink-2">{secretLabel}</div>
             <div className="mt-1 flex items-start gap-2">

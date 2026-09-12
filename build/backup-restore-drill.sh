@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# Backup/restore drill for the Alert Hub database (09 M11 hardening).
+# Backup/restore drill for the DeNoise database (09 M11 hardening).
 #
 # Dumps the live database, restores it into a scratch database, compares row counts of the tables that matter and
 # runs the Migrator against the restored copy to prove the schema is complete. Nothing touches the source database
 # except a read-only pg_dump.
 #
-#   PGHOST=... PGUSER=... PGPASSWORD=... build/backup-restore-drill.sh alerthub [scratch-db-name]
+#   PGHOST=... PGUSER=... PGPASSWORD=... build/backup-restore-drill.sh denoise [scratch-db-name]
 #
 # Exit code 0 = counts match and migrations are idempotent on the copy. Keep the output with the change record.
 set -euo pipefail
 
 source_db="${1:?source database name}"
 scratch_db="${2:-${source_db}_restore_drill_$(date -u +%Y%m%d%H%M%S)}"
-dump="$(mktemp -t alerthub-dump.XXXXXX)"
+dump="$(mktemp -t denoise-dump.XXXXXX)"
 trap 'rm -f "$dump"' EXIT
 
 echo "== dumping $source_db"
@@ -40,7 +40,7 @@ psql -At -d "$scratch_db" -c "SELECT count(*) FROM pg_tables WHERE schemaname = 
 
 if [[ -n "${MIGRATOR_DLL:-}" ]]; then
   echo "== running the Migrator against the copy (must be a no-op)"
-  ConnectionStrings__AlertHub="Host=${PGHOST:-localhost};Database=${scratch_db};Username=${PGUSER:-postgres};Password=${PGPASSWORD:-}" dotnet "$MIGRATOR_DLL"
+  ConnectionStrings__DeNoise="Host=${PGHOST:-localhost};Database=${scratch_db};Username=${PGUSER:-postgres};Password=${PGPASSWORD:-}" dotnet "$MIGRATOR_DLL"
 fi
 
 if [[ "${KEEP_SCRATCH:-0}" != "1" ]]; then

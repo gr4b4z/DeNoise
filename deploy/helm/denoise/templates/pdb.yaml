@@ -1,0 +1,15 @@
+{{- range $host := list "api" "ingest" "workers" }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "denoise.fullname" $ }}-{{ $host }}
+  labels:
+    {{- include "denoise.labels" $ | nindent 4 }}
+spec:
+  minAvailable: {{ $.Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "denoise.selectorLabels" $ | nindent 6 }}
+      app.kubernetes.io/component: {{ $host }}
+{{- end }}

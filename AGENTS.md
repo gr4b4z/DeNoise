@@ -1,10 +1,10 @@
-# AGENTS.md — Alert Hub
+# AGENTS.md — DeNoise
 
-Operating brief for the coding agent. Read this first, then `09-implementation-plan.md`, then the document for the milestone you are on. The specification (`spec/alert-hub-spec-v0.4.md`) is the source of truth for *behaviour*; this pack is the source of truth for *how it is built*. If the two conflict, stop and report the conflict — do not pick one.
+Operating brief for the coding agent. Read this first, then `09-implementation-plan.md`, then the document for the milestone you are on. The specification (`spec/denoise-spec-v0.4.md`) is the source of truth for *behaviour*; this pack is the source of truth for *how it is built*. If the two conflict, stop and report the conflict — do not pick one.
 
 ## 1. What you are building
 
-Alert Hub: a .NET backend and React frontend that ingests alerts from Azure Monitor, MongoDB Atlas and generic webhooks, deduplicates them into episodes, assigns ownership, auto-resolves on Hub-configured policies, verifies monitoring coverage with heartbeats and canaries, and delivers notifications through templated, signed outbound webhooks (Teams via Workflows, Slack, ticketing, automation platforms) and SMTP email. Single deployable modular application, PostgreSQL only, runs on AKS.
+DeNoise: a .NET backend and React frontend that ingests alerts from Azure Monitor, MongoDB Atlas and generic webhooks, deduplicates them into episodes, assigns ownership, auto-resolves on Hub-configured policies, verifies monitoring coverage with heartbeats and canaries, and delivers notifications through templated, signed outbound webhooks (Teams via Workflows, Slack, ticketing, automation platforms) and SMTP email. Single deployable modular application, PostgreSQL only, runs on AKS.
 
 ## 2. Stack (decided)
 
@@ -28,25 +28,25 @@ Alert Hub: a .NET backend and React frontend that ingests alerts from Azure Moni
 ## 3. Repository layout
 
 ```
-alert-hub/
+denoise/
 ├── AGENTS.md                      ← this file, copied to repo root
 ├── docs/                          ← this handoff pack + ADRs
 ├── src/
-│   ├── AlertHub.Domain/           ← entities, value objects, state machines, fingerprinting. No EF, no HTTP.
-│   ├── AlertHub.Application/      ← use cases, policies, mapping engine, routing engine, ports (interfaces)
-│   ├── AlertHub.Infrastructure/   ← EF Core, Npgsql, outbox, job store, notification adapters, identity providers (local now, OIDC later)
-│   ├── AlertHub.Api/              ← application API + SSE host
-│   ├── AlertHub.Ingest/           ← public ingestion + heartbeat ping host (separate image, minimal deps)
-│   ├── AlertHub.Workers/          ← processing, scheduler, dispatcher hosts
-│   └── AlertHub.Contracts/        ← DTOs shared with the frontend generator (OpenAPI source)
+│   ├── DeNoise.Domain/           ← entities, value objects, state machines, fingerprinting. No EF, no HTTP.
+│   ├── DeNoise.Application/      ← use cases, policies, mapping engine, routing engine, ports (interfaces)
+│   ├── DeNoise.Infrastructure/   ← EF Core, Npgsql, outbox, job store, notification adapters, identity providers (local now, OIDC later)
+│   ├── DeNoise.Api/              ← application API + SSE host
+│   ├── DeNoise.Ingest/           ← public ingestion + heartbeat ping host (separate image, minimal deps)
+│   ├── DeNoise.Workers/          ← processing, scheduler, dispatcher hosts
+│   └── DeNoise.Contracts/        ← DTOs shared with the frontend generator (OpenAPI source)
 ├── web/                           ← React app
 ├── tests/
-│   ├── AlertHub.Domain.Tests/
-│   ├── AlertHub.Application.Tests/
-│   ├── AlertHub.Integration.Tests/   ← Testcontainers; every acceptance scenario lives here
-│   ├── AlertHub.Contract.Tests/      ← OpenAPI ↔ implementation drift
+│   ├── DeNoise.Domain.Tests/
+│   ├── DeNoise.Application.Tests/
+│   ├── DeNoise.Integration.Tests/   ← Testcontainers; every acceptance scenario lives here
+│   ├── DeNoise.Contract.Tests/      ← OpenAPI ↔ implementation drift
 │   └── fixtures/                     ← real captured payloads only (see §6)
-├── deploy/helm/alert-hub/
+├── deploy/helm/denoise/
 └── build/                         ← Dockerfiles, CI scripts
 ```
 
@@ -59,8 +59,8 @@ Dependency direction: `Domain ← Application ← Infrastructure ← hosts`. Dom
 dotnet build
 dotnet test                                   # unit + integration (Docker required)
 dotnet test --filter Category=Unit            # fast path
-dotnet run --project src/AlertHub.Api
-dotnet ef migrations add <Name> -p src/AlertHub.Infrastructure -s src/AlertHub.Api
+dotnet run --project src/DeNoise.Api
+dotnet ef migrations add <Name> -p src/DeNoise.Infrastructure -s src/DeNoise.Api
 
 # frontend
 cd web && pnpm install && pnpm dev
@@ -90,7 +90,7 @@ docker compose up -d postgres mailpit   # seeds an admin user; password printed 
 
 ## 6. Definition of done — per milestone
 
-- All mapped acceptance scenarios pass in `AlertHub.Integration.Tests`.
+- All mapped acceptance scenarios pass in `DeNoise.Integration.Tests`.
 - `dotnet test` and `pnpm test && pnpm e2e` green in CI.
 - OpenAPI regenerated and contract tests pass.
 - No `TODO` without an issue reference.

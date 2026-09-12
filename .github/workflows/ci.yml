@@ -42,10 +42,10 @@ jobs:
         run: dotnet test --no-build -c Release --filter Category=Unit --logger "trx;LogFileName=unit.trx"
       - name: Integration tests
         env:
-          ALERTHUB_TEST_CONNECTION: Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres
+          DENOISE_TEST_CONNECTION: Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres
         run: dotnet test --no-build -c Release --filter Category=Integration --logger "trx;LogFileName=integration.trx"
       - name: OpenAPI drift
-        # AlertHub.Contract.Tests compares the running API with docs/openapi/v1.json; a diff here means the snapshot was not regenerated.
+        # DeNoise.Contract.Tests compares the running API with docs/openapi/v1.json; a diff here means the snapshot was not regenerated.
         run: git diff --exit-code -- docs/openapi/v1.json
       - uses: actions/upload-artifact@v4
         if: always()
@@ -87,12 +87,12 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: alerthub
+          POSTGRES_DB: denoise
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 3s --health-retries 20
     env:
-      ConnectionStrings__AlertHub: Host=localhost;Port=5432;Database=alerthub;Username=postgres;Password=postgres
+      ConnectionStrings__DeNoise: Host=localhost;Port=5432;Database=denoise;Username=postgres;Password=postgres
       Auth__Local__BootstrapPassword: Bootstrap-Admin-Passw0rd!
       Http__TrustForwardedHeaders: "true"
       Heartbeats__IngestPublicBaseUrl: http://localhost:8081
@@ -114,12 +114,12 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
       - run: dotnet build -c Release
-      - run: dotnet run --no-build -c Release --project src/AlertHub.Migrator
+      - run: dotnet run --no-build -c Release --project src/DeNoise.Migrator
       - name: Start the hosts
         run: |
-          ASPNETCORE_URLS=http://localhost:8080 nohup dotnet run --no-build -c Release --project src/AlertHub.Api > api.log 2>&1 &
-          ASPNETCORE_URLS=http://localhost:8081 nohup dotnet run --no-build -c Release --project src/AlertHub.Ingest > ingest.log 2>&1 &
-          ASPNETCORE_URLS=http://localhost:8082 nohup dotnet run --no-build -c Release --project src/AlertHub.Workers -- --roles=processing,scheduler,dispatcher > workers.log 2>&1 &
+          ASPNETCORE_URLS=http://localhost:8080 nohup dotnet run --no-build -c Release --project src/DeNoise.Api > api.log 2>&1 &
+          ASPNETCORE_URLS=http://localhost:8081 nohup dotnet run --no-build -c Release --project src/DeNoise.Ingest > ingest.log 2>&1 &
+          ASPNETCORE_URLS=http://localhost:8082 nohup dotnet run --no-build -c Release --project src/DeNoise.Workers -- --roles=processing,scheduler,dispatcher > workers.log 2>&1 &
           for p in 8080 8081 8082; do for i in $(seq 1 60); do curl -sf http://localhost:$p/healthz/ready && break || sleep 2; done; done
       - run: pnpm install --frozen-lockfile
         working-directory: web
@@ -155,7 +155,7 @@ jobs:
           file: build/Dockerfile
           build-args: HOST=${{ matrix.host }}
           push: false
-          tags: alerthub/${{ matrix.host }}:ci
+          tags: denoise/${{ matrix.host }}:ci
 
   helm:
     name: Helm lint
@@ -163,5 +163,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: azure/setup-helm@v4
-      - run: helm lint deploy/helm/alert-hub
-      - run: helm template alert-hub deploy/helm/alert-hub --set postgres.connectionSecret=alerthub-db --set auth.local.bootstrapPasswordSecret=alerthub-admin >/dev/null
+      - run: helm lint deploy/helm/denoise
+      - run: helm template denoise deploy/helm/denoise --set postgres.connectionSecret=denoise-db --set auth.local.bootstrapPasswordSecret=denoise-admin >/dev/null

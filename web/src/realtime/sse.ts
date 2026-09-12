@@ -1,7 +1,7 @@
 import { applyEpisodeChanged, parseEpisodeChanged } from './cache';
 import type { QueryClient } from '@tanstack/react-query';
 
-const STORAGE_KEY = 'alerthub.sse.lastEventId';
+const STORAGE_KEY = 'denoise.sse.lastEventId';
 
 /** The last id survives a reload so the server can replay what a closed tab missed (ADR-12). */
 function readStoredId(): string | null {

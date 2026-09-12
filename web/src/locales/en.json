@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Alert Hub"
+    "name": "DeNoise"
   },
   "nav": {
     "views": "Views",
@@ -131,7 +131,7 @@
     "create": "Create heartbeat",
     "search": "Search heartbeats",
     "empty": "No heartbeats registered.",
-    "emptyDetail": "Register one to have Alert Hub notice when a scheduled job stops running.",
+    "emptyDetail": "Register one to have DeNoise notice when a scheduled job stops running.",
     "emptyFiltered": "No heartbeats match these filters.",
     "columns": {
       "name": "Name",
@@ -254,11 +254,11 @@
       "replaceHeaders": "Replace the stored headers",
       "headersSet": "Headers are set; values are hidden. Tick the box to replace them all.",
       "template": "Body template",
-      "templateDefault": "Alert Hub model, no template",
+      "templateDefault": "DeNoise model, no template",
       "rotateSecret": "Rotate the signing secret",
       "secretSet": "— a secret is set; rotating shows the new one once",
       "noSecret": "— no secret yet",
-      "secretGenerated": "A signing secret is generated on save and shown once (X-AlertHub-Signature).",
+      "secretGenerated": "A signing secret is generated on save and shown once (X-DeNoise-Signature).",
       "emailTo": "Recipients",
       "events": "Notify on",
       "fallback": "Fallback destination",
@@ -267,7 +267,7 @@
       "firstPair": "The first destination is created together with its fallback: every destination needs one that is not itself.",
       "fallbackName": "Fallback name",
       "fallbackUrl": "Fallback URL",
-      "fallbackHint": "A webhook that receives the plain Alert Hub model when this destination fails permanently.",
+      "fallbackHint": "A webhook that receives the plain DeNoise model when this destination fails permanently.",
       "active": "Active (inactive destinations fail permanently to their fallback)",
       "previewHint": "What this destination sends for the selected sample. Manage templates under"
     }
@@ -282,7 +282,7 @@
     "active": "active",
     "inactive": "inactive",
     "builtin": "built-in",
-    "genericNote": "the Alert Hub model itself",
+    "genericNote": "the DeNoise model itself",
     "versions": "Versions",
     "compareWith": "Compare with",
     "diffLabel": "Changes from v{{from}} to v{{to}}",
@@ -397,9 +397,9 @@
       "none": "No coverage method",
       "noneHint": "Coverage stays unknown; automatic closures carry inactivity_unverified evidence until a method is added.",
       "managed_canary": "Managed canary rule",
-      "managed_canaryHint": "A rule named alerthub-canary-* that always fires through the same action group; proves evaluation and delivery.",
+      "managed_canaryHint": "A rule named denoise-canary-* that always fires through the same action group; proves evaluation and delivery.",
       "registered_heartbeat": "Bound registered heartbeat",
-      "registered_heartbeatHint": "A heartbeat registered in Alert Hub whose misses degrade this source's coverage.",
+      "registered_heartbeatHint": "A heartbeat registered in DeNoise whose misses degrade this source's coverage.",
       "api_probe": "API probe (supporting)",
       "api_probeHint": "Periodic reachability check of the Atlas Admin API; a failure degrades coverage, success never raises it."
     },
@@ -740,7 +740,7 @@
     "componentsHint": "heartbeats within 90 s",
     "outboxHint": "green under 5 min",
     "failedHint": "retry from the failure queue",
-    "deadmanHint": "set AlertHub:ExternalDeadmanUrl — the hub must never be the only monitor of itself (spec §13.7)",
+    "deadmanHint": "set DeNoise:ExternalDeadmanUrl — the hub must never be the only monitor of itself (spec §13.7)",
     "components": "Component heartbeats",
     "noComponents": "No component has reported yet.",
     "queues": "Job queues",

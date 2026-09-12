@@ -1,6 +1,6 @@
 # 04 — Domain Model, State Machines and Algorithms
 
-Everything here is normative for `AlertHub.Domain` and `AlertHub.Application`. Spec references are to `spec/alert-hub-spec-v0.4.md`.
+Everything here is normative for `DeNoise.Domain` and `DeNoise.Application`. Spec references are to `spec/denoise-spec-v0.4.md`.
 
 ## 1. Aggregates
 

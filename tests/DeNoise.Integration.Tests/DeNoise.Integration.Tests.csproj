@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../../src/DeNoise.Api/DeNoise.Api.csproj" />
+    <ProjectReference Include="../../src/DeNoise.Ingest/DeNoise.Ingest.csproj" />
+    <ProjectReference Include="../../src/DeNoise.Workers/DeNoise.Workers.csproj" />
+    <ProjectReference Include="../../src/DeNoise.Migrator/DeNoise.Migrator.csproj" />
+    <ProjectReference Include="../../src/DeNoise.Contracts/DeNoise.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+</Project>

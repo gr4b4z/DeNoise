@@ -51,7 +51,7 @@ const csrfMiddleware: Middleware = {
         .clone()
         .json()
         .then((body: unknown) => {
-          if (typeof body === 'object' && body !== null && (body as { type?: string }).type === 'urn:alerthub:error:csrf') resetCsrf();
+          if (typeof body === 'object' && body !== null && (body as { type?: string }).type === 'urn:denoise:error:csrf') resetCsrf();
         })
         .catch(() => undefined);
     }

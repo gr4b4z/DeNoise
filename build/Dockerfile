@@ -1,23 +1,23 @@
 # syntax=docker/dockerfile:1.7
-# Multi-stage build for all Alert Hub backend images. Select the host with --build-arg HOST=Api|Ingest|Workers|Migrator.
+# Multi-stage build for all DeNoise backend images. Select the host with --build-arg HOST=Api|Ingest|Workers|Migrator.
 ARG HOST=Api
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG HOST
 WORKDIR /src
-COPY Directory.Build.props Directory.Packages.props AlertHub.sln ./
+COPY Directory.Build.props Directory.Packages.props DeNoise.sln ./
 COPY src/ src/
-RUN dotnet restore src/AlertHub.${HOST}/AlertHub.${HOST}.csproj
-RUN dotnet publish src/AlertHub.${HOST}/AlertHub.${HOST}.csproj -c Release -o /app --no-restore
+RUN dotnet restore src/DeNoise.${HOST}/DeNoise.${HOST}.csproj
+RUN dotnet publish src/DeNoise.${HOST}/DeNoise.${HOST}.csproj -c Release -o /app --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 ARG HOST
 ENV ASPNETCORE_URLS=http://+:8080 \
     DOTNET_gcServer=0 \
-    HOST_ASSEMBLY=AlertHub.${HOST}.dll
+    HOST_ASSEMBLY=DeNoise.${HOST}.dll
 WORKDIR /app
 COPY --from=build /app .
-RUN groupadd -r alerthub && useradd -r -g alerthub -d /app alerthub && chown -R alerthub:alerthub /app
-USER alerthub
+RUN groupadd -r denoise && useradd -r -g denoise -d /app denoise && chown -R denoise:denoise /app
+USER denoise
 EXPOSE 8080
 ENTRYPOINT ["sh", "-c", "exec dotnet ${HOST_ASSEMBLY} \"$@\"", "--"]

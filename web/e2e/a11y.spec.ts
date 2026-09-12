@@ -11,7 +11,7 @@ async function expectNoSeriousViolations(page: Parameters<typeof test>[1] extend
 
 test('login page is accessible', async ({ page }) => {
   await page.goto('/login');
-  await expect(page.getByRole('heading', { name: 'Alert Hub' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'DeNoise' })).toBeVisible();
   await expectNoSeriousViolations(page);
 });
 

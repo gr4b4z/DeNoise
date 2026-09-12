@@ -1,0 +1,5 @@
+DeNoise {{ include "denoise.tag" . }} deployed as release {{ .Release.Name }}.
+
+Hosts: {{ include "denoise.fullname" . }}-api, -ingest, -workers (roles: {{ .Values.workers.roles }}).
+Readiness: GET /healthz/ready on each service.
+Migrations ran as a pre-upgrade Job; check `kubectl logs job/{{ include "denoise.fullname" . }}-migrate` if the release stalled.

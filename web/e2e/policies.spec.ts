@@ -80,7 +80,7 @@ test('config export, dry run and apply', async ({ page, request }) => {
   await loginAsAdmin(page);
   await page.goto('/config');
   await expect(page.getByRole('heading', { name: 'Config as code' })).toBeVisible();
-  await expect(page.getByTestId('config-export-editor')).toContainText('alerthub_config: 1');
+  await expect(page.getByTestId('config-export-editor')).toContainText('denoise_config: 1');
   await noSeriousViolations(page);
 
   await page.getByTestId('config-use-export').click();

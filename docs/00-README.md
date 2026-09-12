@@ -1,4 +1,4 @@
-# Alert Hub — Coding Agent Handoff Pack
+# DeNoise — Coding Agent Handoff Pack
 
 **Prepared:** 11 September 2026 · **Owner:** Sylwester Grabowski, Shared Services, SoftwareOne
 **Target stack:** .NET 10 backend, React 19 frontend, PostgreSQL, AKS
@@ -7,7 +7,7 @@
 
 | File | What it is | Read when |
 |---|---|---|
-| `spec/alert-hub-spec-v0.4.md` | Product and architecture specification — the behavioural source of truth | Always available; consult per milestone |
+| `spec/denoise-spec-v0.4.md` | Product and architecture specification — the behavioural source of truth | Always available; consult per milestone |
 | `01-requirements-completeness-review.md` | Gap analysis of the spec against implementability; decisions taken; **10 open owner questions (C1–C10)** | First — owner and agent both |
 | `02-AGENTS.md` | Agent operating brief: stack, repo layout, rules, definition of done. **Copy to repo root.** | Before any code |
 | `03-architecture-and-adrs.md` | Component design, request paths, 13 ADRs, Helm values, metric names | Milestone 0 |

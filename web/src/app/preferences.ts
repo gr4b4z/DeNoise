@@ -1,8 +1,8 @@
 export type Theme = 'system' | 'light' | 'dark';
 export type Density = 'compact' | 'comfortable';
 
-const THEME_KEY = 'alerthub.theme';
-const DENSITY_KEY = 'alerthub.density';
+const THEME_KEY = 'denoise.theme';
+const DENSITY_KEY = 'denoise.density';
 
 function read(key: string): string | null {
   try {

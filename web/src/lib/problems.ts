@@ -13,7 +13,7 @@ export function asProblem(error: unknown, status?: number): Problem {
 export function problemCode(problem: Problem | undefined): string | undefined {
   const type = problem?.type;
   if (!type) return undefined;
-  const marker = 'urn:alerthub:error:';
+  const marker = 'urn:denoise:error:';
   return type.startsWith(marker) ? type.slice(marker.length) : type;
 }
 

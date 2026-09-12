@@ -95,7 +95,7 @@ export function pingSnippets(pingUrl: string): { label: string; code: string }[]
     { label: 'PowerShell', code: `Invoke-RestMethod -Method Get -Uri '${pingUrl}' | Out-Null` },
     {
       label: 'GitHub Actions step',
-      code: `- name: Alert Hub heartbeat\n  if: success()\n  run: curl -fsS --retry 3 "\${{ secrets.ALERTHUB_PING_URL }}"\n  # store ${pingUrl.slice(0, pingUrl.lastIndexOf('.'))}.<token> as ALERTHUB_PING_URL`,
+      code: `- name: DeNoise heartbeat\n  if: success()\n  run: curl -fsS --retry 3 "\${{ secrets.DENOISE_PING_URL }}"\n  # store ${pingUrl.slice(0, pingUrl.lastIndexOf('.'))}.<token> as DENOISE_PING_URL`,
     },
     { label: 'cron line', code: `*/5 * * * * /usr/local/bin/backup.sh && curl -fsS --retry 3 ${pingUrl} > /dev/null` },
   ];

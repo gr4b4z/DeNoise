@@ -47,7 +47,7 @@ Each row is one or more `[Fact]`/`[Theory]` in `Integration.Tests`, named `Scena
 | Manual close while firing | close; then `firing` update arrives; assert new episode opens (closed is immutable) and previous shows condition `firing` + `manual_close` |
 | User lacks resource access | user in scope A requests episode in scope B: 404 via API, route hidden in UI |
 | Webhook destination fails permanently | receiver returns 404; assert no further retries, fallback destination used, `used_fallback`, `hub.delivery_failure` |
-| Webhook destination fails transiently | receiver returns 503 then 200; assert backoff, identical `X-AlertHub-Delivery-Id`, `Retry-After` honoured |
+| Webhook destination fails transiently | receiver returns 503 then 200; assert backoff, identical `X-DeNoise-Delivery-Id`, `Retry-After` honoured |
 | Webhook signature | receiver-side recompute of `v1=` over `timestamp.body` matches; tampered body fails |
 | Template escaping | summary containing `"},"severity":"low` renders as a valid JSON string in `json` format; `text` format renders verbatim |
 | Template sandbox | template referencing undefined member or looping 10⁶ times ⇒ validation error / render timeout, no send |

@@ -1,0 +1,19 @@
+{{- range $host := list "api" "ingest" "workers" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "denoise.fullname" $ }}-{{ $host }}
+  labels:
+    {{- include "denoise.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $host }}
+spec:
+  type: {{ $.Values.service.type }}
+  ports:
+    - name: http
+      port: {{ $.Values.service.port }}
+      targetPort: http
+  selector:
+    {{- include "denoise.selectorLabels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $host }}
+{{- end }}

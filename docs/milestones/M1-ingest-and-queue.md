@@ -8,14 +8,14 @@ Status: **done**. No owner input required (09).
 |---|---|---|
 | Integration configuration | `Domain/Integrations/Integration`, `cfg.integration` | Immutable versions with `(integration_id, version)` PK, ★ one current version per id, type check constraint. Ingest credentials live on the version: rotation is a new version, so the old token dies at commit and the change is audited. `owner_team_id` is nullable until teams arrive (M3). |
 | Credentials | `Application/Integrations/TokenGenerator`, `Infrastructure/Security/Argon2SecretHasher` | 12-char non-secret key id in the URL + 32-byte base64url secret in `Authorization: Bearer`. Argon2id, PHC encoding with per-row salt. Secrets are returned exactly once from `IntegrationService.Create/RotateIngestToken`. |
-| Ingest endpoint | `AlertHub.Ingest/IngestEndpoints` | `POST /ingest/{keyId}` → 202 `{eventId, receivedAt}` / 401 / 413 / 429 (+`Retry-After`) / 503 (+`Retry-After`). Body stored as bytes (no JSON required); allow-listed headers only; source IP from forwarded headers. Rate limit: sliding window per key id, default 600/min. |
+| Ingest endpoint | `DeNoise.Ingest/IngestEndpoints` | `POST /ingest/{keyId}` → 202 `{eventId, receivedAt}` / 401 / 413 / 429 (+`Retry-After`) / 503 (+`Retry-After`). Body stored as bytes (no JSON required); allow-listed headers only; source IP from forwarded headers. Rate limit: sliding window per key id, default 600/min. |
 | Durable acceptance | `Application/Ingest/IngestService`, `Infrastructure/Ingest/EfIngestStore` | `raw_event` + `normalise` job in one `SaveChanges` (one transaction). 202 only after commit; any failure before commit is 503 so sources retry. |
 | Job queue | `Application/Ops/IJobQueue`, `Infrastructure/Ops/JobQueue` | Claim = `FOR UPDATE SKIP LOCKED` CTE that reserves with a worker token and lease; complete/fail/extend are conditional on `(job_id, reserved_by, reserved_until > now)` ★. Failure = backoff (5 s · 2^n, full jitter, cap 1 h) until `max_attempts`, then `failed` (the failure queue). `RetryFailed` re-queues. |
 | Runner | `Infrastructure/Ops/JobRunner` | One per role (`processing`, `scheduler`), handles the kinds it has `IJobHandler`s for, one DI scope per job, idle poll 1 s. No `normalise` handler exists yet (M2), so accepted events stay `pending` — durable, not lost. |
 | Reaper | `Infrastructure/Ops/QueueReaperWorker` | Every 30 s releases expired job and outbox reservations. |
-| Metrics | `QueueGauges` | `alerthub_job_queue_depth{kind}`, `alerthub_job_oldest_age_seconds{kind}`, `alerthub_ingest_accepted_total{integration}`, `alerthub_ingest_rejected_total{reason}`, `alerthub_scheduler_lag_seconds`. |
+| Metrics | `QueueGauges` | `denoise_job_queue_depth{kind}`, `denoise_job_oldest_age_seconds{kind}`, `denoise_ingest_accepted_total{integration}`, `denoise_ingest_rejected_total{reason}`, `denoise_scheduler_lag_seconds`. |
 | Audit | `audit.entry`, `IAuditWriter` | `integration.create`, `integration.rotate_ingest_token`, `integration.enable/disable` written in the same transaction as the change. |
-| Dev seed | `AlertHub.Migrator seed-dev` | Creates `dev-generic-webhook` and prints the ingest path + token once to stdout. |
+| Dev seed | `DeNoise.Migrator seed-dev` | Creates `dev-generic-webhook` and prints the ingest path + token once to stdout. |
 
 ## Acceptance scenarios (spec §22)
 

@@ -1,6 +1,6 @@
 # 07 — Mapping DSL, Predicates and Reference Mappings
 
-Interpreted, declarative, no scripting. Implemented in `AlertHub.Application/Mapping`. Path expressions are **JSONPath** (RFC 9535 subset: dot/bracket member access, array index, `[*]`, filter `[?(@.k == 'v')]`). Header access via the pseudo-root `$headers`.
+Interpreted, declarative, no scripting. Implemented in `DeNoise.Application/Mapping`. Path expressions are **JSONPath** (RFC 9535 subset: dot/bracket member access, array index, `[*]`, filter `[?(@.k == 'v')]`). Header access via the pseudo-root `$headers`.
 
 ## 1. Mapping document
 
@@ -86,7 +86,7 @@ Use the example above as the base. Add per `monitoringService` (`applies_when: {
 | Resource Health | `alertContext.properties.currentHealthStatus` — treat `Available` as `resolved` |
 | Service Health | `one_shot`, `informational` |
 
-`source_version`: not provided by Azure; ordering falls back to `occurred_at` (04 §5). Canary rule payloads carry `alertRule` = `alerthub-canary-*` and are matched by an `applies_when` mapping that sets `event_type: heartbeat`.
+`source_version`: not provided by Azure; ordering falls back to `occurred_at` (04 §5). Canary rule payloads carry `alertRule` = `denoise-canary-*` and are matched by an `applies_when` mapping that sets `event_type: heartbeat`.
 
 **Fixture requirement:** at least one real Fired and one Resolved payload per monitoringService above, captured from the tenant (C5). Microsoft's published samples are acceptable as `PROVISIONAL-*` until then.
 

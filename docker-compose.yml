@@ -1,18 +1,18 @@
 # Local stack (AGENTS.md §4). `docker compose up -d postgres mailpit` for development against `dotnet run`;
 # `docker compose --profile app up --build` runs the full Hub from the Dockerfiles.
-name: alerthub
+name: denoise
 services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: alerthub
-      POSTGRES_USER: alerthub
-      POSTGRES_PASSWORD: alerthub
+      POSTGRES_DB: denoise
+      POSTGRES_USER: denoise
+      POSTGRES_PASSWORD: denoise
     command: ["postgres", "-c", "log_min_duration_statement=500", "-c", "shared_buffers=256MB"]
     ports: ["5432:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U alerthub -d alerthub"]
+      test: ["CMD-SHELL", "pg_isready -U denoise -d denoise"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -25,7 +25,7 @@ services:
     profiles: ["app"]
     build: { context: ., dockerfile: build/Dockerfile, args: { HOST: Migrator } }
     environment: &appenv
-      ConnectionStrings__AlertHub: Host=postgres;Port=5432;Database=alerthub;Username=alerthub;Password=alerthub
+      ConnectionStrings__DeNoise: Host=postgres;Port=5432;Database=denoise;Username=denoise;Password=denoise
       DOTNET_ENVIRONMENT: Development
     depends_on:
       postgres: { condition: service_healthy }
