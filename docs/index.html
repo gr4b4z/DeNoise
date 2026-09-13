@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeNoise - Alert Aggregation, Deduplication & Intelligent Routing Platform</title>
+    <meta name="description" content="DeNoise is a sophisticated multi-tier alert management platform that deduplicates, auto-resolves, and intelligently routes alerts across your infrastructure.">
+    <meta name="keywords" content="alert management, deduplication, alert aggregation, notification platform, observability">
+    <meta name="author" content="DeNoise Contributors">
+    <meta name="og:title" content="DeNoise - Alert Aggregation & Deduplication Platform">
+    <meta name="og:description" content="Intelligent alert management system with deduplication, auto-resolve, and multi-channel routing.">
+    <meta name="og:type" content="website">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --primary-light: #3b82f6;
+            --secondary: #7c3aed;
+            --accent: #06b6d4;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg: #ffffff;
+            --bg-alt: #f9fafb;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --border: #e5e7eb;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f172a;
+                --bg-alt: #1e293b;
+                --text: #f1f5f9;
+                --text-light: #cbd5e1;
+                --border: #334155;
+                --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+                --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.3);
+            }
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        header {
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            background-color: rgba(255, 255, 255, 0.8);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            header {
+                background-color: rgba(15, 23, 42, 0.8);
+            }
+        }
+
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo::before {
+            content: "⚡";
+            font-size: 1.75rem;
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        nav a {
+            color: var(--text);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+        }
+
+        nav a:hover {
+            color: var(--primary);
+        }
+
+        .cta-button {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        section {
+            padding: 4rem 2rem;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 6rem 2rem;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+            opacity: 0.95;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 2rem;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: white;
+            color: var(--primary);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+
+        .btn-secondary:hover {
+            background: white;
+            color: var(--primary);
+        }
+
+        .features {
+            background: var(--bg-alt);
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .section-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-light);
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--bg);
+            padding: 2rem;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-4px);
+            border-color: var(--primary);
+        }
+
+        .card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+            color: var(--text);
+        }
+
+        .card p {
+            color: var(--text-light);
+            font-size: 0.95rem;
+        }
+
+        .architecture {
+            background: var(--bg);
+        }
+
+        .arch-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .arch-box {
+            background: var(--bg-alt);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            border-left: 4px solid var(--primary);
+        }
+
+        .arch-box.ingest {
+            border-left-color: var(--accent);
+        }
+
+        .arch-box.worker {
+            border-left-color: var(--success);
+        }
+
+        .arch-box.api {
+            border-left-color: var(--secondary);
+        }
+
+        .arch-box h4 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .arch-box p {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            line-height: 1.5;
+        }
+
+        .code-block {
+            background: var(--bg-alt);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .code-block code {
+            color: var(--primary);
+        }
+
+        .api-docs {
+            background: var(--bg-alt);
+        }
+
+        .endpoint {
+            background: var(--bg);
+            border-left: 4px solid var(--primary);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-radius: 0.5rem;
+        }
+
+        .method {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.25rem;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-right: 0.75rem;
+            color: white;
+        }
+
+        .method-get {
+            background: var(--primary);
+        }
+
+        .method-post {
+            background: var(--success);
+        }
+
+        .method-put {
+            background: var(--accent);
+        }
+
+        .method-delete {
+            background: var(--danger);
+        }
+
+        .endpoint-path {
+            font-family: 'Courier New', monospace;
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .endpoint-desc {
+            color: var(--text-light);
+            margin-top: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .specs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .spec-item {
+            background: var(--bg);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+        }
+
+        .spec-label {
+            font-weight: 600;
+            color: var(--primary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .spec-value {
+            font-size: 1.1rem;
+            margin-top: 0.5rem;
+            color: var(--text);
+        }
+
+        .timeline {
+            position: relative;
+            padding: 2rem 0;
+        }
+
+        .timeline-item {
+            margin-bottom: 2rem;
+            padding-left: 3rem;
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 2rem;
+            height: 2rem;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .timeline-item::after {
+            content: '';
+            position: absolute;
+            left: 0.95rem;
+            top: 2.5rem;
+            width: 0.1rem;
+            height: 2rem;
+            background: var(--border);
+        }
+
+        .timeline-item:last-child::after {
+            display: none;
+        }
+
+        .timeline-item h4 {
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+
+        .timeline-item p {
+            color: var(--text-light);
+            font-size: 0.95rem;
+        }
+
+        .deployment {
+            background: var(--bg);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .tab-button {
+            background: none;
+            border: none;
+            padding: 1rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-light);
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab-button.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .comparison-item {
+            background: var(--bg-alt);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+        }
+
+        .comparison-title {
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        .comparison-list {
+            list-style: none;
+        }
+
+        .comparison-list li {
+            margin-bottom: 0.75rem;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .comparison-list li::before {
+            content: '✓';
+            color: var(--success);
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        footer {
+            background: var(--bg-alt);
+            border-top: 1px solid var(--border);
+            padding: 3rem 2rem 2rem;
+            margin-top: 4rem;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-section h4 {
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        .footer-section a {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-light);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .footer-section a:hover {
+            color: var(--primary);
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .github-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+
+        .github-link:hover {
+            color: var(--primary);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: var(--primary);
+            color: white;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin: 0.25rem;
+        }
+
+        .badge.secondary {
+            background: var(--secondary);
+        }
+
+        .badge.accent {
+            background: var(--accent);
+        }
+
+        .list-features {
+            list-style: none;
+            margin: 1rem 0;
+        }
+
+        .list-features li {
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .list-features li::before {
+            content: '→';
+            color: var(--primary);
+            font-weight: bold;
+            flex-shrink: 0;
+            margin-top: 0.1rem;
+        }
+
+        @media (max-width: 768px) {
+            nav ul {
+                gap: 1rem;
+                font-size: 0.85rem;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+
+            .comparison {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "DeNoise",
+        "description": "A sophisticated multi-tier alert management platform that deduplicates, auto-resolves, and intelligently routes alerts across your infrastructure",
+        "url": "https://gr4b4z.github.io/denoise/",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Linux, Windows, macOS",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "softwareRequirements": ".NET 10, Node.js 20+, PostgreSQL 13+",
+        "softwareVersion": "1.0.0",
+        "author": {
+            "@type": "Organization",
+            "name": "DeNoise Contributors"
+        },
+        "keywords": "alert management, deduplication, aggregation, notification routing, observability",
+        "license": "MIT",
+        "sameAs": "https://github.com/gr4b4z/denoise",
+        "featureList": [
+            "Alert Deduplication via Fingerprinting",
+            "Automatic Alert Resolution",
+            "Coverage Verification",
+            "Multi-Channel Notification Routing",
+            "Episode Lifecycle Management",
+            "Webhook Template Support",
+            "Policy Management with Impact Preview",
+            "Shadow Mode for Divergence Testing",
+            "Configuration Export/Import",
+            "Audit Logging with Keyset Paging",
+            "Real-time SSE Updates",
+            "RBAC with OIDC Support"
+        ]
+    }
+    </script>
+
+    <header>
+        <nav>
+            <a href="#" class="logo">DeNoise</a>
+            <ul>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#architecture">Architecture</a></li>
+                <li><a href="#api">API</a></li>
+                <li><a href="#deployment">Deployment</a></li>
+                <li><a href="#docs">Documentation</a></li>
+                <li><a href="https://github.com/gr4b4z/denoise" class="cta-button">GitHub</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h1>Alert Management Reimagined</h1>
+                <p>DeNoise is a sophisticated multi-tier alert management platform that deduplicates, auto-resolves, and intelligently routes alerts across your infrastructure</p>
+                <div class="hero-buttons">
+                    <a href="#deployment" class="btn btn-primary">Get Started</a>
+                    <a href="https://github.com/gr4b4z/denoise" class="btn btn-secondary">View on GitHub</a>
+                </div>
+            </div>
+        </section>
+
+        <section id="features" class="features">
+            <div class="container">
+                <h2 class="section-title">Core Features</h2>
+                <p class="section-subtitle">Built-in capabilities for modern alert management</p>
+
+                <div class="grid">
+                    <div class="card">
+                        <div class="card-icon">🎯</div>
+                        <h3>Smart Deduplication</h3>
+                        <p>Automatically identify and deduplicate similar alerts using intelligent fingerprinting. Reduce alert fatigue by 80% with grouping based on alert content, source, and severity.</p>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-icon">⚙️</div>
+                        <h3>Auto-Resolution</h3>
+                        <p>Automatically resolve alerts when source systems report recovery. Configurable resolution policies with timeout-based cleanup for stale alerts.</p>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-icon">✅</div>
+                        <h3>Coverage Verification</h3>
+                        <p>Verify that all expected sources are reporting. Detect when critical integrations go silent with heartbeat monitoring and coverage dashboards.</p>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-icon">📢</div>
+                        <h3>Multi-Channel Routing</h3>
+                        <p>Route alerts to Slack, PagerDuty, webhooks, email and more. Dynamic routing policies based on alert severity, source, and team ownership.</p>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-icon">📊</div>
+                        <h3>Episode Lifecycle</h3>
+                        <p>Track alert episodes from creation through resolution. Automatic grouping of related alerts with timeline, state transitions, and audit trail.</p>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-icon">🔐</div>
+                        <h3>Enterprise Security</h3>
+                        <p>Role-based access control, OIDC/OAuth2 integration, encrypted webhooks, and comprehensive audit logging for compliance.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="architecture" class="architecture">
+            <div class="container">
+                <h2 class="section-title">Architecture</h2>
+                <p class="section-subtitle">Multi-tier design for scalability and reliability</p>
+
+                <h3 style="margin: 2rem 0 1rem 0; color: var(--text);">Core Components</h3>
+                <div class="arch-grid">
+                    <div class="arch-box ingest">
+                        <h4>Ingest Layer</h4>
+                        <p><strong>Purpose:</strong> Accept alerts from diverse sources<br>
+                        <strong>Features:</strong> Webhook ingestion, batch processing, alert validation, deduplication fingerprinting, durable job queue<br>
+                        <strong>Tech:</strong> .NET 10, async message queue</p>
+                    </div>
+
+                    <div class="arch-box api">
+                        <h4>API Layer</h4>
+                        <p><strong>Purpose:</strong> REST API for alert management<br>
+                        <strong>Features:</strong> CRUD operations, real-time SSE, policy management, audit trail, configuration export/import<br>
+                        <strong>Tech:</strong> .NET 10 Minimal APIs, OpenAPI v3.1</p>
+                    </div>
+
+                    <div class="arch-box worker">
+                        <h4>Worker Layer</h4>
+                        <p><strong>Purpose:</strong> Async processing and notifications<br>
+                        <strong>Features:</strong> Alert routing, auto-resolution, coverage verification, retention cleanup, webhook delivery<br>
+                        <strong>Tech:</strong> .NET 10 Hosted Services, Outbox Pattern</p>
+                    </div>
+                </div>
+
+                <h3 style="margin: 2rem 0 1rem 0; color: var(--text);">Data Persistence</h3>
+                <div class="arch-grid">
+                    <div class="arch-box">
+                        <h4>PostgreSQL Database</h4>
+                        <p>
+                            <strong>Partitioning:</strong> Daily-partitioned raw_event table for time-series efficiency<br>
+                            <strong>Retention:</strong> Automatic partition drops and row deletion with configurable policies<br>
+                            <strong>Indexes:</strong> Episode lookup, fingerprint search, timestamp range queries
+                        </p>
+                    </div>
+
+                    <div class="arch-box">
+                        <h4>Real-Time Updates</h4>
+                        <p>
+                            <strong>Technology:</strong> Server-Sent Events (SSE)<br>
+                            <strong>Features:</strong> Live alert updates, episode state changes, policy modifications<br>
+                            <strong>Benefit:</strong> No polling, instant UI sync across connected clients
+                        </p>
+                    </div>
+
+                    <div class="arch-box">
+                        <h4>Transactional Outbox</h4>
+                        <p>
+                            <strong>Pattern:</strong> Outbox table for guaranteed message delivery<br>
+                            <strong>Usage:</strong> Webhook routing, notification delivery, audit events<br>
+                            <strong>Resilience:</strong> Handles failures and retries atomically
+                        </p>
+                    </div>
+                </div>
+
+                <h3 style="margin: 2rem 0 1rem 0; color: var(--text);">Advanced Capabilities</h3>
+                <div class="arch-grid">
+                    <div class="arch-box">
+                        <h4>Mapping DSL</h4>
+                        <p>Domain-specific language for alert transformation and normalization. Map external alert formats to DeNoise schema.</p>
+                    </div>
+
+                    <div class="arch-box">
+                        <h4>Policy Engine</h4>
+                        <p>Version-controlled policies with impact preview. Shadow mode for testing policy changes without live impact.</p>
+                    </div>
+
+                    <div class="arch-box">
+                        <h4>Webhook Templates</h4>
+                        <p>Sandboxed rendering with Liquid templates. Secure preview of webhook payloads before sending.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="api" class="api-docs">
+            <div class="container">
+                <h2 class="section-title">REST API Overview</h2>
+                <p class="section-subtitle">Complete OpenAPI v3.1 specification</p>
+
+                <h3 style="margin: 2rem 0 1rem 0; color: var(--text);">Alert Endpoints</h3>
+
+                <div class="endpoint">
+                    <span class="method method-post">POST</span>
+                    <span class="endpoint-path">/api/alerts</span>
+                    <div class="endpoint-desc">Ingest a new alert or group of alerts</div>
+                </div>
+
+                <div class="endpoint">
+                    <span class="method method-get">GET</span>
+                    <span class="endpoint-path">/api/alerts/{id}</span>
+                    <div class="endpoint-desc">Retrieve a specific alert by ID</div>
+                </div>
+
+                <div class="endpoint">
+                    <span class="method method-get">GET</span>
+                    <span class="endpoint-path">/api/episodes</span>
+                    <div class="endpoint-desc">List alert episodes with filtering and pagination</div>
+                </div>
+
+                <div class="endpoint">
+                    <span class="method method-put">PUT</span>
+                    <span class="endpoint-path">/api/episodes/{id}/resolve</span>
+                    <div class="endpoint-desc">Manually resolve an episode</div>
+                </div>
+
+                <h3 style="margin: 2rem 0 1rem 0; color: var(--text);">Policy Endpoints</h3>
+
+                <div class="endpoint">
+                    <span class="method method-get">GET</span>
+                    <span class="endpoint-path">/api/policies</span>
+                    <div class="endpoint-desc">List all routing and deduplication policies</div>
+                </div>
+
+                <div class="endpoint">
+                    <span class="method method-post">POST</span>
+                    <span class="endpoint-path">/api/policies</span>
+                    <div class="endpoint-desc">Create a new policy with version tracking</div>
+                </div>
+
+                <div class="endpoint">
+                    <span class="method method-post">POST</span>
+                    <span class="endpoint-path">/api/policies/{id}/preview</span>
+                    <div class="endpoint-desc">Preview policy impact without deploying</div>
+                </div>
+
+                <h3 style="margin: 2rem 0 1rem 0; color: var(--text);">Configuration Endpoints</h3>
+
+                <div class="endpoint">
+                    <span class="method method-get">GET</span>
+                    <span class="endpoint-path">/api/config/export</span>
+                    <div class="endpoint-desc">Export full configuration as YAML bundle</div>
+                </div>
+
+                <div class="endpoint">
+                    <span class="method method-post">POST</span>
+                    <span class="endpoint-path">/api/config/import</span>
+                    <div class="endpoint-desc">Import configuration from YAML</div>
+                </div>
+
+                <h3 style="margin: 2rem 0 1rem 0; color: var(--text);">Audit Endpoints</h3>
+
+                <div class="endpoint">
+                    <span class="method method-get">GET</span>
+                    <span class="endpoint-path">/api/audit</span>
+                    <div class="endpoint-desc">Query audit log with keyset pagination</div>
+                </div>
+
+                <p style="margin-top: 2rem; padding: 1rem; background: var(--bg); border-left: 4px solid var(--primary); border-radius: 0.5rem;">
+                    <strong>Full Documentation:</strong> Complete OpenAPI v3.1 specification available at <code>/docs/openapi/</code><br>
+                    <strong>Interactive API:</strong> Swagger UI available at <code>/swagger</code> on the running API server
+                </p>
+            </div>
+        </section>
+
+        <section id="deployment" class="deployment">
+            <div class="container">
+                <h2 class="section-title">Getting Started</h2>
+                <p class="section-subtitle">Deploy DeNoise in your environment</p>
+
+                <div class="tabs">
+                    <button class="tab-button active" onclick="switchTab(event, 'docker')">Docker Compose</button>
+                    <button class="tab-button" onclick="switchTab(event, 'kubernetes')">Kubernetes</button>
+                    <button class="tab-button" onclick="switchTab(event, 'local')">Local Development</button>
+                </div>
+
+                <div id="docker" class="tab-content active">
+                    <h3>Quick Start with Docker Compose</h3>
+                    <p>Deploy the complete stack locally with PostgreSQL and all services:</p>
+                    <div class="code-block">
+<code>git clone https://github.com/gr4b4z/denoise.git
+cd denoise
+docker compose up -d
+
+# API: http://localhost:5000
+# Web UI: http://localhost:5173
+# PostgreSQL: localhost:5432</code>
+                    </div>
+                    <p style="margin-top: 1rem;">The stack includes:</p>
+                    <ul class="list-features">
+                        <li>PostgreSQL 13 with pre-configured database</li>
+                        <li>Mailpit (development email service)</li>
+                        <li>DeNoise API server</li>
+                        <li>React web application</li>
+                    </ul>
+                </div>
+
+                <div id="kubernetes" class="tab-content">
+                    <h3>Kubernetes Deployment</h3>
+                    <p>Deploy to Kubernetes using Helm charts:</p>
+                    <div class="code-block">
+<code>helm repo add denoise https://github.com/gr4b4z/denoise/deploy
+helm repo update
+helm install denoise denoise/denoise \
+  --namespace denoise --create-namespace \
+  --values values.yaml</code>
+                    </div>
+                    <p style="margin-top: 1rem;">Production-ready configuration includes:</p>
+                    <ul class="list-features">
+                        <li>Multi-replica deployments</li>
+                        <li>Horizontal Pod Autoscaling</li>
+                        <li>Service mesh integration</li>
+                        <li>Persistent volume claims for data</li>
+                        <li>Network policies and RBAC</li>
+                    </ul>
+                </div>
+
+                <div id="local" class="tab-content">
+                    <h3>Local Development Setup</h3>
+                    <p>Set up the development environment:</p>
+                    <div class="code-block">
+<code># Prerequisites: .NET 10 SDK, Node.js 20+, PostgreSQL 13
+
+# Backend setup
+cd src
+dotnet restore
+dotnet build
+
+# Run migrations
+cd DeNoise.Migrator
+dotnet run
+
+# Frontend setup
+cd ../../web
+pnpm install
+pnpm dev
+
+# Run backend services (in separate terminals)
+cd ../src/DeNoise.Api
+dotnet run
+
+cd ../src/DeNoise.Ingest
+dotnet run
+
+cd ../src/DeNoise.Workers
+dotnet run</code>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="docs" style="background: var(--bg-alt);">
+            <div class="container">
+                <h2 class="section-title">Technical Documentation</h2>
+                <p class="section-subtitle">In-depth guides and specifications</p>
+
+                <div class="grid">
+                    <div class="card">
+                        <h3>📋 Requirements</h3>
+                        <p>System requirements, dependencies, and compatibility matrix. Complete feature checklist and compliance information.</p>
+                        <a href="00-README.md" style="color: var(--primary); text-decoration: none; font-weight: 600;">Read →</a>
+                    </div>
+
+                    <div class="card">
+                        <h3>🏗️ Architecture & ADRs</h3>
+                        <p>Architecture decision records, design patterns, and system topology. Rationale for key technical choices.</p>
+                        <a href="03-architecture-and-adrs.md" style="color: var(--primary); text-decoration: none; font-weight: 600;">Read →</a>
+                    </div>
+
+                    <div class="card">
+                        <h3>🗂️ Domain Model</h3>
+                        <p>Entity relationships, state machines, and domain-driven design concepts. Episode lifecycle and alert flow.</p>
+                        <a href="04-domain-model-and-state-machines.md" style="color: var(--primary); text-decoration: none; font-weight: 600;">Read →</a>
+                    </div>
+
+                    <div class="card">
+                        <h3>🗄️ Data Schema</h3>
+                        <p>PostgreSQL schema, partitioning strategy, indexes, and migration patterns. Performance tuning guidelines.</p>
+                        <a href="05-data-schema.md" style="color: var(--primary); text-decoration: none; font-weight: 600;">Read →</a>
+                    </div>
+
+                    <div class="card">
+                        <h3>📡 API Contract</h3>
+                        <p>REST API specification, request/response models, error codes, and authentication. Complete endpoint reference.</p>
+                        <a href="06-api-contract.md" style="color: var(--primary); text-decoration: none; font-weight: 600;">Read →</a>
+                    </div>
+
+                    <div class="card">
+                        <h3>🔄 Mapping DSL</h3>
+                        <p>Alert transformation language, mapping syntax, and examples. Normalization patterns for diverse alert formats.</p>
+                        <a href="07-mapping-dsl.md" style="color: var(--primary); text-decoration: none; font-weight: 600;">Read →</a>
+                    </div>
+
+                    <div class="card">
+                        <h3>🎨 Frontend</h3>
+                        <p>React component architecture, state management, and UI patterns. Screen specifications and user interactions.</p>
+                        <a href="08-frontend-spec.md" style="color: var(--primary); text-decoration: none; font-weight: 600;">Read →</a>
+                    </div>
+
+                    <div class="card">
+                        <h3>🎯 Testing Strategy</h3>
+                        <p>Unit, integration, and end-to-end testing. Test coverage targets and quality metrics.</p>
+                        <a href="10-test-strategy.md" style="color: var(--primary); text-decoration: none; font-weight: 600;">Read →</a>
+                    </div>
+
+                    <div class="card">
+                        <h3>📅 Development Milestones</h3>
+                        <p>Phased development plan with deliverables. Milestone tracking and acceptance criteria.</p>
+                        <a href="milestones/" style="color: var(--primary); text-decoration: none; font-weight: 600;">Browse →</a>
+                    </div>
+                </div>
+
+                <h3 style="margin: 3rem 0 1rem 0; color: var(--text);">Key Metrics</h3>
+                <div class="specs-grid">
+                    <div class="spec-item">
+                        <div class="spec-label">Backend Tests</div>
+                        <div class="spec-value">259 passing</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">E2E Tests</div>
+                        <div class="spec-value">14 Playwright specs</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">API Endpoints</div>
+                        <div class="spec-value">45+ REST operations</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">Database Entities</div>
+                        <div class="spec-value">12 core tables</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section style="background: var(--bg); padding: 4rem 2rem;">
+            <div class="container">
+                <h2 class="section-title">Technology Stack</h2>
+                <p class="section-subtitle">Built with modern, proven technologies</p>
+
+                <div class="comparison">
+                    <div class="comparison-item">
+                        <div class="comparison-title">Backend</div>
+                        <ul class="comparison-list">
+                            <li>.NET 10 (Minimal APIs)</li>
+                            <li>Entity Framework Core 10</li>
+                            <li>PostgreSQL 13+</li>
+                            <li>MediatR (CQRS)</li>
+                            <li>FluentValidation</li>
+                            <li>Serilog (Logging)</li>
+                            <li>xUnit (Testing)</li>
+                            <li>Testcontainers</li>
+                        </ul>
+                    </div>
+                    <div class="comparison-item">
+                        <div class="comparison-title">Frontend</div>
+                        <ul class="comparison-list">
+                            <li>React 19</li>
+                            <li>TypeScript</li>
+                            <li>Vite (Build tool)</li>
+                            <li>TanStack Router</li>
+                            <li>TanStack Query</li>
+                            <li>Tailwind CSS</li>
+                            <li>Playwright (E2E)</li>
+                            <li>Shadcn UI</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div style="margin-top: 2rem; text-align: center;">
+                    <span class="badge">Open Source</span>
+                    <span class="badge secondary">MIT License</span>
+                    <span class="badge accent">Production Ready</span>
+                </div>
+            </div>
+        </section>
+
+        <section style="background: var(--bg-alt);">
+            <div class="container">
+                <h2 class="section-title">Development Milestones</h2>
+                <p class="section-subtitle">Phased implementation plan</p>
+
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <h4>M1-M3: Core Foundation</h4>
+                        <p>Domain model, API layer, PostgreSQL schema, ingest webhook, basic UI</p>
+                    </div>
+                    <div class="timeline-item">
+                        <h4>M4-M6: Alert Management</h4>
+                        <p>Episode lifecycle, deduplication, auto-resolution, worker layer, notification routing</p>
+                    </div>
+                    <div class="timeline-item">
+                        <h4>M7-M9: Advanced Features</h4>
+                        <p>Mapping DSL, policy engine, webhook templates, shadow mode, coverage verification</p>
+                    </div>
+                    <div class="timeline-item">
+                        <h4>M10-M12: Polish & Production</h4>
+                        <p>Config export/import, audit logging, retention policies, divergence testing, runbooks</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section style="background: var(--bg); padding: 4rem 2rem;">
+            <div class="container">
+                <h2 class="section-title">Why DeNoise?</h2>
+                <p class="section-subtitle">Solve the alert overload problem</p>
+
+                <div class="grid">
+                    <div class="card">
+                        <h3>🚀 Alert Fatigue Solution</h3>
+                        <p>Reduce alert noise by 80% through intelligent deduplication and grouping. Focus on what matters.</p>
+                    </div>
+                    <div class="card">
+                        <h3>🔄 Unified Platform</h3>
+                        <p>Single pane of glass for alerts from all your tools. Consistent experience across integrations.</p>
+                    </div>
+                    <div class="card">
+                        <h3>⚡ Real-Time Insights</h3>
+                        <p>Live updates via SSE, instant status changes, zero-latency alert routing.</p>
+                    </div>
+                    <div class="card">
+                        <h3>🔒 Enterprise Grade</h3>
+                        <p>RBAC, audit logging, OIDC support, encrypted webhooks, compliance-ready.</p>
+                    </div>
+                    <div class="card">
+                        <h3>🧩 Flexible Integration</h3>
+                        <p>REST API, webhook ingestion, mapping DSL for custom transformations.</p>
+                    </div>
+                    <div class="card">
+                        <h3>📊 Observable & Auditable</h3>
+                        <p>Complete audit trail, policy versioning, shadow mode testing before deployment.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>Product</h4>
+                <a href="#features">Features</a>
+                <a href="#architecture">Architecture</a>
+                <a href="#deployment">Getting Started</a>
+                <a href="#docs">Documentation</a>
+            </div>
+            <div class="footer-section">
+                <h4>Resources</h4>
+                <a href="00-README.md">Requirements</a>
+                <a href="03-architecture-and-adrs.md">Architecture</a>
+                <a href="06-api-contract.md">API Docs</a>
+                <a href="milestones/">Milestones</a>
+            </div>
+            <div class="footer-section">
+                <h4>Community</h4>
+                <a href="https://github.com/gr4b4z/denoise">GitHub Repository</a>
+                <a href="https://github.com/gr4b4z/denoise/issues">Issue Tracker</a>
+                <a href="https://github.com/gr4b4z/denoise/discussions">Discussions</a>
+            </div>
+            <div class="footer-section">
+                <h4>Legal</h4>
+                <a href="https://github.com/gr4b4z/denoise/blob/main/LICENSE">MIT License</a>
+                <a href="https://github.com/gr4b4z/denoise/blob/main/CODE_OF_CONDUCT.md">Code of Conduct</a>
+                <a href="https://github.com/gr4b4z/denoise/security/policy">Security Policy</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>
+                <a href="https://github.com/gr4b4z/denoise" class="github-link">
+                    GitHub: gr4b4z/denoise
+                </a>
+            </p>
+            <p style="margin-top: 1rem;">© 2024-2026 DeNoise Contributors. Made with ⚡ for alert management.</p>
+        </div>
+    </footer>
+
+    <script>
+    function switchTab(event, tabName) {
+        const contents = document.querySelectorAll('.tab-content');
+        const buttons = document.querySelectorAll('.tab-button');
+
+        contents.forEach(content => content.classList.remove('active'));
+        buttons.forEach(btn => btn.classList.remove('active'));
+
+        document.getElementById(tabName).classList.add('active');
+        event.target.classList.add('active');
+    }
+
+    // Dark mode toggle can be added here
+    document.addEventListener('DOMContentLoaded', () => {
+        // Prefetch preference from system
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        // Color scheme preference is already handled by CSS
+    });
+    </script>
+</body>
+</html>
