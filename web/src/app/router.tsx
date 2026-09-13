@@ -8,7 +8,7 @@ import { Shell } from './Shell';
 import { LoginPage } from '@/routes/Login';
 import { ChangePasswordPage } from '@/routes/ChangePassword';
 import { QueuePage } from '@/routes/Queue';
-import type { QueueSearch } from '@/routes/queueSearch';
+import { DEFAULT_QUEUE_SEARCH, type QueueSearch } from '@/routes/queueSearch';
 import { EpisodePage } from '@/routes/Episode';
 import { ForbiddenPage, NotFoundPage } from '@/routes/Errors';
 import { HeartbeatsPage, type HeartbeatsSearch } from '@/routes/Heartbeats';
@@ -77,7 +77,7 @@ const indexRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/',
   beforeLoad: () => {
-    throw redirect({ to: '/queue', search: { view: 'needsAttention' } });
+    throw redirect({ to: '/queue', search: DEFAULT_QUEUE_SEARCH });
   },
 });
 
@@ -86,8 +86,11 @@ const queueRoute = createRoute({
   path: '/queue',
   validateSearch: (s: Record<string, unknown>): QueueSearch => {
     const view = QUEUE_VIEWS.includes(s.view as QueueView) ? (s.view as QueueView) : 'needsAttention';
-    const severity = Array.isArray(s.severity) ? s.severity.filter((x): x is string => typeof x === 'string') : typeof s.severity === 'string' ? [s.severity] : undefined;
-    return { view, severity: severity?.length ? severity : undefined, team: str(s.team), environment: str(s.environment), service: str(s.service), q: str(s.q), episode: str(s.episode) };
+    const list = (v: unknown): string[] | undefined => {
+      const values = Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : typeof v === 'string' ? [v] : undefined;
+      return values?.length ? values : undefined;
+    };
+    return { view, severity: list(s.severity), team: str(s.team), environment: list(s.environment), service: str(s.service), q: str(s.q), episode: str(s.episode) };
   },
   component: QueuePage,
 });

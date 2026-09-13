@@ -637,6 +637,8 @@ Each row: severity, summary, resource/service, environment, condition state, han
 
 Sorting is deterministic; unacknowledged `critical` and overdue handling sort first; `unknown` severity stays prominent. Saved filters and shareable URLs are included.
 
+Every entry point into the queue (rail, login redirect, "back to queue" links) opens it filtered to `environment ∈ {production, unknown}` (§15.5): operators see production plus anything the mapping could not classify, and switch to other environments or "all" with one click. The filter is ordinary URL state — a shared link or saved filter without `environment` shows every environment.
+
 A quiet queue is presented as healthy **only** when the relevant integrations are verified healthy. Otherwise a scoped banner states which coverage is missing.
 
 ### 14.4 Actions
@@ -689,6 +691,20 @@ Mappings are immutable versions with samples and expected outputs, deployable wi
 ### 15.4 Enrichment
 
 Enrichment supplies service, environment, owner and runbook from local mappings and cached metadata. External enrichment calls must not block durable ingestion. Enrichment failure never drops an alert: ownership falls back to triage with the missing metadata visible. Security scope derives from the authenticated integration, never from payload labels.
+
+### 15.5 Environments
+
+DeNoise receives alerts from **every environment that a team is accountable for** — production, staging, development or another configured value — but treats them differently by policy, never by refusing them at ingest. One store for all environments is what makes deduplication, coverage, history and "this fired on staging before it fired on production" possible; the cost is volume (non-production typically produces several times the production alert count), which the rules below keep out of operators' way.
+
+1. **Environment is a canonical field, not a source property.** It is derived by the mapping (`environment` field, lookup or `regex_map` over subscription or project identifiers), enters the fingerprint, and is available to every predicate: routing, lifecycle, grouping, suppression scope, `applies_when`. A mapping that cannot derive it yields `unknown`; the value is never silently guessed.
+2. **One integration per environment where the source allows it.** Each integration has its own credentials, rate limit, `access_scope`, coverage method and shadow flag, so a chatty development subscription cannot exhaust a production budget and cannot see or route into production scope. Deriving the security scope from a payload label is forbidden (15.4); the same holds for environment when it decides visibility.
+3. **Differentiate by policy.**
+   - Production: full path — team routing, escalation, notifications.
+   - Staging / UAT: routed to the team's own destination without escalation (or visible in the queue only, `notify: first_only`), shorter inactivity and expiry timers.
+   - Development / sandbox: a **separate integration in shadow mode** — full processing, zero outbox — so mappings and noise can be studied without waking anyone.
+   - Ephemeral environments (pull-request previews, per-developer stacks) are **not ingested**: every instance is a new resource identity, deduplication cannot help, and coverage would keep reporting a "silent source" for stacks that were simply deleted.
+4. **The default view is production plus unclassified.** The queue opens on `environment ∈ {production, unknown}` (14.3). `unknown` — and an empty value — is included on purpose: an alert that lost its environment in mapping must be *more* visible, not hidden. Non-production views are one click away and shareable.
+5. **Retention and targets are measured per environment.** Volume and noise figures (3.3, 20.1) are reported with an environment dimension so that development churn does not distort the production baseline.
 
 ---
 

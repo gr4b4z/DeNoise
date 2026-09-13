@@ -88,7 +88,7 @@ public sealed class EpisodeQueries(DeNoiseDbContext db, NpgsqlDataSource dataSou
         AddIn(filter.Condition, "e.condition_state", "cs", where, parameters, [ConditionState.Firing, ConditionState.Resolved, ConditionState.Unknown, ConditionState.NotApplicable]);
         if (filter.TeamId is { } team) { where.Add("e.owning_team_id = @team"); parameters.Add(new NpgsqlParameter("team", team)); }
         if (!string.IsNullOrWhiteSpace(filter.Scope)) { where.Add("e.access_scope = @scope"); parameters.Add(new NpgsqlParameter("scope", filter.Scope)); }
-        if (!string.IsNullOrWhiteSpace(filter.Environment)) { where.Add("e.environment = @env"); parameters.Add(new NpgsqlParameter("env", filter.Environment)); }
+        AddEnvironmentFilter(filter.Environment, where, parameters);
         if (!string.IsNullOrWhiteSpace(filter.Service)) { where.Add("e.service = @svc"); parameters.Add(new NpgsqlParameter("svc", filter.Service)); }
         if (filter.IntegrationId is { } integration) { where.Add("e.integration_id = @integration"); parameters.Add(new NpgsqlParameter("integration", integration)); }
         if (!string.IsNullOrWhiteSpace(filter.ClosureReason)) { where.Add("e.closure_reason = @closure"); parameters.Add(new NpgsqlParameter("closure", filter.ClosureReason)); }
@@ -328,6 +328,21 @@ public sealed class EpisodeQueries(DeNoiseDbContext db, NpgsqlDataSource dataSou
     }
 
     private static readonly string[] Severities = ["critical", "high", "medium", "low", "informational", "unknown"];
+
+    /// <summary>
+    /// Repeatable <c>environment</c> filter (spec §15.5). Values are free-form and matched exactly after trimming; <c>unknown</c>
+    /// also matches episodes whose mapping produced no environment at all, so unclassified alerts are never hidden by the default view.
+    /// </summary>
+    private static void AddEnvironmentFilter(IReadOnlyList<string>? values, List<string> where, List<NpgsqlParameter> parameters)
+    {
+        if (values is null || values.Count == 0) return;
+        var clean = values.Select(v => v.Trim()).Where(v => v.Length > 0).Distinct(StringComparer.Ordinal).ToArray();
+        if (clean.Length == 0) return;
+        var clause = "e.environment = ANY(@env)";
+        if (clean.Contains("unknown", StringComparer.OrdinalIgnoreCase)) clause = "(" + clause + " OR e.environment IS NULL)";
+        where.Add(clause);
+        parameters.Add(new NpgsqlParameter("env", clean));
+    }
 
     private static void AddIn(IReadOnlyList<string>? values, string column, string name, List<string> where, List<NpgsqlParameter> parameters, string[] allowed)
     {

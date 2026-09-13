@@ -18,6 +18,28 @@ public sealed class EpisodeApiTests(PostgresFixture postgres) : IAsyncLifetime
     public async Task DisposeAsync() => await _api.DisposeAsync();
 
     [Fact]
+    public async Task Environment_filter_is_repeatable_and_unknown_matches_unclassified_episodes()
+    {
+        var prod = await _api.OpenEpisodeAsync("env-prod", environment: "production");
+        var staging = await _api.OpenEpisodeAsync("env-staging", environment: "staging");
+        var unknown = await _api.OpenEpisodeAsync("env-unknown", environment: "unknown");
+        var none = await _api.OpenEpisodeAsync("env-none", environment: null);
+
+        using var op = await _api.LoginAsync("operator");
+        var all = await op.GetAsync<PagedResponse<EpisodeListItem>>("/api/v1/episodes?view=needsAttention");
+        all!.Items.Select(i => i.Id).Should().BeEquivalentTo([prod, staging, unknown, none], "no environment filter means every environment");
+
+        var production = await op.GetAsync<PagedResponse<EpisodeListItem>>("/api/v1/episodes?view=needsAttention&environment=production");
+        production!.Items.Select(i => i.Id).Should().Equal(prod);
+
+        var defaultView = await op.GetAsync<PagedResponse<EpisodeListItem>>("/api/v1/episodes?view=needsAttention&environment=production&environment=unknown");
+        defaultView!.Items.Select(i => i.Id).Should().BeEquivalentTo([prod, unknown, none], "spec §15.5: unclassified episodes are never hidden by the default view");
+
+        var nonProd = await op.GetAsync<PagedResponse<EpisodeListItem>>("/api/v1/episodes?view=needsAttention&environment=staging&environment=development");
+        nonProd!.Items.Select(i => i.Id).Should().Equal(staging);
+    }
+
+    [Fact]
     public async Task Queue_lists_only_visible_scopes_with_cursor_paging_counts_and_detail()
     {
         var a1 = await _api.OpenEpisodeAsync("q-1", severity: "critical");

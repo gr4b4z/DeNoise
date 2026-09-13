@@ -17,7 +17,7 @@ namespace DeNoise.Api.Endpoints;
 
 public sealed record HistoryQuery(
     [property: FromQuery(Name = "severity")] string[]? Severity, [property: FromQuery(Name = "team")] Guid? Team, [property: FromQuery(Name = "scope")] string? Scope,
-    [property: FromQuery(Name = "environment")] string? Environment, [property: FromQuery(Name = "service")] string? Service, [property: FromQuery(Name = "integration")] Guid? Integration,
+    [property: FromQuery(Name = "environment")] string[]? Environment, [property: FromQuery(Name = "service")] string? Service, [property: FromQuery(Name = "integration")] Guid? Integration,
     [property: FromQuery(Name = "q")] string? Q, [property: FromQuery(Name = "closureReason")] string? ClosureReason, [property: FromQuery(Name = "evidence")] string? Evidence,
     [property: FromQuery(Name = "sort")] string? Sort, [property: FromQuery(Name = "limit")] int? Limit, [property: FromQuery(Name = "cursor")] string? Cursor,
     [property: FromQuery(Name = "includeTotal")] bool? IncludeTotal);
@@ -73,7 +73,7 @@ public static class SuppressionEndpoints
         var history = app.MapGroup("/api/v1/history").WithTags("History").RequireAuthorization().AddEndpointFilter<MustChangePasswordFilter>();
         history.MapGet("", async ([Microsoft.AspNetCore.Http.AsParameters] HistoryQuery query, HttpContext http, IEpisodeQueries queries, ITeamMemberRepository members) =>
         {
-            var filter = new EpisodeFilter(View: QueueViews.Closed, Severity: query.Severity ?? [], TeamId: query.Team, Scope: query.Scope, Environment: query.Environment, Service: query.Service,
+            var filter = new EpisodeFilter(View: QueueViews.Closed, Severity: query.Severity ?? [], TeamId: query.Team, Scope: query.Scope, Environment: query.Environment ?? [], Service: query.Service,
                 IntegrationId: query.Integration, Query: query.Q, ClosureReason: query.ClosureReason, Evidence: query.Evidence, Sort: query.Sort, Limit: query.Limit ?? 50, Cursor: query.Cursor, IncludeTotal: query.IncludeTotal ?? false);
             var p = http.Principal();
             var myTeams = (await members.ListForUserAsync(p.UserId, http.RequestAborted)).Select(m => m.TeamId).ToList();

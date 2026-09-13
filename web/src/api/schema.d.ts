@@ -3259,7 +3259,7 @@ export interface operations {
                 condition?: string[];
                 team?: string;
                 scope?: string;
-                environment?: string;
+                environment?: string[];
                 service?: string;
                 integration?: string;
                 q?: string;
@@ -6167,7 +6167,7 @@ export interface operations {
                 severity?: string[];
                 team?: string;
                 scope?: string;
-                environment?: string;
+                environment?: string[];
                 service?: string;
                 integration?: string;
                 q?: string;

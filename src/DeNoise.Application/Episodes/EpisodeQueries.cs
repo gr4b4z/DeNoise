@@ -20,7 +20,7 @@ public static class QueueViews
 /// <summary>Filters from the query string (06 §1). Scope enforcement is applied by the query from the principal, never from the request.</summary>
 public sealed record EpisodeFilter(
     string? View = null, IReadOnlyList<string>? Severity = null, IReadOnlyList<string>? Handling = null, IReadOnlyList<string>? Condition = null,
-    Guid? TeamId = null, string? Scope = null, string? Environment = null, string? Service = null, Guid? IntegrationId = null, string? Query = null,
+    Guid? TeamId = null, string? Scope = null, IReadOnlyList<string>? Environment = null, string? Service = null, Guid? IntegrationId = null, string? Query = null,
     string? ClosureReason = null, string? Evidence = null, string? Sort = null, int Limit = 50, string? Cursor = null, bool IncludeTotal = false);
 
 /// <summary>Hot read model (ADR-4): hand-written SQL in Infrastructure. Every method filters by the principal's scopes.</summary>

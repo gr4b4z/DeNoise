@@ -79,10 +79,11 @@ public sealed class ApiFixture : IAsyncDisposable
     }
 
     /// <summary>Ingests and processes one firing event through the real pipeline; returns the episode id.</summary>
-    public async Task<Guid> OpenEpisodeAsync(string alertId, IntegrationCredentials? integration = null, string severity = "high")
+    public async Task<Guid> OpenEpisodeAsync(string alertId, IntegrationCredentials? integration = null, string severity = "high", string? environment = "production")
     {
         integration ??= IntegrationA;
-        var body = $$"""{"eventType":"firing","alertId":"{{alertId}}","eventId":"{{Guid.NewGuid()}}","occurredAt":"{{Time.GetUtcNow():O}}","severity":"{{severity}}","environment":"production","service":"orders","resource":{"id":"res-{{alertId}}","name":"Orders"},"rule":{"id":"5xx","name":"5xx rate"},"summary":"5xx high for {{alertId}}"}""";
+        var environmentField = environment is null ? string.Empty : $"\"environment\":\"{environment}\",";
+        var body = $$"""{"eventType":"firing","alertId":"{{alertId}}","eventId":"{{Guid.NewGuid()}}","occurredAt":"{{Time.GetUtcNow():O}}","severity":"{{severity}}",{{environmentField}}"service":"orders","resource":{"id":"res-{{alertId}}","name":"Orders"},"rule":{"id":"5xx","name":"5xx rate"},"summary":"5xx high for {{alertId}}"}""";
         await using var scope = Factory.Services.CreateAsyncScope();
         var accepted = await scope.ServiceProvider.GetRequiredService<IngestService>().AcceptAsync(integration.Integration,
             new IngestRequest(Encoding.UTF8.GetBytes(body), "application/json", new Dictionary<string, string>(), null));

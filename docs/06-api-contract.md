@@ -8,6 +8,7 @@ Two hosts. **Ingest host** (public, minimal): `/ingest/*`, `/hb/*`, `/healthz/*`
 - Errors: RFC 9457 `application/problem+json` with `type` URN (`urn:denoise:error:version-conflict`), `status`, `title`, `detail`, `traceId`, and `errors[]` for validation.
 - Pagination: cursor-based. Request `?limit=50&cursor=…`; response `{ items, nextCursor, total? }` (`total` only when `?includeTotal=true`, capped at 10,000).
 - Filtering: repeatable query params, e.g. `?severity=critical&severity=high&handling=new&team=…&scope=…&q=text`. Sorting: `?sort=-severity,lastSeen`.
+- `environment` is repeatable and free-form (`?environment=production&environment=unknown`); the value `unknown` also matches episodes whose mapping produced no environment (spec §15.5). Absent ⇒ every environment. Applies to `/episodes` and `/history`.
 - Optimistic concurrency: mutating episode/heartbeat/config endpoints require `If-Match: "<version>"`; mismatch ⇒ `409` with current representation in `detail`.
 - Idempotency: `Idempotency-Key` header (UUID) required on all `POST` actions; stored 24 h per user; replay returns the original response.
 - Rate limits (initial): application API 600 req/min/user; bulk ≤ 200 items per call.

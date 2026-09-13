@@ -1,6 +1,7 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useState, type SyntheticEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DEFAULT_QUEUE_SEARCH } from './queueSearch';
 import { useChangePassword } from '@/auth/queries';
 import type { Problem } from '@/api/types';
 import { ProblemBanner } from '@/components/ProblemBanner';
@@ -26,7 +27,7 @@ export function ChangePasswordPage() {
     change.mutate(
       { current, new: next },
       {
-        onSuccess: () => void navigate({ to: returnTo?.startsWith('/') ? returnTo : '/queue', search: returnTo ? undefined : { view: 'needsAttention' } } as never),
+        onSuccess: () => void navigate({ to: returnTo?.startsWith('/') ? returnTo : '/queue', search: returnTo ? undefined : DEFAULT_QUEUE_SEARCH } as never),
         onError: (err) => setProblem(err as unknown as Problem),
       },
     );

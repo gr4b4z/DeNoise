@@ -33,6 +33,12 @@
     "suppressed": "Suppressed",
     "closed": "Closed"
   },
+  "environments": {
+    "production": "Production",
+    "staging": "Staging",
+    "development": "Development",
+    "unknown": "Unknown"
+  },
   "login": {
     "username": "Username",
     "password": "Password",
@@ -50,6 +56,8 @@
   },
   "queue": {
     "search": "Search summary, resource, service",
+    "environment": "Environment",
+    "allEnvironments": "All environments",
     "severity": "Severity",
     "columns": {
       "summary": "Summary",

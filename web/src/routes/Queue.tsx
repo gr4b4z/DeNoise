@@ -15,7 +15,7 @@ import { primaryAction, useEpisodeAction } from '@/episodes/actions';
 import { useRealtime } from '@/realtime/RealtimeProvider';
 import { useSaveFilter } from '@/suppressions/queries';
 import { EpisodeView } from './Episode';
-import type { QueueSearch } from './queueSearch';
+import { DEFAULT_ENVIRONMENTS, ENVIRONMENTS, type QueueSearch } from './queueSearch';
 
 /** Work queue (08 §3.1): filter bar, virtualised table, right-side drawer; state lives in the URL so links are shareable. */
 export function QueuePage() {
@@ -104,6 +104,21 @@ export function QueuePage() {
     update({ severity: current.size ? [...current] : undefined });
   };
 
+  const toggleEnvironment = (env: string) => {
+    const current = new Set(search.environment ?? []);
+    if (current.has(env)) current.delete(env);
+    else current.add(env);
+    update({ environment: current.size ? [...current] : undefined });
+  };
+  // Chips: the known values plus anything a shared URL or saved filter carries that is not in the list.
+  const environmentChips = useMemo(() => [...ENVIRONMENTS, ...(search.environment ?? []).filter((e) => !(ENVIRONMENTS as readonly string[]).includes(e))], [search.environment]);
+  // The default environment set is the normal way in, so an empty default queue is "healthy", not "filtered".
+  const environmentNarrowed = useMemo(() => {
+    const env = search.environment;
+    if (!env?.length) return false;
+    return !(env.length === DEFAULT_ENVIRONMENTS.length && DEFAULT_ENVIRONMENTS.every((e) => env.includes(e)));
+  }, [search.environment]);
+
   const degraded = useMemo(() => new Set(items.filter((i) => i.coverageState !== 'healthy' && i.coverageState !== 'unknown').map((i) => i.integrationName)), [items]);
 
   return (
@@ -123,6 +138,24 @@ export function QueuePage() {
                   className={`btn btn-sm ${active ? 'bg-surface-2 font-semibold' : ''}`}
                 >
                   <SeverityBadge severity={s} />
+                </button>
+              );
+            })}
+          </div>
+          <div role="group" aria-label={t('queue.environment')} className="flex gap-1" data-testid="environment-filter">
+            <button
+              type="button"
+              aria-pressed={!search.environment?.length}
+              onClick={() => update({ environment: undefined })}
+              className={`btn btn-sm ${!search.environment?.length ? 'bg-surface-2 font-semibold' : ''}`}
+            >
+              {t('queue.allEnvironments')}
+            </button>
+            {environmentChips.map((env) => {
+              const active = search.environment?.includes(env) ?? false;
+              return (
+                <button key={env} type="button" aria-pressed={active} onClick={() => toggleEnvironment(env)} className={`btn btn-sm ${active ? 'bg-surface-2 font-semibold' : ''}`} data-environment={env}>
+                  {t(`environments.${env}`, { defaultValue: env })}
                 </button>
               );
             })}
@@ -155,7 +188,8 @@ export function QueuePage() {
               const params = new URLSearchParams();
               params.set('view', search.view);
               for (const s of search.severity ?? []) params.append('severity', s);
-              for (const [k, v] of Object.entries({ team: search.team, environment: search.environment, service: search.service, q: search.q })) if (v) params.set(k, v);
+              for (const e of search.environment ?? []) params.append('environment', e);
+              for (const [k, v] of Object.entries({ team: search.team, service: search.service, q: search.q })) if (v) params.set(k, v);
               saveFilter.mutate({ name: name.trim(), query: params.toString() }, { onError: (e) => setProblem(e as unknown as Problem) });
             }}
           >
@@ -176,7 +210,7 @@ export function QueuePage() {
           </div>
         )}
         {episodes.data && items.length === 0 ? (
-          search.q || search.severity?.length ? (
+          search.q || search.severity?.length || environmentNarrowed ? (
             <EmptyState variant="filtered" title={t('queue.emptyFiltered')} />
           ) : degraded.size > 0 ? (
             <EmptyState variant="coverageWarning" title={t('queue.emptyCoverage', { count: degraded.size })} detail={[...degraded].join(', ')} />

@@ -14,7 +14,7 @@ namespace DeNoise.Api.Endpoints;
 public sealed record EpisodeListQuery(
     [property: FromQuery(Name = "view")] string? View, [property: FromQuery(Name = "severity")] string[]? Severity, [property: FromQuery(Name = "handling")] string[]? Handling,
     [property: FromQuery(Name = "condition")] string[]? Condition, [property: FromQuery(Name = "team")] Guid? Team, [property: FromQuery(Name = "scope")] string? Scope,
-    [property: FromQuery(Name = "environment")] string? Environment, [property: FromQuery(Name = "service")] string? Service, [property: FromQuery(Name = "integration")] Guid? Integration,
+    [property: FromQuery(Name = "environment")] string[]? Environment, [property: FromQuery(Name = "service")] string? Service, [property: FromQuery(Name = "integration")] Guid? Integration,
     [property: FromQuery(Name = "q")] string? Q, [property: FromQuery(Name = "closureReason")] string? ClosureReason, [property: FromQuery(Name = "evidence")] string? Evidence,
     [property: FromQuery(Name = "sort")] string? Sort, [property: FromQuery(Name = "limit")] int? Limit, [property: FromQuery(Name = "cursor")] string? Cursor,
     [property: FromQuery(Name = "includeTotal")] bool? IncludeTotal);
@@ -29,7 +29,7 @@ public static class EpisodeEndpoints
         {
             var filter = new EpisodeFilter(
                 View: query.View, Severity: query.Severity ?? [], Handling: query.Handling ?? [], Condition: query.Condition ?? [], TeamId: query.Team, Scope: query.Scope,
-                Environment: query.Environment, Service: query.Service, IntegrationId: query.Integration, Query: query.Q, ClosureReason: query.ClosureReason, Evidence: query.Evidence,
+                Environment: query.Environment ?? [], Service: query.Service, IntegrationId: query.Integration, Query: query.Q, ClosureReason: query.ClosureReason, Evidence: query.Evidence,
                 Sort: query.Sort, Limit: query.Limit ?? 50, Cursor: query.Cursor, IncludeTotal: query.IncludeTotal ?? false);
             if (filter.View is not null && !QueueViews.All.Contains(filter.View)) return Problems.Result(http, 400, "validation", "Unknown view", $"view must be one of {string.Join(", ", QueueViews.All)}");
             var p = http.Principal();

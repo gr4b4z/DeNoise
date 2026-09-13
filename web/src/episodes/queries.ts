@@ -8,7 +8,7 @@ export interface QueueFilters {
   view: QueueView;
   severity?: string[];
   team?: string;
-  environment?: string;
+  environment?: string[];
   service?: string;
   integration?: string;
   q?: string;
@@ -33,7 +33,7 @@ export const episodesQuery = (filters: QueueFilters, limit = 100) =>
               view: filters.view,
               severity: filters.severity?.length ? filters.severity : undefined,
               team: filters.team || undefined,
-              environment: filters.environment || undefined,
+              environment: filters.environment?.length ? filters.environment : undefined,
               service: filters.service || undefined,
               integration: filters.integration || undefined,
               q: filters.q || undefined,

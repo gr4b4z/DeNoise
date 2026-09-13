@@ -17,6 +17,7 @@ import { episodeQuery, timelineQuery } from '@/episodes/queries';
 import { primaryAction, useEpisodeAction, type EpisodeAction } from '@/episodes/actions';
 import { problemCode } from '@/lib/problems';
 import { local, utc } from '@/lib/time';
+import { DEFAULT_QUEUE_SEARCH } from './queueSearch';
 
 const VERB: Record<EpisodeAction['kind'], string> = {
   ack: 'Acknowledge',
@@ -161,7 +162,7 @@ export function EpisodeView({ id, inDrawer = false, onClose }: { id: string; inD
                   {!isOpen && allowed(P.episodeRestore) && <MenuItem onSelect={() => request({ kind: 'restore' })}>{t('actions.restore')}</MenuItem>}
                   {!inDrawer && (
                     <DropdownMenu.Item asChild>
-                      <Link to="/queue" search={{ view: 'needsAttention' }} className="block rounded-sm px-2 py-1 text-ink hover:bg-surface-2 hover:no-underline">
+                      <Link to="/queue" search={DEFAULT_QUEUE_SEARCH} className="block rounded-sm px-2 py-1 text-ink hover:bg-surface-2 hover:no-underline">
                         {t('detail.back')}
                       </Link>
                     </DropdownMenu.Item>

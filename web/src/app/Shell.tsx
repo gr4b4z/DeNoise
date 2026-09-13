@@ -1,5 +1,6 @@
 import { Link, Outlet, useNavigate } from '@tanstack/react-router';
 import { savedFiltersQuery, useDeleteFilter } from '@/suppressions/queries';
+import { DEFAULT_ENVIRONMENTS } from '@/routes/queueSearch';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -42,7 +43,7 @@ export function Shell() {
                   <li key={view}>
                     <Link
                       to="/queue"
-                      search={{ view }}
+                      search={{ view, environment: DEFAULT_ENVIRONMENTS }}
                       className="flex h-7 items-center justify-between rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline"
                       activeProps={{ className: 'bg-surface font-semibold' }}
                       activeOptions={{ includeSearch: true, exact: false }}

@@ -393,6 +393,9 @@ footer a { color: var(--fg-2); }
 
         <h3>Coverage</h3>
         <p>Per-integration proof that the source is still able to report: canary rule, API probe or registered heartbeat. Coverage loss opens its own episode and suspends inactivity-based closes for that integration until <code>recovery_successes_required</code> consecutive successes.</p>
+
+        <h3>Environments</h3>
+        <p>Every environment a team is accountable for is ingested — production, staging, development — but separated by <em>policy</em>, not refused at the door: one integration per environment (own token, rate limit, scope, shadow flag), production gets the full routing and escalation path, staging notifies without escalating, development runs in shadow mode, and ephemeral preview stacks are not ingested at all. The queue opens on <code>environment ∈ {production, unknown}</code> so unclassified alerts are never hidden; other environments are one click away.</p>
       </div>
     </div>
   </div>

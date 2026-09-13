@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { meQuery, providersQuery, useLogin } from '@/auth/queries';
 import type { Problem } from '@/api/types';
 import { ProblemBanner } from '@/components/ProblemBanner';
+import { DEFAULT_QUEUE_SEARCH } from './queueSearch';
 
 /** 08 §3.8: centred single column, one form, inline errors that repeat what the server said, no marketing copy. */
 export function LoginPage() {
@@ -31,7 +32,7 @@ export function LoginPage() {
             if (me.mustChangePassword) {
               await navigate({ to: '/login/change-password', search: { returnTo } });
             } else {
-              await navigate({ to: returnTo?.startsWith('/') ? returnTo : '/queue', search: returnTo ? undefined : { view: 'needsAttention' } } as never);
+              await navigate({ to: returnTo?.startsWith('/') ? returnTo : '/queue', search: returnTo ? undefined : DEFAULT_QUEUE_SEARCH } as never);
             }
           })();
         },
