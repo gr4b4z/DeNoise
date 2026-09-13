@@ -2,6 +2,8 @@
   <PropertyGroup>
     <UserSecretsId>denoise-api</UserSecretsId>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- The XML file only feeds OpenAPI descriptions; uncommented members are fine, and `dotnet format --verify-no-changes` counts CS1591 as a pending change. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../DeNoise.Infrastructure/DeNoise.Infrastructure.csproj" />
