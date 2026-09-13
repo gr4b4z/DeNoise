@@ -49,9 +49,16 @@ public sealed class PostgresFixture : IAsyncLifetime
         var cs = new NpgsqlConnectionStringBuilder(_adminConnectionString) { Database = name, MaxPoolSize = 16, ConnectionIdleLifetime = 5, ConnectionPruningInterval = 2 }.ConnectionString;
         await using var db = CreateContext(cs);
         await db.Database.MigrateAsync();
+        // Partitions are created around a clock's "today". The hosts under test run on FakeTimeProvider clocks frozen at
+        // TestEpoch, so raw events are stamped there, not at wall-clock time; without this second pass every ingest fails with
+        // "no partition of relation raw_event found for row" from the day after the epoch.
         await new RawEventPartitions(db, TimeProvider.System, NullLogger<RawEventPartitions>.Instance).EnsureAsync();
+        await new RawEventPartitions(db, new Microsoft.Extensions.Time.Testing.FakeTimeProvider(TestEpoch), NullLogger<RawEventPartitions>.Instance).EnsureAsync();
         return cs;
     }
+
+    /// <summary>The instant every integration fixture freezes its <c>FakeTimeProvider</c> at.</summary>
+    public static readonly DateTimeOffset TestEpoch = new(2026, 9, 11, 12, 0, 0, TimeSpan.Zero);
 
     /// <summary>Unpooled context for assertions, so fixture connections never linger in a pool.</summary>
     public static DeNoiseDbContext CreateContext(string connectionString)

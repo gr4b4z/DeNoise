@@ -93,7 +93,8 @@ public sealed class RetentionScenarios(PostgresFixture postgres) : IAsyncLifetim
         var status = await TestServices.InScopeAsync(_services, sp => sp.GetRequiredService<IRetentionRunner>().StatusAsync());
         status.LastRun!.DroppedPartitions.Should().HaveCount(1);
         status.NextRunAt.Should().Be(new DateTimeOffset(2026, 9, 12, 2, 0, 0, TimeSpan.Zero));
-        status.OldestPartition.Should().Be(DateOnly.FromDateTime(T0.UtcDateTime));
+        // The fixture ensures partitions from the day before the test epoch (PostgresFixture.TestEpoch); the wall-clock partitions it also creates are always later.
+        status.OldestPartition.Should().Be(DateOnly.FromDateTime(T0.UtcDateTime).AddDays(-1));
     }
 
     [Fact]
