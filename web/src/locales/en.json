@@ -123,7 +123,13 @@
     "flapping": "Flapping",
     "reopened_one": "Reopened once by a firing signal inside the reopen window; acknowledgement and ownership were kept (spec §11.4).",
     "reopened_other": "Reopened {{count}} times by firing signals inside the reopen window; acknowledgement and ownership were kept (spec §11.4).",
-    "closureHeld": "The closure notification is held because the condition was flapping; it goes out"
+    "closureHeld": "The closure notification is held because the condition was flapping; it goes out",
+    "dependsOn": "Depends on",
+    "dependsOnExplain": "Attributed to this open parent by a topology rule: only the opening notification was muted; this episode stays owned and actionable (spec §16.5).",
+    "dependsOnReleased": "Was attributed to this parent until it closed or the window ended; it is a top-level episode again.",
+    "dependents": "Dependents",
+    "dependentsExplain_one": "{{count}} episode is rolled up under this one; it stays owned and actionable.",
+    "dependentsExplain_other": "{{count}} episodes are rolled up under this one; each stays owned and actionable."
   },
   "freshness": {
     "live": "Live",
@@ -639,20 +645,23 @@
       "routing": "Routing",
       "escalation": "Escalation",
       "lifecycle": "Lifecycle",
-      "grouping": "Grouping"
+      "grouping": "Grouping",
+      "topology": "Topology"
     },
     "about": {
       "routing": "One ordered rule set decides the owning team and escalation policy of every new episode; unmatched episodes go to the triage team.",
       "escalation": "Acknowledgement deadlines and notification steps; referenced from routing rules by id.",
       "lifecycle": "Auto-resolve and expiry behaviour per profile; referenced from routing rules, integration defaults or mapping hints.",
-      "grouping": "One ordered rule set that groups related episodes by key within a window and decides which members notify."
+      "grouping": "One ordered rule set that groups related episodes by key within a window and decides which members notify.",
+      "topology": "Dependency suppression: a child episode whose key equals an open parent's is attributed to it and only its notification is muted; parents come from field equality or a static list, never discovered topology (spec §16.5)."
     },
     "hints": {
       "title": "Document hints",
       "routing": "routing.rules[]: name, priority (lower first), match (07 §5 predicate: eq / in / regex / all / any / not / exists), team (uuid), optional escalation_policy and lifecycle_policy (uuid).",
       "escalation": "escalation.ack_deadline (e.g. 15m), steps[] with after and targets (team_destinations), repeat_last_step_every, max_repeats.",
       "lifecycle": "lifecycle.profile: repeating_while_active | explicit_recovery | informational | heartbeat; auto_resolve.after_silence or the inactivity formula fields; expiry settings.",
-      "grouping": "grouping.rules[]: name, match (predicate), key (field list), window (≤ 24h), notify: first_only | first_and_new_critical."
+      "grouping": "grouping.rules[]: name, match (predicate), key (field list), window (≤ 24h), notify: first_only | first_and_new_critical.",
+      "topology": "topology.rules[]: name, parent { match | static, key }, child { match, key (same length as parent.key) }, window (from the parent's opening, ≤ 24h), look_back, action: mute_child | group_under_parent | annotate_only (default), mute_severities (critical only when listed). A cycle between rules is refused."
     },
     "columns": {
       "name": "Name",

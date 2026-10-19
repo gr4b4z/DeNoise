@@ -973,6 +973,13 @@
             "schema": {
               "type": "boolean"
             }
+          },
+          {
+            "name": "dependents",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -7247,6 +7254,22 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "dependsOnEpisodeId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "dependencyReleased": {
+            "type": "boolean",
+            "default": false
+          },
+          "dependents": {
+            "type": "integer",
+            "format": "int32",
+            "default": 0
           }
         }
       },
@@ -8997,6 +9020,25 @@
           },
           "groupMembers": {
             "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EpisodeListItem"
+            }
+          },
+          "dependsOn": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EpisodeListItem"
+              }
+            ]
+          },
+          "dependents": {
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "$ref": "#/components/schemas/EpisodeListItem"
             }

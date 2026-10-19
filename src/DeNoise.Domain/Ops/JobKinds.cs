@@ -24,12 +24,14 @@ public static class JobKinds
     public const string Replay = "replay";
     /// <summary>Held closure notification of a flapping episode (spec §12.6).</summary>
     public const string FlapHold = "flap_hold";
+    /// <summary>Dependency window of a parent episode ended: release its dependents (spec §16.5).</summary>
+    public const string DependencyRelease = "dependency_release";
 
     public static readonly IReadOnlyList<string> All =
     [
         Normalise, AutoResolve, VerifyState, AckDeadline, FollowUp, EscalationStep, InformationalExpiry,
         StaleReview, AdminExpiry, GroupWindowClose, SuppressionEnd, CoverageCheck, HeartbeatCheck, ApiProbe,
-        RetentionRaw, RetentionRows, PartitionCreate, DeadmanPing, Replay, FlapHold,
+        RetentionRaw, RetentionRows, PartitionCreate, DeadmanPing, Replay, FlapHold, DependencyRelease,
     ];
 
     /// <summary>Kinds executed by the processing role.</summary>

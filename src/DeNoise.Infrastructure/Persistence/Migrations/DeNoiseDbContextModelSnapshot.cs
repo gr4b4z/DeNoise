@@ -624,6 +624,26 @@ namespace DeNoise.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("DependencyAction")
+                        .HasColumnType("text")
+                        .HasColumnName("dependency_action");
+
+                    b.Property<DateTimeOffset?>("DependencyReleasedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("dependency_released_at");
+
+                    b.Property<Guid?>("DependencyRuleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("dependency_rule_id");
+
+                    b.Property<DateTimeOffset?>("DependencyWindowEndsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("dependency_window_ends_at");
+
+                    b.Property<Guid?>("DependsOnEpisodeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("depends_on_episode_id");
+
                     b.Property<string>("Environment")
                         .HasColumnType("text")
                         .HasColumnName("environment");
@@ -796,6 +816,9 @@ namespace DeNoise.Infrastructure.Persistence.Migrations
                     b.HasIndex(new[] { "ClosureHoldUntil" }, "episode_closure_hold_idx")
                         .HasFilter("closure_hold_until IS NOT NULL");
 
+                    b.HasIndex(new[] { "DependsOnEpisodeId" }, "episode_depends_on_idx")
+                        .HasFilter("depends_on_episode_id IS NOT NULL");
+
                     b.HasIndex(new[] { "IntegrationId", "HandlingState" }, "episode_integration_idx");
 
                     b.HasIndex(new[] { "Fingerprint" }, "episode_one_open_per_identity")
@@ -804,6 +827,9 @@ namespace DeNoise.Infrastructure.Persistence.Migrations
 
                     b.HasIndex(new[] { "AccessScope", "HandlingState", "Severity", "LastSeen" }, "episode_queue_idx")
                         .IsDescending(false, false, false, true)
+                        .HasFilter("handling_state <> 'closed'");
+
+                    b.HasIndex(new[] { "AccessScope", "FirstSeen" }, "episode_scope_first_seen_idx")
                         .HasFilter("handling_state <> 'closed'");
 
                     b.HasIndex(new[] { "OwningTeamId", "HandlingState", "AckDeadlineAt" }, "episode_team_idx");
@@ -1688,7 +1714,7 @@ namespace DeNoise.Infrastructure.Persistence.Migrations
 
                     b.ToTable("policy", "cfg", t =>
                         {
-                            t.HasCheckConstraint("policy_kind_chk", "kind IN ('routing','escalation','lifecycle','grouping')");
+                            t.HasCheckConstraint("policy_kind_chk", "kind IN ('routing','escalation','lifecycle','grouping','topology')");
                         });
                 });
 
@@ -2203,6 +2229,12 @@ namespace DeNoise.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("DeNoise.Domain.Episodes.Episode", b =>
                 {
+                    b.HasOne("DeNoise.Domain.Episodes.Episode", null)
+                        .WithMany()
+                        .HasForeignKey("DependsOnEpisodeId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("episode_depends_on_fk");
+
                     b.HasOne("DeNoise.Domain.Alerts.AlertIdentity", null)
                         .WithMany()
                         .HasForeignKey("Fingerprint")

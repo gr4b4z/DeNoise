@@ -1,6 +1,40 @@
 # Milestone 14 — Topology and dependency suppression
 
-Status: **planned**. Prerequisite: M13 (so a dependent child that flaps is already one episode), M9 (muting machinery).
+Status: **done** (backend, API, policy kind in the editor, queue flags, *Depends on* / *Dependents* cards). Prerequisite: M13 (so a dependent child that flaps is already one episode), M9 (muting machinery).
+
+## What exists
+
+| Area | Where | Notes |
+|---|---|---|
+| Policy kind | `PolicyKinds.Topology`, `WellKnownPolicies.Topology` (single document), `Application/Topology/TopologyPolicy.cs` (`TopologyPolicyDocument`, `TopologyPolicyValidator`) | `topology.rules[]`: `parent { match \| static, key }`, `child { match, key }` (same length as the parent key, or empty for a static parent), `window` (default 15 m, ≤ 24 h, measured from the parent's opening), `look_back` (default 0), `action: mute_child \| group_under_parent \| annotate_only` (default `annotate_only` — observation mode first), `mute_severities` (default high/medium/low/informational: `critical` and `unknown` only when listed). Predicates and references reuse `PredicateParser` / `RoutingRefs`; errors carry JSON paths. **Cycle detection** (`PredicateImplication`): rule *i* leads to rule *j* when *i*'s child predicate structurally implies *j*'s parent predicate (identical predicates, `eq`/`in` inside a wider `in`, an `all` containing the parent's atoms, a parent matching everything); any cycle, a self-loop included, is refused with `$.topology.rules[i]` and the chain of rule names. The `cfg.policy` kind check constraint admits `topology`; config-as-code, versions, rollback and the editor need no new plumbing. |
+| Data | migration `Topology`: `depends_on_episode_id` (FK, partial index), `dependency_rule_id`, `dependency_action`, `dependency_window_ends_at`, `dependency_released_at`; `episode_scope_first_seen_idx`; `suppression_source = 'topology'` (`SuppressionSources.Topology`) | The relation is on the child; `IsDependent` = attached and not yet released. |
+| Engine | `Application/Topology/TopologyService.cs` | **Child side** (`ApplyAsync`, called by `NotificationTransitionHook` after suppression windows and before grouping, on open and on reopen): first rule whose child side matches *and* whose parent is open inside the window wins; parents are searched among open episodes of the same access scope first seen inside the window, newest first, judged by their latest normalised event (`rule_id`, `resource_id`, `dimensions.*`, `labels.*` live there). `mute_child` sets `suppressed_until = parent.first_seen + window` with source `topology`, so the existing staging writes the opening rows as `suppressed`; `group_under_parent` joins the parent's group or opens one keyed on the parent episode (parent = first member, child a quiet member unless critical and not muted); `annotate_only` records the relation. **Parent side** (`AdoptAsync`, after the parent's own staging): open episodes of the scope first seen inside `look_back` that match the child side are attached; their *pending* opening rows become `suppressed`, dispatched rows are untouched. **Release** (`ReleaseDependentsAsync`): on parent close (source, system *and* manual close, inside the closing transaction) and at window end (`dependency_release` job, one per parent and window end): `dependency_released_at` set, topology mutes cleared, suppressed rows coalesced (never replayed), one `episode.summary_after_dependency` per team with still-firing dependents (new notification type, in the default subscription). Every attach, adoption and release is a `dependency` timeline entry on child and parent. |
+| API | `EpisodeListItem.dependsOnEpisodeId`, `dependencyReleased`, `dependents`; `GET /episodes?dependents=true\|false`; `GET /episodes/{id}/related` adds `dependsOn` and `dependents[]`; `POST /policies/topology/{id}/{v}/impact` | Impact preview: of the episodes opened in the last 24 h and still open, how many this version would have attributed and how many muted, with a sample. Explanation paragraph states the attribution, the mute and the roll-up. |
+| UI (`web/`) | Policies: *Topology* kind with skeleton, hint, impact preview gating Activate; queue flags `⤷` (dependent) and `+N` (dependents rolled up); episode detail *Depends on* card (parent link, released state) and *Dependents* list. | Muted dependents already leave *Needs attention* through the existing suppression clause; they stay in every other view, in search and in history. |
+
+## Acceptance
+
+| Scenario | Test |
+|---|---|
+| Host goes down with its services | `Milestone14/TopologyScenarios.Scenario_HostGoesDownWithItsServices_*` |
+| Child fires before its parent | `Scenario_ChildFiresBeforeItsParent_*` (adopted inside `look_back`, a sent row stays sent, outside the look-back not adopted) |
+| Parent closes while a dependent still fires | `Scenario_ParentClosesWhileADependentStillFires_*`; window end: `Window_end_releases_dependents_of_a_parent_that_is_still_open` |
+| No parent matches a dependency rule | `Scenario_NoParentMatchesADependencyRule_*` |
+| Dependency policy declares a cycle | `Scenario_DependencyPolicyDeclaresACycle_*` and `Application.Tests/Topology/TopologyPolicyTests` |
+| `critical` dependent under a non-critical parent | `Scenario_CriticalDependentUnderANonCriticalParent_*` |
+
+## Decisions made
+
+- **No `release:` knob.** Spec §16.5 releases dependents when the parent closes *or* the window ends; both happen, whichever comes first, and a `release` key is refused at validation so the document cannot promise something else.
+- **The parent search is bounded**, not heuristic: open episodes of the same access scope first seen inside the window, newest first, at most 1 000 per lookup; the first that satisfies the parent predicate with equal key values wins. Rule order resolves which rule, recency resolves which parent.
+- **Dependency is decided when the child opens (or reopens)**, never re-evaluated afterwards; a parent that opens later only adopts through `look_back`. Activating a new topology version therefore changes nothing for existing episodes, which the impact preview states.
+- **Cycle detection is structural**, not a satisfiability check: it refuses the cycles a person can write (identical or nested equality predicates) and documents the rule. A chain (cluster → host → services) is allowed.
+- **`unknown` severity is not muted by default**, like `critical`: what the mapping could not classify is not hidden behind a dependency unless the rule says so.
+- **Metrics** (`denoise_notifications_suppressed_total{reason="dependency"}`, `denoise_dependent_open`) wait for an Application-layer metrics port (same note as M13); the `dependents` filter and the `dependency` timeline kind give the read meanwhile.
+
+## Original plan
+
+Prerequisite: M13 (so a dependent child that flaps is already one episode), M9 (muting machinery).
 
 ## Problem
 

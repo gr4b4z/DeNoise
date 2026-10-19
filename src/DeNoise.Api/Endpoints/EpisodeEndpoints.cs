@@ -17,7 +17,7 @@ public sealed record EpisodeListQuery(
     [property: FromQuery(Name = "environment")] string[]? Environment, [property: FromQuery(Name = "service")] string? Service, [property: FromQuery(Name = "integration")] Guid? Integration,
     [property: FromQuery(Name = "q")] string? Q, [property: FromQuery(Name = "closureReason")] string? ClosureReason, [property: FromQuery(Name = "evidence")] string? Evidence,
     [property: FromQuery(Name = "sort")] string? Sort, [property: FromQuery(Name = "limit")] int? Limit, [property: FromQuery(Name = "cursor")] string? Cursor,
-    [property: FromQuery(Name = "includeTotal")] bool? IncludeTotal, [property: FromQuery(Name = "flapping")] bool? Flapping);
+    [property: FromQuery(Name = "includeTotal")] bool? IncludeTotal, [property: FromQuery(Name = "flapping")] bool? Flapping, [property: FromQuery(Name = "dependents")] bool? Dependents);
 
 public static class EpisodeEndpoints
 {
@@ -30,7 +30,7 @@ public static class EpisodeEndpoints
             var filter = new EpisodeFilter(
                 View: query.View, Severity: query.Severity ?? [], Handling: query.Handling ?? [], Condition: query.Condition ?? [], TeamId: query.Team, Scope: query.Scope,
                 Environment: query.Environment ?? [], Service: query.Service, IntegrationId: query.Integration, Query: query.Q, ClosureReason: query.ClosureReason, Evidence: query.Evidence,
-                Sort: query.Sort, Limit: query.Limit ?? 50, Cursor: query.Cursor, IncludeTotal: query.IncludeTotal ?? false, Flapping: query.Flapping);
+                Sort: query.Sort, Limit: query.Limit ?? 50, Cursor: query.Cursor, IncludeTotal: query.IncludeTotal ?? false, Flapping: query.Flapping, Dependents: query.Dependents);
             if (filter.View is not null && !QueueViews.All.Contains(filter.View)) return Problems.Result(http, 400, "validation", "Unknown view", $"view must be one of {string.Join(", ", QueueViews.All)}");
             var p = http.Principal();
             var myTeams = (await members.ListForUserAsync(p.UserId, http.RequestAborted)).Select(m => m.TeamId).ToList();

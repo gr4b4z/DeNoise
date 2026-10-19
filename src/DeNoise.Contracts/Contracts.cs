@@ -14,7 +14,8 @@ public sealed record EpisodeListItem(
     DateTimeOffset? AckDeadlineAt, bool AckOverdue, DateTimeOffset? NextEscalationAt, DateTimeOffset? AutoResolveAt, bool AutoResolveSuspended,
     string CoverageState, bool Stale, DateTimeOffset? SuppressedUntil, bool DeliveryFailure, Guid? GroupId, bool RoutingCorrectionRequired,
     Guid IntegrationId, string IntegrationName, string AccessScope, bool IsActionable, DateTimeOffset? ClosedAt, string? ClosureReason, string? ResolutionEvidence, int Version,
-    int ReopenCount = 0, bool Flapping = false, DateTimeOffset? ClosureHoldUntil = null);
+    int ReopenCount = 0, bool Flapping = false, DateTimeOffset? ClosureHoldUntil = null,
+    Guid? DependsOnEpisodeId = null, bool DependencyReleased = false, int Dependents = 0);
 
 public sealed record IdentityComponentDto(string Name, string Value);
 public sealed record RoutingDto(Guid? RuleId, string? RuleName, string? Why);
@@ -29,7 +30,8 @@ public sealed record EpisodeDetail(
 
 public sealed record TimelineEntry(Guid Id, DateTimeOffset At, string Kind, string Source, UserRef? Actor, Guid? EventId, string? Detail, string? DeliveryStatus, string? DestinationName);
 
-public sealed record RelatedEpisodes(Guid? PreviousEpisodeId, Guid? NextEpisodeId, IReadOnlyList<EpisodeListItem> SameIdentity, IReadOnlyList<EpisodeListItem> GroupMembers);
+public sealed record RelatedEpisodes(Guid? PreviousEpisodeId, Guid? NextEpisodeId, IReadOnlyList<EpisodeListItem> SameIdentity, IReadOnlyList<EpisodeListItem> GroupMembers,
+    EpisodeListItem? DependsOn = null, IReadOnlyList<EpisodeListItem>? Dependents = null);
 
 public sealed record AckRequest(bool Force = false);
 public sealed record AssignRequest(Guid? TeamId, Guid? UserId);

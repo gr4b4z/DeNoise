@@ -21,7 +21,7 @@ public static class QueueViews
 public sealed record EpisodeFilter(
     string? View = null, IReadOnlyList<string>? Severity = null, IReadOnlyList<string>? Handling = null, IReadOnlyList<string>? Condition = null,
     Guid? TeamId = null, string? Scope = null, IReadOnlyList<string>? Environment = null, string? Service = null, Guid? IntegrationId = null, string? Query = null,
-    string? ClosureReason = null, string? Evidence = null, string? Sort = null, int Limit = 50, string? Cursor = null, bool IncludeTotal = false, bool? Flapping = null);
+    string? ClosureReason = null, string? Evidence = null, string? Sort = null, int Limit = 50, string? Cursor = null, bool IncludeTotal = false, bool? Flapping = null, bool? Dependents = null);
 
 /// <summary>Hot read model (ADR-4): hand-written SQL in Infrastructure. Every method filters by the principal's scopes.</summary>
 public interface IEpisodeQueries

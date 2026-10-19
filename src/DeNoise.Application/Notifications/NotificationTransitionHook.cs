@@ -29,7 +29,7 @@ namespace DeNoise.Application.Notifications;
 public sealed class NotificationTransitionHook(
     IPolicyRepository policies, ITeamRepository teams, IDestinationRepository destinations, IIntegrationRepository integrations, Lifecycle.LifecycleScheduler lifecycle,
     IOptions<NotificationOptions> options, TimeProvider time, ILogger<NotificationTransitionHook> logger,
-    Grouping.GroupingService grouping, Suppressions.SuppressionService suppressions) : ITransitionHook
+    Grouping.GroupingService grouping, Suppressions.SuppressionService suppressions, Topology.TopologyService topology) : ITransitionHook
 {
     private static readonly IReadOnlyList<string> AllTimers = [JobKinds.AckDeadline, JobKinds.FollowUp, JobKinds.EscalationStep, JobKinds.AutoResolve, JobKinds.VerifyState, JobKinds.StaleReview, JobKinds.AdminExpiry, JobKinds.InformationalExpiry];
 
@@ -105,6 +105,8 @@ public sealed class NotificationTransitionHook(
     private async Task CloseAsync(Episode episode, NormalisedEvent? evt, Integration integration, IProcessingSession session, DateTimeOffset now, CancellationToken ct)
     {
         await session.CancelJobsAsync(episode.EpisodeId, AllTimers, ct);
+        // Dependents are released inside the parent's closing transaction (spec §16.5; AGENTS.md §5.4).
+        await topology.ReleaseDependentsAsync(episode, "parent closed", session, now, ct);
 
         // Closure hold (spec §12.6): a flapping episode's closure notification waits for a bounded period; a re-fire inside it cancels the hold.
         if (episode.IsFlapping && episode.ClosureReason is { } reason && Episode.ReopenableClosures.Contains(reason))
@@ -205,9 +207,12 @@ public sealed class NotificationTransitionHook(
 
         if (!episode.IsActionable) return; // informational: queue only (spec §2.1)
 
-        // Suppression (04 §2.3) and grouping (04 §7.4) decide how the opened notification is staged: muted, skipped as a quiet group member, or sent.
+        // Suppression (04 §2.3), dependency (spec §16.5) and grouping (04 §7.4) decide how the opened notification is staged: muted, skipped as a quiet group member, or sent.
         await suppressions.ApplyToNewEpisodeAsync(episode, evt, integration, session, now, ct);
-        var grouped = await grouping.ApplyAsync(episode, evt, integration, session, now, ct);
+        var dependency = await topology.ApplyAsync(episode, evt, integration, session, now, ct);
+        var grouped = dependency.Group is not null
+            ? new Grouping.GroupingOutcome(dependency.Group, false, dependency.GroupNotify, dependency.Rule?.DisplayName)
+            : await grouping.ApplyAsync(episode, evt, integration, session, now, ct);
 
         var targets = await TeamDestinationsAsync(decision.TeamId, ct);
         foreach (var extra in decision.ExtraDestinations)
@@ -221,6 +226,9 @@ public sealed class NotificationTransitionHook(
                 previous: grouped.Group is null ? null : new { groupId = grouped.Group.GroupId, groupSeverity = grouped.Group.Severity, groupMembers = grouped.Group.MemberCount, groupRule = grouped.RuleName });
             Stage(session, episode, NotificationTypes.EpisodeOpened, opened, targets, integration, now);
         }
+
+        // Parent side (spec §16.5): children that fired first inside the look-back are adopted now.
+        await topology.AdoptAsync(episode, evt, integration, session, now, ct);
 
         if (decision.IsRoutingFailure)
         {
@@ -276,7 +284,11 @@ public sealed class NotificationTransitionHook(
 
         if (!episode.IsActionable) return;
         await suppressions.ApplyToNewEpisodeAsync(episode, evt, integration, session, now, ct);
-        var grouped = await grouping.ApplyAsync(episode, evt, integration, session, now, ct);
+        var dependency = await topology.ApplyAsync(episode, evt, integration, session, now, ct);
+        var grouped = dependency.Group is not null
+            ? new Grouping.GroupingOutcome(dependency.Group, false, dependency.GroupNotify, dependency.Rule?.DisplayName)
+            : await grouping.ApplyAsync(episode, evt, integration, session, now, ct);
+        await topology.AdoptAsync(episode, evt, integration, session, now, ct);
         var flap = effective.Document.Flap;
         var notify = flap.NotifyOnReopen switch
         {

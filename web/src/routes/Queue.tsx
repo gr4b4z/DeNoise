@@ -374,6 +374,12 @@ function QueueTable({ items, cursor, selectedId, pulsing, me, onOpen, onPrimary,
                       </span>
                     )}
                     {item.groupId && <span title="Member of a group">⧉</span>}
+                    {item.dependsOnEpisodeId && !item.dependencyReleased && <span title="Dependent: attributed to an open parent episode" data-testid="dependent-flag">⤷</span>}
+                    {item.dependents > 0 && (
+                      <span title={`${item.dependents} dependent episode(s) rolled up under this one`} data-testid="dependents-flag">
+                        +{item.dependents}
+                      </span>
+                    )}
                     {item.stale && <span title="Stale: not verified with the source">◌</span>}
                     {item.routingCorrectionRequired && <span title="Routing correction required">↯</span>}
                     <CoverageBadge state={item.coverageState} />

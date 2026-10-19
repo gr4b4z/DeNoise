@@ -32,6 +32,8 @@ function item(id: string, version: number): EpisodeListItem {
     routingCorrectionRequired: false,
     reopenCount: 0,
     flapping: false,
+    dependencyReleased: false,
+    dependents: 0,
     integrationId: 'i1',
     integrationName: 'gen',
     accessScope: 'scope-a',

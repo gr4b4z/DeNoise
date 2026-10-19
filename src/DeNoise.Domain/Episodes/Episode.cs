@@ -56,6 +56,19 @@ public sealed class Episode
     public bool IsFlapping { get; private set; }
     /// <summary>The closure notification is held until this instant (spec §12.6); null when nothing is held.</summary>
     public DateTimeOffset? ClosureHoldUntil { get; set; }
+    /// <summary>The open parent this episode was declared a consequence of (spec §16.5); the relation is notification-only.</summary>
+    public Guid? DependsOnEpisodeId { get; set; }
+    /// <summary>The topology rule that decided the dependency.</summary>
+    public Guid? DependencyRuleId { get; set; }
+    /// <summary><c>mute_child</c>, <c>group_under_parent</c> or <c>annotate_only</c>.</summary>
+    public string? DependencyAction { get; set; }
+    /// <summary>End of the dependency window (parent opened + window); the dependents are released no later than this.</summary>
+    public DateTimeOffset? DependencyWindowEndsAt { get; set; }
+    /// <summary>Set when the parent closed or the window ended: the episode is a top-level actionable episode again.</summary>
+    public DateTimeOffset? DependencyReleasedAt { get; set; }
+
+    /// <summary>A dependent that has not been released yet.</summary>
+    public bool IsDependent => DependsOnEpisodeId is not null && DependencyReleasedAt is null;
     public string? Summary { get; private set; }
     public string? ResourceName { get; private set; }
     public string? RuleName { get; private set; }

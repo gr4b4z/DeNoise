@@ -275,6 +275,7 @@ function Overview({ d }: { d: EpisodeDetail }) {
       </Section>
 
       {item.groupId && <GroupSection id={item.id} groupId={item.groupId} />}
+      {(item.dependsOnEpisodeId || item.dependents > 0) && <DependencySection id={item.id} released={item.dependencyReleased} />}
 
       <Section title={t('detail.lifecycle')}>
         <dl className="m-0 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1">
@@ -435,6 +436,46 @@ export function EpisodePage({ id }: { id: string }) {
 }
 
 /** Group membership (04 §7.4): the other members of the bounded-window group, each with its own state. */
+function DependencySection({ id, released }: { id: string; released: boolean }) {
+  const { t } = useTranslation();
+  const related = useQuery(relatedQuery(id));
+  const parent = related.data?.dependsOn ?? null;
+  const dependents = related.data?.dependents ?? [];
+  return (
+    <>
+      {parent && (
+        <Section title={t('detail.dependsOn')}>
+          <div className="flex items-center gap-2" data-testid="depends-on">
+            <SeverityBadge severity={parent.severity} compact />
+            <Link to="/episodes/$id" params={{ id: parent.id }} className="min-w-0 flex-1 truncate">
+              {parent.summary ?? parent.id}
+            </Link>
+            <HandlingBadge state={parent.handlingState} />
+          </div>
+          <p className="m-0 mt-1 text-xs text-ink-2">{released ? t('detail.dependsOnReleased') : t('detail.dependsOnExplain')}</p>
+        </Section>
+      )}
+      {dependents.length > 0 && (
+        <Section title={t('detail.dependents')}>
+          <p className="m-0 text-xs text-ink-2">{t('detail.dependentsExplain', { count: dependents.length })}</p>
+          <ul className="m-0 mt-1 list-none p-0" data-testid="dependents">
+            {dependents.map((m) => (
+              <li key={m.id} className="flex items-center gap-2 border-t border-line py-1">
+                <SeverityBadge severity={m.severity} compact />
+                <Link to="/episodes/$id" params={{ id: m.id }} className="min-w-0 flex-1 truncate">
+                  {m.summary ?? m.id}
+                </Link>
+                {m.dependencyReleased && <span className="badge border-dashed">released</span>}
+                <HandlingBadge state={m.handlingState} />
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+    </>
+  );
+}
+
 function GroupSection({ id, groupId }: { id: string; groupId: string }) {
   const { t } = useTranslation();
   const related = useQuery(relatedQuery(id));

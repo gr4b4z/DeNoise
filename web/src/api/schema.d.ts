@@ -1827,6 +1827,15 @@ export interface components {
             flapping: boolean;
             /** Format: date-time */
             closureHoldUntil?: null | string;
+            /** Format: uuid */
+            dependsOnEpisodeId?: null | string;
+            /** @default false */
+            dependencyReleased: boolean;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            dependents: number;
         };
         HeartbeatCreatedResponse: {
             heartbeat: components["schemas"]["HeartbeatSummary"];
@@ -2281,6 +2290,8 @@ export interface components {
             nextEpisodeId: null | string;
             sameIdentity: components["schemas"]["EpisodeListItem"][];
             groupMembers: components["schemas"]["EpisodeListItem"][];
+            dependsOn?: null | components["schemas"]["EpisodeListItem"];
+            dependents?: null | components["schemas"]["EpisodeListItem"][];
         };
         RenderDraftRequest: {
             format: string;
@@ -3279,6 +3290,7 @@ export interface operations {
                 cursor?: string;
                 includeTotal?: boolean;
                 flapping?: boolean;
+                dependents?: boolean;
             };
             header?: never;
             path?: never;

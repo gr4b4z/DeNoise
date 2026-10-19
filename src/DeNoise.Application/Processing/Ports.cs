@@ -104,6 +104,17 @@ public interface IProcessingSession
     Task<int> CoalescePendingOutboxAsync(Guid episodeId, string type, string reason, CancellationToken ct = default);
     /// <summary>Keeps the last <paramref name="keep"/> runs of a heartbeat (the ring of spec §13.3.3).</summary>
     Task<int> TrimHeartbeatRunsAsync(Guid heartbeatId, int keep, CancellationToken ct = default);
+
+    // --- Topology / dependency suppression (milestone 14) ---
+
+    /// <summary>Open episodes of one access scope first seen at or after <paramref name="since"/>, newest first, optionally locked <c>FOR UPDATE</c> (parent and child searches of spec §16.5 never cross scopes).</summary>
+    Task<IReadOnlyList<Episode>> ListOpenEpisodesOpenedSinceAsync(string accessScope, DateTimeOffset since, int limit, bool forUpdate, CancellationToken ct = default);
+    /// <summary>The latest normalised event of each episode (field references such as <c>rule_id</c>, <c>resource_id</c>, <c>dimensions.*</c> live on the event, not the episode).</summary>
+    Task<IReadOnlyDictionary<Guid, NormalisedEvent>> LatestNormalisedEventsAsync(IReadOnlyCollection<Guid> episodeIds, CancellationToken ct = default);
+    /// <summary>Dependents of a parent that have not been released, locked <c>FOR UPDATE</c>.</summary>
+    Task<IReadOnlyList<Episode>> ListUnreleasedDependentsForUpdateAsync(Guid parentEpisodeId, CancellationToken ct = default);
+    /// <summary>True when a pending job of the kind already exists for the episode at exactly that instant (one release timer per window end).</summary>
+    Task<bool> HasPendingJobAsync(Guid episodeId, string kind, DateTimeOffset notBefore, CancellationToken ct = default);
 }
 
 /// <summary>What a source-state query returned (04 §5.3 guard 7).</summary>
