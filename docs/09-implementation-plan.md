@@ -20,12 +20,19 @@ Effort is indicative for one agent-assisted engineer; treat as ordering, not com
 | **11** | Retention + hub health + hardening | Retention jobs (05 §7), partition management, hub health screen, failure queue UI, rate-limit tuning, payload-retention UI flag, load test (k6) at baseline ×1 sustained and ×3 burst, backup/restore drill script | *Raw payload retention expires on an open episode*, *Hub or monitored cluster fails* (via dead-man + runbook) | C9 (measured peak), C10 (Helm/GitOps conventions) |
 | **11b** | OIDC provider (Entra ID) — *when C2 is available; any time after M4* | `OidcProvider`, SSO button, user matching on email, password disable; TOTP for platform_admin if not done earlier | login via SSO; *User lacks resource access* re-run | **C2** |
 | **12** | Shadow mode + pilot readiness | "Shadow" flag per integration (ingest + process, no outbox); divergence report (Hub state vs source state via API); operator UI usability session script; pilot runbook; decommission checklist per legacy route | *Out-of-hours critical alert* (with C7 target) | **C7** (out-of-hours target), pilot team |
+| **13** | Flap dampening | Reopen window rejoining a recently closed episode instead of opening a new one, `flap` block on the `lifecycle` policy, flapping label and reopen counter, held closure notification (`flap_hold`); queue badge and filter | *Condition flaps within the reopen window*, *Flapping condition is acknowledged then re-fires*, *Flapping stops*, *Human closed the episode, source re-fires*, *Reopen window expires* | spec amendment §11.6/§12.6 (owner sign-off) |
+| **14** | Topology / dependency suppression | New `topology` policy kind (parent/child by field equality or static parents, window, look-back, `mute_child` / `group_under_parent` / `annotate_only`), dependency columns on the episode, release with one summary per team; parent roll-up in the queue, *Depends on* card | *Host goes down with its services*, *Child fires before its parent*, *Parent closes while a child still fires*, *No parent matches*, *Policy declares a dependency cycle*, *Critical child under a non-critical parent* | spec amendment §16.5 (owner sign-off) |
+| **15** | Adaptive grouping | Extendable group window with a mandatory `max`, `late_join` grace, retro-adoption of recent open episodes, `min_members`, periodic group digest with a seeded `group-digest` template, `continued_from` chaining | *A member arrives just after the window closed*, *Members keep arriving*, *A group forms after episodes are already open*, *Digest enabled*, *A lone episode never becomes a group* | spec amendment §16.3 (owner sign-off) |
 
 ## Ordering rationale
 
 - M0–M3 have zero owner dependencies and establish every invariant that is expensive to retrofit (partitioning, idempotency ledger, outbox, audit-in-transaction).
 - Auth and UI (M4) come before auto-resolve (M5) so every later slice is demonstrable in the product, not only in tests. Local auth keeps M4 free of external dependencies; OIDC is additive (11b).
 - Heartbeats (M6) precede the real integrations (M8) because the coverage model must exist before Azure/Atlas canaries can bind to it.
+- Noise reduction lands in the order M13 → M14 → M15 deliberately: flap dampening first because it needs no new policy kind
+  and removes the largest duplicate-episode source; dependency suppression second because it should mute children that are
+  already single episodes; adaptive grouping last because retro-adoption and digests are easiest to reason about once the
+  episode stream is stable. Each is independently shippable and each carries its own spec amendment.
 - The webhook channel itself ships in M3 so every later milestone can be demonstrated against a request-bin; M7 adds templating and destination management on top.
 
 ## Parallelism
@@ -34,7 +41,8 @@ Frontend work for a milestone can start as soon as that milestone's OpenAPI is m
 
 ## Explicit non-work
 
-Do not build: on-call rotations, incident objects, metric evaluation, remediation hooks, email ingestion (unless C8 says yes), Polish localisation, multi-tenant boundaries beyond `access_scope`.
+Do not build: automatic topology discovery or service-map import (M14 is explicit parents only), correlation by clustering or
+machine learning, on-call rotations, incident objects, metric evaluation, remediation hooks, email ingestion (unless C8 says yes), Polish localisation, multi-tenant boundaries beyond `access_scope`.
 
 ## Exit checkpoints (from spec §21)
 
