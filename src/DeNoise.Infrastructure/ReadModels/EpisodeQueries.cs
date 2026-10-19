@@ -34,7 +34,8 @@ public sealed class EpisodeQueries(DeNoiseDbContext db, NpgsqlDataSource dataSou
                EXISTS (SELECT 1 FROM ops.job j WHERE j.episode_id = e.episode_id AND j.kind = 'auto_resolve' AND j.status = 'suspended') AS auto_suspended,
                EXISTS (SELECT 1 FROM ops.outbox o WHERE o.episode_id = e.episode_id AND o.status = 'failed') AS delivery_failure,
                coalesce(cs.state, 'unknown') AS coverage_state,
-               (e.stale_since IS NOT NULL) AS stale_reviewed
+               (e.stale_since IS NOT NULL) AS stale_reviewed,
+               e.reopen_count, e.is_flapping, e.closure_hold_until
         FROM alert.episode e
         LEFT JOIN cfg.team t ON t.team_id = e.owning_team_id
         LEFT JOIN cfg."user" u ON u.user_id = e.assignee_id
@@ -93,6 +94,7 @@ public sealed class EpisodeQueries(DeNoiseDbContext db, NpgsqlDataSource dataSou
         if (filter.IntegrationId is { } integration) { where.Add("e.integration_id = @integration"); parameters.Add(new NpgsqlParameter("integration", integration)); }
         if (!string.IsNullOrWhiteSpace(filter.ClosureReason)) { where.Add("e.closure_reason = @closure"); parameters.Add(new NpgsqlParameter("closure", filter.ClosureReason)); }
         if (!string.IsNullOrWhiteSpace(filter.Evidence)) { where.Add("e.resolution_evidence = @evidence"); parameters.Add(new NpgsqlParameter("evidence", filter.Evidence)); }
+        if (filter.Flapping is { } flapping) where.Add(flapping ? "e.is_flapping" : "NOT e.is_flapping");
         if (!string.IsNullOrWhiteSpace(filter.Query))
         {
             where.Add("(e.search_tsv @@ plainto_tsquery('simple', @q) OR e.summary ILIKE @qlike OR e.resource_name ILIKE @qlike)");
@@ -428,7 +430,8 @@ public sealed class EpisodeQueries(DeNoiseDbContext db, NpgsqlDataSource dataSou
             new DateTimeOffset(r.GetDateTime(13), TimeSpan.Zero), new DateTimeOffset(r.GetDateTime(14), TimeSpan.Zero), r.GetInt32(15), !r.GetBoolean(29),
             ackDeadline, handling == HandlingState.New && ackDeadline is { } d && d < now, Dto(30), Dto(17), r.GetBoolean(31),
             r.GetString(33), r.GetString(6) == ConditionState.Unknown || r.GetBoolean(34), Dto(18), r.GetBoolean(32), Gid(19), r.GetBoolean(20),
-            r.GetGuid(21), r.GetString(22), r.GetString(23), r.GetBoolean(24), Dto(25), Str(26), Str(27), r.GetInt32(28));
+            r.GetGuid(21), r.GetString(22), r.GetString(23), r.GetBoolean(24), Dto(25), Str(26), Str(27), r.GetInt32(28),
+            r.GetInt32(35), r.GetBoolean(36), Dto(37));
     }
 }
 
@@ -467,6 +470,12 @@ public static class EpisodeExplanation
             if (episode.ResolutionEvidence == Evidence.InactivityUnverified) sb.Append("Recovery was inferred from silence; coverage of the source was never verified. ");
             if (episode.ClosureReason == ClosureReason.ExpiredUnverified) sb.Append("This is an administrative expiry, not a confirmed recovery: the last known condition was ").Append(episode.ConditionState).Append(". ");
         }
+        if (episode.ReopenCount > 0)
+        {
+            sb.Append("Reopened ").Append(episode.ReopenCount).Append(episode.ReopenCount == 1 ? " time" : " times").Append(" by a firing signal inside the reopen window; acknowledgement and ownership were kept (spec §11.4). ");
+            if (episode.IsFlapping) sb.Append("The source is flapping: it alternates between firing and recovery faster than the reopen threshold. ");
+        }
+        if (episode.ClosureHoldUntil is { } hold && !episode.IsOpen) sb.Append("The closure notification is held until ").Append(hold.ToString("u", CultureInfo.InvariantCulture)).Append(" because the condition was flapping; the closure itself is recorded above. ");
         if (episode.ConditionState == ConditionState.Unknown) sb.Append("The condition is unknown because the source's coverage is degraded; the last known state was firing. ");
         if (episode.IsOpen && episode.StaleSince is { } stale) sb.Append("Under review since ").Append(stale.ToString("u", CultureInfo.InvariantCulture)).Append(": no verification for the review window; it expires by policy unless a signal or a person acts. ");
         return sb.ToString().TrimEnd();

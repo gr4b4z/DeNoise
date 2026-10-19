@@ -30,6 +30,8 @@ function item(id: string, version: number): EpisodeListItem {
     deliveryFailure: false,
     groupId: null,
     routingCorrectionRequired: false,
+    reopenCount: 0,
+    flapping: false,
     integrationId: 'i1',
     integrationName: 'gen',
     accessScope: 'scope-a',

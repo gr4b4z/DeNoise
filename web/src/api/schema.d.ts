@@ -1818,6 +1818,15 @@ export interface components {
             resolutionEvidence: null | string;
             /** Format: int32 */
             version: number;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            reopenCount: number;
+            /** @default false */
+            flapping: boolean;
+            /** Format: date-time */
+            closureHoldUntil?: null | string;
         };
         HeartbeatCreatedResponse: {
             heartbeat: components["schemas"]["HeartbeatSummary"];
@@ -3269,6 +3278,7 @@ export interface operations {
                 limit?: number;
                 cursor?: string;
                 includeTotal?: boolean;
+                flapping?: boolean;
             };
             header?: never;
             path?: never;

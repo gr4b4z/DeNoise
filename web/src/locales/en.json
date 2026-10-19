@@ -56,6 +56,8 @@
   },
   "queue": {
     "search": "Search summary, resource, service",
+    "flapping": "Flapping",
+    "flappingHint": "Only episodes the source keeps reopening inside the reopen window (spec §11.4)",
     "environment": "Environment",
     "allEnvironments": "All environments",
     "severity": "Severity",
@@ -117,7 +119,11 @@
     "group": "Group",
     "groupExplain": "Grouped with {{count}} other episode(s) in a bounded window; each keeps its own state. Group",
     "payloadGone": "Original payload no longer retained — raw payloads are kept for a limited time (spec §18.2); the episode stays actionable from its normalised state.",
-    "payloadGoneShort": "payload no longer retained"
+    "payloadGoneShort": "payload no longer retained",
+    "flapping": "Flapping",
+    "reopened_one": "Reopened once by a firing signal inside the reopen window; acknowledgement and ownership were kept (spec §11.4).",
+    "reopened_other": "Reopened {{count}} times by firing signals inside the reopen window; acknowledgement and ownership were kept (spec §11.4).",
+    "closureHeld": "The closure notification is held because the condition was flapping; it goes out"
   },
   "freshness": {
     "live": "Live",

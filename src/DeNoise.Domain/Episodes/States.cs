@@ -64,4 +64,8 @@ public static class EpisodeEventKind
     public const string Coverage = "coverage";
     public const string Grouped = "grouped";
     public const string SuppressionSummary = "suppression_summary";
+    /// <summary>A firing signal rejoined the closed episode (spec §11.4).</summary>
+    public const string Reopen = "reopen";
+    /// <summary>Closure notification held, released or cancelled (spec §12.6).</summary>
+    public const string FlapHold = "flap_hold";
 }

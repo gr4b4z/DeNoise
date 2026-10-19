@@ -22,12 +22,14 @@ public static class JobKinds
     public const string PartitionCreate = "partition_create";
     public const string DeadmanPing = "deadman_ping";
     public const string Replay = "replay";
+    /// <summary>Held closure notification of a flapping episode (spec §12.6).</summary>
+    public const string FlapHold = "flap_hold";
 
     public static readonly IReadOnlyList<string> All =
     [
         Normalise, AutoResolve, VerifyState, AckDeadline, FollowUp, EscalationStep, InformationalExpiry,
         StaleReview, AdminExpiry, GroupWindowClose, SuppressionEnd, CoverageCheck, HeartbeatCheck, ApiProbe,
-        RetentionRaw, RetentionRows, PartitionCreate, DeadmanPing, Replay,
+        RetentionRaw, RetentionRows, PartitionCreate, DeadmanPing, Replay, FlapHold,
     ];
 
     /// <summary>Kinds executed by the processing role.</summary>

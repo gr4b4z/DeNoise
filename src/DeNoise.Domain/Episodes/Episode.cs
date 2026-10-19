@@ -48,6 +48,14 @@ public sealed class Episode
     public DateTimeOffset? SuppressedUntil { get; set; }
     public string? SuppressionSource { get; set; }
     public Guid? GroupId { get; set; }
+    /// <summary>Reopens inside the reopen window of spec §11.4; every reopen is also a timeline and audit entry.</summary>
+    public int ReopenCount { get; private set; }
+    /// <summary>When the first reopen happened — the start of the flap chain this episode is in.</summary>
+    public DateTimeOffset? FlapWindowStartedAt { get; private set; }
+    /// <summary>Labelled flapping once <see cref="ReopenCount"/> reached the policy threshold (spec §11.4). A statement about the source, kept as history after closure.</summary>
+    public bool IsFlapping { get; private set; }
+    /// <summary>The closure notification is held until this instant (spec §12.6); null when nothing is held.</summary>
+    public DateTimeOffset? ClosureHoldUntil { get; set; }
     public string? Summary { get; private set; }
     public string? ResourceName { get; private set; }
     public string? RuleName { get; private set; }
@@ -88,6 +96,57 @@ public sealed class Episode
         };
         episode.CopyDisplayFields(evt);
         return episode;
+    }
+
+    /// <summary>Closure reasons a firing signal may rejoin inside the reopen window (spec §11.4): only what the Hub inferred or the source reported.</summary>
+    public static readonly IReadOnlyList<string> ReopenableClosures = [Episodes.ClosureReason.SourceResolved, Episodes.ClosureReason.VerifiedResolved, Episodes.ClosureReason.InactivityTimeout];
+
+    /// <summary>
+    /// True when a firing signal at <paramref name="at"/> may rejoin this closed episode (spec §11.4): closed for a reopenable reason,
+    /// inside <paramref name="reopenWindow"/> of the closure, and not an internal (coverage/heartbeat) episode.
+    /// </summary>
+    public bool CanReopen(DateTimeOffset at, TimeSpan reopenWindow, IReadOnlyCollection<string> rejoinClosures)
+        => !IsOpen && reopenWindow > TimeSpan.Zero && ClosedAt is { } closed && at - closed <= reopenWindow && at >= closed
+           && ClosureReason is { } reason && ReopenableClosures.Contains(reason) && rejoinClosures.Contains(reason)
+           && ConditionState != Episodes.ConditionState.NotApplicable;
+
+    /// <summary>
+    /// A firing signal inside the reopen window rejoins the closed episode instead of opening a new one (spec §11.4): same identifier,
+    /// history, occurrence count and ownership. Handling state, assignee and the acknowledgement deadline are preserved; the closure
+    /// fields move into the returned <see cref="ReopenedClosure"/> so the caller can put them on the timeline.
+    /// </summary>
+    public (EpisodeTransition Transition, ReopenedClosure Closure) Reopen(NormalisedEvent evt, DateTimeOffset now, int flapThreshold)
+    {
+        if (IsOpen) throw new InvalidEpisodeTransitionException("episode is open; only a closed episode can be reopened");
+        if (ClosureReason is not { } reason || !ReopenableClosures.Contains(reason)) throw new InvalidEpisodeTransitionException($"an episode closed as '{ClosureReason}' is never reopened (spec §11.4)");
+        var closure = new ReopenedClosure(reason, ResolutionEvidence, ClosedAt!.Value, ClosureNote);
+        var previousSeverity = Severity;
+        var previousCondition = ConditionState;
+
+        ClosedAt = null;
+        ClosureReason = null;
+        ResolutionEvidence = null;
+        ClosureNote = null;
+        ClosureHoldUntil = null;
+        ConditionState = Episodes.ConditionState.Firing;
+        // Handling returns to what it was before the closure: acknowledged stays acknowledged (the operator is already engaged, spec §11.4),
+        // new stays new with its original deadline. AssigneeId, AcknowledgedAt/By and AckDeadlineAt are untouched.
+        HandlingState = AcknowledgedAt is not null ? Episodes.HandlingState.Acknowledged : Episodes.HandlingState.New;
+
+        if (evt.EffectiveAt > LastSeen) LastSeen = evt.EffectiveAt;
+        LastReceivedAt = evt.ReceivedAt;
+        if (!string.IsNullOrEmpty(evt.SourceVersion)) LastAppliedVersion = evt.SourceVersion;
+        OccurrenceCount++;
+        ReopenCount++;
+        FlapWindowStartedAt ??= now;
+        if (flapThreshold > 0 && ReopenCount >= flapThreshold) IsFlapping = true;
+        if (evt.Severity.Rank() > Severity.Rank() || (Severity == Severity.Unknown && evt.Severity != Severity.Unknown))
+        {
+            Severity = evt.Severity;
+        }
+        CopyDisplayFields(evt);
+        Touch(now);
+        return (new EpisodeTransition(EpisodeTransitionKind.Reopened, previousCondition, ConditionState, previousSeverity, Severity), closure);
     }
 
     /// <summary>Effective <c>firing</c>/<c>update</c> on an open episode (04 §2.1 row 2). Returns the transition for notification decisions.</summary>
@@ -237,7 +296,7 @@ public sealed class Episode
         ClosureReason = reason;
         ResolutionEvidence = evidence;
         ClosureNote = note;
-        AckDeadlineAt = null;
+        // AckDeadlineAt is kept: a reopen inside the window continues the same deadline (spec §11.4); the timer itself is cancelled by the caller.
         FollowUpAt = null;
         AutoResolveAt = null;
     }
@@ -273,7 +332,12 @@ public enum EpisodeTransitionKind
     Updated,
     Resolved,
     Cancelled,
+    /// <summary>A closed episode rejoined by a firing signal inside the reopen window (spec §11.4).</summary>
+    Reopened,
 }
+
+/// <summary>The closure a reopen undid, for the timeline (spec §11.4: the reopen is recorded with what it reopened).</summary>
+public sealed record ReopenedClosure(string Reason, string? Evidence, DateTimeOffset ClosedAt, string? Note);
 
 /// <summary>Result of applying an effective event; the routing/notification layer decides what, if anything, to send (04 §6).</summary>
 public sealed record EpisodeTransition(EpisodeTransitionKind Kind, string PreviousCondition, string NewCondition, Severity PreviousSeverity, Severity NewSeverity)

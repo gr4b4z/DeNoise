@@ -54,6 +54,32 @@ public sealed record AutoResolveSettings(
     IReadOnlyList<Severity> EscalateBeforeCloseIfSeverity,
     TimeSpan StaleEscalationLead);
 
+public static class NotifyOnReopen
+{
+    public const string Never = "never";
+    public const string First = "first";
+    public const string Every = "every";
+    public static readonly IReadOnlyList<string> All = [Never, First, Every];
+}
+
+/// <summary>
+/// Flap dampening section (spec §11.4 reopen window and flapping label, §12.6 closure hold). <see cref="ReopenWindow"/> zero means a
+/// firing signal after closure is always recurrence (§11.3); <see cref="CloseHold"/> zero means no closure notification is ever delayed.
+/// </summary>
+public sealed record FlapSettings(
+    TimeSpan ReopenWindow,
+    IReadOnlyList<string> RejoinClosures,
+    string NotifyOnReopen,
+    int Threshold,
+    TimeSpan CloseHold,
+    TimeSpan HoldMax)
+{
+    /// <summary>Flap dampening off: no reopen window, no hold (the conservative default of AGENTS.md §5.11).</summary>
+    public static readonly FlapSettings Off = new(TimeSpan.Zero, Domain.Episodes.Episode.ReopenableClosures, Lifecycle.NotifyOnReopen.First, 3, TimeSpan.Zero, TimeSpan.FromMinutes(30));
+
+    public bool Enabled => ReopenWindow > TimeSpan.Zero;
+}
+
 /// <summary>Administrative expiry section (spec §12.5).</summary>
 public sealed record ExpirySettings(
     TimeSpan? InformationalAfter,
@@ -74,6 +100,7 @@ public sealed class LifecyclePolicyDocument
     public TimeSpan MinInactivity { get; init; }
     public required AutoResolveSettings AutoResolve { get; init; }
     public required ExpirySettings Expiry { get; init; }
+    public FlapSettings Flap { get; init; } = FlapSettings.Off;
     public required JsonObject Source { get; init; }
 
     /// <summary>The preset for a profile with nothing overridden.</summary>
@@ -130,6 +157,8 @@ public sealed class LifecyclePolicyDocument
         var expire = ex is null ? preset.Expiry.UnverifiedExpireAfter : Optional(ex, "unverified_expire_after", "$.expiry.unverified_expire_after", errors, preset.Expiry.UnverifiedExpireAfter);
         var neverExpire = Severities(ex?["never_expire_severities"], "$.expiry.never_expire_severities", errors) ?? preset.Expiry.NeverExpireSeverities;
 
+        var flap = ParseFlap(top["flap"] as JsonObject ?? lifecycle["flap"] as JsonObject, errors);
+
         if (errors.Count > 0) throw new MappingValidationException(errors);
         return new LifecyclePolicyDocument
         {
@@ -140,8 +169,56 @@ public sealed class LifecyclePolicyDocument
             MinInactivity = minInactivity,
             AutoResolve = new AutoResolveSettings(enabled, afterSilence, verify, onUnknown, onDegraded, escalateFor, lead),
             Expiry = new ExpirySettings(informational, review, expire, neverExpire),
+            Flap = flap,
             Source = (JsonObject)top.DeepClone(),
         };
+    }
+
+    /// <summary>
+    /// <c>flap:</c> block (spec §11.4, §12.6). Absent → <see cref="FlapSettings.Off"/>. <c>rejoin_closures</c> may only narrow the
+    /// spec's reopenable set; a human or administrative closure can never be listed.
+    /// </summary>
+    private static FlapSettings ParseFlap(JsonObject? flap, List<MappingValidationError> errors)
+    {
+        if (flap is null) return FlapSettings.Off;
+        var window = EscalationPolicyDocument.ParseDuration(flap["reopen_window"], "$.flap.reopen_window", errors) ?? TimeSpan.Zero;
+        if (window < TimeSpan.Zero || window > TimeSpan.FromHours(24)) errors.Add(new MappingValidationError("$.flap.reopen_window", "must be between 0 and 24 hours"));
+        var rejoin = FlapSettings.Off.RejoinClosures;
+        if (flap["rejoin_closures"] is JsonNode rc)
+        {
+            if (rc is not JsonArray arr) errors.Add(new MappingValidationError("$.flap.rejoin_closures", "must be a list of closure reasons"));
+            else
+            {
+                var list = new List<string>();
+                foreach (var item in arr)
+                {
+                    var text = item?.ToString().Trim().ToLowerInvariant() ?? string.Empty;
+                    if (!Domain.Episodes.Episode.ReopenableClosures.Contains(text))
+                    {
+                        errors.Add(new MappingValidationError("$.flap.rejoin_closures", $"'{text}' cannot be rejoined; only {string.Join(", ", Domain.Episodes.Episode.ReopenableClosures)} may be (spec §11.4)"));
+                        continue;
+                    }
+                    list.Add(text);
+                }
+                rejoin = list;
+            }
+        }
+        var notify = Enum(flap["notify_on_reopen"], "$.flap.notify_on_reopen", NotifyOnReopen.All, NotifyOnReopen.First, errors);
+        var threshold = FlapSettings.Off.Threshold;
+        if (flap["threshold"] is JsonValue tv)
+        {
+            // YAML scalars arrive as strings or numbers depending on the source document; accept both.
+            if (!(tv.TryGetValue<int>(out threshold) || int.TryParse(tv.ToString(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out threshold)) || threshold < 1 || threshold > 1000)
+            {
+                errors.Add(new MappingValidationError("$.flap.threshold", "must be an integer between 1 and 1000"));
+                threshold = FlapSettings.Off.Threshold;
+            }
+        }
+        var hold = EscalationPolicyDocument.ParseDuration(flap["close_hold"], "$.flap.close_hold", errors) ?? TimeSpan.Zero;
+        var holdMax = EscalationPolicyDocument.ParseDuration(flap["hold_max"], "$.flap.hold_max", errors) ?? FlapSettings.Off.HoldMax;
+        if (hold < TimeSpan.Zero || hold > TimeSpan.FromHours(24)) errors.Add(new MappingValidationError("$.flap.close_hold", "must be between 0 and 24 hours"));
+        if (holdMax < hold) errors.Add(new MappingValidationError("$.flap.hold_max", "must be at least close_hold"));
+        return new FlapSettings(window, rejoin, notify, threshold, hold, holdMax);
     }
 
     public static LifecyclePolicyDocument ParseYaml(string yaml, int version)

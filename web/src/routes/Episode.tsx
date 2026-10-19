@@ -262,6 +262,16 @@ function Overview({ d }: { d: EpisodeDetail }) {
           Seen {item.occurrenceCount}
           {item.occurrenceCountExact ? '' : '+'} time{item.occurrenceCount === 1 ? '' : 's'} since {utc(item.firstSeen)} · identity confidence {d.identityConfidence ?? 'exact'}
         </p>
+        {item.reopenCount > 0 && (
+          <p className="m-0 mt-1 text-xs" data-testid="reopen-note">
+            {item.flapping && (
+              <span className="badge mr-2" style={{ color: 'var(--sev-high)', borderColor: 'var(--sev-high)' }} data-testid="flapping-badge">
+                ⟲ {t('detail.flapping')}
+              </span>
+            )}
+            {t('detail.reopened', { count: item.reopenCount })}
+          </p>
+        )}
       </Section>
 
       {item.groupId && <GroupSection id={item.id} groupId={item.groupId} />}
@@ -345,6 +355,11 @@ function Overview({ d }: { d: EpisodeDetail }) {
             {d.closure.by && <span className="text-ink-2">by {d.closure.by.displayName}</span>}
           </div>
           {d.closure.note && <p className="m-0 mt-1 whitespace-pre-line">{d.closure.note}</p>}
+          {item.closureHoldUntil && (
+            <p className="m-0 mt-1 rounded-md border border-dashed border-line px-2 py-1 text-xs text-ink-2" data-testid="closure-held">
+              {t('detail.closureHeld')} <RelativeTime iso={item.closureHoldUntil} mode="sentence" />
+            </p>
+          )}
           {d.closure.restoredFromReason && <p className="m-0 mt-1 text-ink-2">Previously restored from {d.closure.restoredFromReason}.</p>}
         </Section>
       )}
@@ -366,7 +381,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-const KINDS = ['', 'source_event', 'late_event', 'ack', 'assign', 'note', 'close', 'restore', 'notify', 'escalate', 'suppress', 'auto_resolve'];
+const KINDS = ['', 'source_event', 'late_event', 'reopen', 'flap_hold', 'ack', 'assign', 'note', 'close', 'restore', 'notify', 'escalate', 'suppress', 'grouped', 'auto_resolve'];
 
 function Timeline({ id }: { id: string }) {
   const [kind, setKind] = useState('');

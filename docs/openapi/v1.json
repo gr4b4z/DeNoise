@@ -966,6 +966,13 @@
             "schema": {
               "type": "boolean"
             }
+          },
+          {
+            "name": "flapping",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -7224,6 +7231,22 @@
           "version": {
             "type": "integer",
             "format": "int32"
+          },
+          "reopenCount": {
+            "type": "integer",
+            "format": "int32",
+            "default": 0
+          },
+          "flapping": {
+            "type": "boolean",
+            "default": false
+          },
+          "closureHoldUntil": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },

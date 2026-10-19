@@ -13,7 +13,8 @@ public sealed record EpisodeListItem(
     DateTimeOffset FirstSeen, DateTimeOffset LastSeen, int OccurrenceCount, bool OccurrenceCountExact,
     DateTimeOffset? AckDeadlineAt, bool AckOverdue, DateTimeOffset? NextEscalationAt, DateTimeOffset? AutoResolveAt, bool AutoResolveSuspended,
     string CoverageState, bool Stale, DateTimeOffset? SuppressedUntil, bool DeliveryFailure, Guid? GroupId, bool RoutingCorrectionRequired,
-    Guid IntegrationId, string IntegrationName, string AccessScope, bool IsActionable, DateTimeOffset? ClosedAt, string? ClosureReason, string? ResolutionEvidence, int Version);
+    Guid IntegrationId, string IntegrationName, string AccessScope, bool IsActionable, DateTimeOffset? ClosedAt, string? ClosureReason, string? ResolutionEvidence, int Version,
+    int ReopenCount = 0, bool Flapping = false, DateTimeOffset? ClosureHoldUntil = null);
 
 public sealed record IdentityComponentDto(string Name, string Value);
 public sealed record RoutingDto(Guid? RuleId, string? RuleName, string? Why);

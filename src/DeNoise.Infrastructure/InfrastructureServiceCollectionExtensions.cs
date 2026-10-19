@@ -127,6 +127,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<DeNoise.Application.Divergence.IDivergenceReporter, Integrations.DivergenceReporter>();
         services.AddSingleton<IPolicyValidator, DeNoise.Application.Grouping.GroupingPolicyValidator>();
         services.AddScoped<IJobHandler, DeNoise.Application.Grouping.GroupWindowCloseJobHandler>();
+        // Milestone 13: held closure notifications of flapping episodes (spec §12.6).
+        services.AddScoped<IJobHandler, DeNoise.Application.Notifications.FlapHoldJobHandler>();
         services.AddScoped<DeNoise.Application.Heartbeats.HeartbeatEffects>();
         services.AddScoped<DeNoise.Application.Heartbeats.HeartbeatPingService>();
         services.AddScoped<DeNoise.Application.Heartbeats.HeartbeatMonitor>();

@@ -90,7 +90,8 @@ const queueRoute = createRoute({
       const values = Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : typeof v === 'string' ? [v] : undefined;
       return values?.length ? values : undefined;
     };
-    return { view, severity: list(s.severity), team: str(s.team), environment: list(s.environment), service: str(s.service), q: str(s.q), episode: str(s.episode) };
+    const flapping = s.flapping === true || s.flapping === 'true' ? true : undefined;
+    return { view, severity: list(s.severity), team: str(s.team), environment: list(s.environment), service: str(s.service), q: str(s.q), flapping, episode: str(s.episode) };
   },
   component: QueuePage,
 });

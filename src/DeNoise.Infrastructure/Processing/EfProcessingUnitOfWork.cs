@@ -87,8 +87,8 @@ internal sealed class EfProcessingSession(DeNoiseDbContext db) : IProcessingSess
             .SingleOrDefaultAsync(ct);
 
     public Task<Episode?> FindLatestClosedEpisodeAsync(string fingerprint, CancellationToken ct = default)
-        => db.Episodes.Where(e => e.Fingerprint == fingerprint && e.HandlingState == HandlingState.Closed)
-            .OrderByDescending(e => e.ClosedAt).FirstOrDefaultAsync(ct);
+        => db.Episodes.FromSqlInterpolated($"SELECT * FROM alert.episode WHERE fingerprint = {Fingerprint.ToBytes(fingerprint)} AND handling_state = 'closed' ORDER BY closed_at DESC LIMIT 1 FOR UPDATE")
+            .FirstOrDefaultAsync(ct);
 
     public Task<Episode?> FindEpisodeAsync(Guid episodeId, CancellationToken ct = default)
         => db.Episodes.SingleOrDefaultAsync(e => e.EpisodeId == episodeId, ct);
@@ -186,6 +186,9 @@ internal sealed class EfProcessingSession(DeNoiseDbContext db) : IProcessingSess
 
     public Task<int> CoalesceSuppressedOutboxAsync(Guid episodeId, string reason, CancellationToken ct = default)
         => db.Database.ExecuteSqlInterpolatedAsync($"UPDATE ops.outbox SET status = 'coalesced', last_error = {reason} WHERE episode_id = {episodeId} AND status = 'suppressed'", ct);
+
+    public Task<int> CoalescePendingOutboxAsync(Guid episodeId, string type, string reason, CancellationToken ct = default)
+        => db.Database.ExecuteSqlInterpolatedAsync($"UPDATE ops.outbox SET status = 'coalesced', last_error = {reason} WHERE episode_id = {episodeId} AND type = {type} AND status = 'pending'", ct);
 
     public Task<Domain.Heartbeats.Heartbeat?> FindHeartbeatForUpdateAsync(Guid heartbeatId, CancellationToken ct = default)
         => db.Heartbeats.FromSqlInterpolated($"SELECT * FROM hb.heartbeat WHERE heartbeat_id = {heartbeatId} FOR UPDATE").SingleOrDefaultAsync(ct);
