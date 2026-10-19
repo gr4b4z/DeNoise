@@ -12,16 +12,16 @@ exists for **coverage and heartbeats only** (spec §13, scenario *Coverage alert
 
 This is the single largest remaining noise source and it works directly against G2 (*notifications per distinct condition*).
 
-## Spec delta required (owner sign-off before build)
+## Spec basis — merged
 
-Spec v0.4 does not describe flapping for alert episodes. AGENTS.md §5.1 requires behaviour to come from the spec, so this
-milestone starts with an amendment, not with code:
+**§11.4 "Flapping and reopening"**, **§12.6 "Closure hold"** and the five §22 rows below are in the specification; §11.3
+(recurrence) is now scoped to firings outside the reopen window, which resolves the conflict between the two. Build against
+those sections — they are the behavioural source of truth (AGENTS.md §5.1):
 
-- **New §11.6 "Flapping and reopening"** — defines the reopen window, what a reopen is (not a new episode), which closures are
-  eligible for rejoin, and that a reopen never resets acknowledgement.
-- **New §12.6 "Closure hold"** — a closure notification may be held for a bounded period when the condition has recently
-  flapped; the closure itself is not delayed, only the notification.
-- **§22 rows to add:**
+- **§11.4** — the reopen window, what a reopen is (not a new episode), which closures may be reopened, acknowledgement survival.
+- **§12.6** — a closure notification may be held for a bounded period when the condition has recently flapped; the closure
+  itself is never delayed, only the notification.
+- **§22 rows (merged):**
 
 | Scenario | Required result |
 |---|---|

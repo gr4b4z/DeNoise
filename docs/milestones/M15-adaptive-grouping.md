@@ -16,11 +16,11 @@ Grouping today decides **once, at open time, against a fixed window**:
 
 A storm that spans a few minutes therefore still produces several groups and several first-member notifications.
 
-## Spec delta required (owner sign-off before build)
+## Spec basis — merged
 
-- **Amend §16.3 "Grouping"** — extendable windows with a mandatory absolute cap, the late-join grace, retro-adoption of recent
-  open episodes, and the digest output.
-- **§22 rows to add:**
+- **§16.3 "Grouping and suppression"** now carries the four window parameters (initial, extension, mandatory maximum,
+  late-join grace), retroactive adoption, the minimum member count and the digest output.
+- **§22 rows (merged):**
 
 | Scenario | Required result |
 |---|---|

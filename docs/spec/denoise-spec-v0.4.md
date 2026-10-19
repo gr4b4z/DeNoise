@@ -338,6 +338,24 @@ Administrative expiry is never displayed as confirmed recovery, and never rewrit
 
 A genuinely new firing signal after closure creates a new episode linked to the same identity, with a new acknowledgement requirement and new timers. Previous acknowledgement does not carry over. Previous episodes remain accessible.
 
+This applies to a firing signal that arrives **after the reopen window of 11.4 has passed**. Inside that window the same condition returning is not recurrence, and 11.4 governs it.
+
+### 11.4 Flapping and reopening
+
+A condition that alternates between firing and recovery faster than an operator can act on it must not produce one episode, and one notification, per cycle. Counting each cycle as recurrence satisfies 11.3 literally and defeats the purpose of the product: the same condition, unchanged, generates unbounded notification volume.
+
+**Reopening.** When a firing signal for an identity arrives within the configured **reopen window** of that identity's last closure, the closed episode is reopened rather than a new one opened. The reopened episode keeps its identifier, its history, its occurrence count and its ownership; the reopen is recorded on the timeline and in the audit trail with the window that admitted it. The occurrence count continues to increment, so no signal is lost to the reopen.
+
+**Which closures may be reopened.** Only closures the Hub itself inferred or the source reported: `source_resolved`, `verified_resolved`, `inactivity_timeout`. A closure that a person performed (`manual_close`) or that administrative expiry produced (`expired_unverified`, `informational_completed`) is **never** reopened — a human decision stays decided, and the distinguishability required by the *Manual close while source is firing* acceptance case is preserved. A firing signal after such a closure is recurrence under 11.3.
+
+**Acknowledgement across a reopen.** Acknowledgement and assignee survive the reopen, and the acknowledgement deadline is not restarted. The alternative — requiring a fresh acknowledgement each cycle — reintroduces the escalation volume this section exists to remove, for an operator who is demonstrably already engaged. An episode that was `new` at closure stays `new` and keeps its original deadline.
+
+**Flapping label.** An episode that has been reopened more than the configured threshold within the window is labelled *flapping*, with its reopen count, in the queue, in the episode view and in the notification model. The label is a statement about the source's behaviour and is visible to whoever has to act on it.
+
+**Notification on reopen.** Configurable per lifecycle profile: never, on the first reopen only, or on every reopen. The default is the first reopen only. Suppression and grouping continue to apply to a reopened episode exactly as they do to a new one.
+
+**What this does not do.** Reopening never changes the recorded condition state, never invents recovery, and never merges two different identities. A condition flapping because it is genuinely broken stays open, owned and visible; only the repetition of notifications is removed.
+
 ---
 
 ## 12. Source profiles and automatic resolution
@@ -453,6 +471,14 @@ Before applying a scheduled resolution the worker rechecks episode version, late
 Expired episodes leave the active queue, remain searchable, appear in the stale/expired view, retain their last known condition, and feed unverified-closure reporting.
 
 Policy changes must preview their effect on existing episodes before activation and must never silently close a backlog.
+
+### 12.6 Closure hold
+
+For an episode labelled flapping under 11.4, the **closure notification** may be held for a bounded period after the condition resolves. If the condition fires again inside the hold, the held notification is cancelled and the episode is reopened; if the hold elapses with the condition still resolved, the notification is sent with its normal evidence.
+
+The hold applies to the notification only. The closure itself, its reason and its evidence are recorded when they happen — the Hub never delays what it knows about the condition in order to tidy up its outbox. The UI shows the held closure with the time it is due, so the state an operator reads is the true one.
+
+Both the hold and the total time a chain of holds may span are bounded by policy; the default hold is zero, so no closure notification is delayed until an operator configures it for a source known to flap.
 
 ---
 
@@ -726,6 +752,23 @@ Notification jobs store episode, transition, destination and policy version. The
 
 Grouping uses explicit keys and a bounded time window. Children keep their own lifecycles; groups never cross access boundaries; closing one child does not close others; group severity reflects the most severe active child; a new `critical` child stays visible and may notify independently. Grouping never claims a shared root cause.
 
+**The window is bounded, not fixed.** A storm does not respect the window it started: an episode arriving a second after the window closed belongs to the same storm as the one that arrived a second before. The window therefore has four parameters, all of them policy:
+
+| Parameter | Meaning |
+|---|---|
+| Initial length | How long the group accepts members, measured from its first member |
+| Extension | How much each new member pushes the end out |
+| Maximum | An absolute cap measured from the first member; **mandatory** wherever extension is configured |
+| Late-join grace | A short period after the end during which a member still joins rather than starting a new group |
+
+The maximum is mandatory because a group that can be extended indefinitely by new members is an alert that is never delivered. When it is reached the group closes while members are still arriving; the next member opens a new group that records which group it continues, so a long storm reads as a chain of bounded groups rather than one unbounded silence.
+
+**Retroactive adoption.** When a group forms, episodes of the same key that opened shortly before it and are still open are adopted into it. Adoption is additive: it attaches the episode to the group, records the adoption on the timeline, and cancels notifications that have not yet been dispatched. A notification already sent is **never** retracted — an operator who has already been told about an alert is not told it was a mistake.
+
+**Minimum members.** Below a configured minimum, no group exists. The first episode of a key is notified immediately and grouping adds no latency to it; the group is materialised when the second member arrives and adopts the first. Noise reduction must not be paid for with time to acknowledgement.
+
+**Digest.** A group may emit a periodic roll-up of what joined since the previous one, capped at a maximum number of items, instead of staying silent for its whole life after the first member. The digest is a notification type like any other: templated, signed, subscribable per destination.
+
 Maintenance windows and silences suppress delivery only — not ingestion, ownership, or history. They require scope, reason, actor and expiry, and must specify a time zone explicitly (DST transitions are an acceptance case). At expiry the system re-evaluates active alerts and emits a current summary; it does not replay muted notifications.
 
 ### 16.4 Delivery mechanism: outbound webhooks
@@ -746,6 +789,28 @@ Rules that keep this safe:
 - Every request carries `X-DeNoise-Delivery-Id` (stable across retries) and an HMAC signature so receivers can verify and deduplicate.
 - Destination URLs and headers are secrets: encrypted at rest, masked in the UI, never logged.
 - A destination can subscribe to a subset of event types (opened, escalated, closed, …), so a ticketing receiver is not flooded with acknowledgements.
+
+### 16.5 Dependency suppression
+
+Grouping in 16.3 relates **peers**: episodes that share key values inside a window. It cannot express that one episode is a *consequence* of another, so a failing host still notifies once for itself and once for every service running on it.
+
+A **dependency** is a declared relation from a child episode to an open parent episode. Where it applies, the child remains a full episode — ingested, owned, routed, actionable and visible — but its opening notification is muted and attributed to the parent. Dependents are suppressed from **notification only**, never from the queue, the API or history; an operator looking at the parent sees the dependents rolled up under it and can act on any of them.
+
+**Where dependencies come from.** Two sources, both explicit:
+
+1. **Equality between fields of the child and the parent** — for example a child's host field equal to the parent's resource identifier.
+2. **Parents named statically in policy**, for cases the payload cannot express.
+
+Automatic discovery of topology, imported service maps and inferred dependency graphs are **out of scope**, as the root-cause analysis of 5.2 is. A relation the Hub cannot explain in one sentence drawn from the payload or the policy is a relation it must not assert.
+
+**Rules that keep this safe:**
+
+- A dependency applies only while the parent is **open**, only inside a declared window after the parent opened, and only to children whose keys equal the parent's. There is no scoring and no heuristic; where several rules could apply, rule order decides and that order is visible in the policy.
+- `critical` children are not muted unless a rule names that severity explicitly. The most severe class of alert does not disappear behind a dependency by default.
+- Children that opened shortly before the parent are adopted on the same terms as 16.3 adoption, and notifications already dispatched are never retracted.
+- Every rule can be run in an **observation mode** that records the relation and mutes nothing, so a team can see what a rule would have suppressed before it suppresses anything.
+- When the parent closes, or the window ends, dependents are released. Those whose own condition is still firing produce one current summary per team, as 16.3 requires at the end of a suppression — the Hub does not replay muted notifications.
+- A policy whose rules form a cycle is refused at validation.
 
 ---
 
@@ -935,6 +1000,22 @@ These double as the assessment scenarios for adopted alternatives in Section 6.3
 | Raw payload retention expires on an open episode | Episode remains actionable; UI states the payload is gone |
 | Hub or monitored cluster fails | Independent monitoring reports it over an independent path |
 | **Out-of-hours critical alert** | Reaches a person, not only a channel — via the delegated rotation path in 7.3 |
+| Condition flaps within the reopen window | One episode with a reopen count; one opening notification, not one per cycle |
+| Flapping condition is acknowledged, then re-fires | Acknowledgement and assignee survive the reopen; the acknowledgement deadline is not restarted |
+| Flapping stops | Closure emitted after the hold with its normal evidence; a re-fire inside the hold cancels the held notification |
+| Human closed the episode, source re-fires | A new episode — a human closure is never reopened |
+| Reopen window expires before the next firing | New episode linked to the same identity, as 11.3 requires |
+| Host goes down with its services | One notification for the parent; dependents visible under it, each still owned and actionable |
+| Child fires before its parent | Children opened inside the look-back are adopted when the parent opens; dispatched notifications are not retracted |
+| Parent closes while a dependent still fires | Dependents released; one current summary per team; the child becomes a top-level actionable episode |
+| No parent matches a dependency rule | The child notifies normally |
+| Dependency policy declares a cycle | Refused at validation, with the offending rule identified |
+| `critical` dependent under a non-critical parent | Notifies on its own unless the rule names that severity |
+| A group member arrives just after the window closed | Joins through the late-join grace; no second group for the same key |
+| Group members keep arriving | The window extends to its maximum, then closes; the next episode starts a group that records what it continues |
+| A group forms after episodes of its key are already open | Those episodes are adopted; no duplicate notification; adoption is on the timeline |
+| Group digest configured | One digest per interval, capped at the configured number of items |
+| A lone episode never becomes a group | Notified immediately; grouping adds no latency below the minimum member count |
 
 Release readiness requires processing correctness **and** successful operator completion of the core UI workflows.
 
@@ -975,3 +1056,6 @@ Release readiness requires processing correctness **and** successful operator co
 | A12 | Added rollout exit criteria and shadow-mode duration (§21) | Rollout had no stopping condition |
 | A13 | Added acceptance cases: DST, coverage flapping, retention expiry, webhook failure, out-of-hours critical (§22) | Gaps in the original matrix |
 | A14 | Added a queue-technology exit criterion (§17.2) | PostgreSQL-as-queue was presented without a limit |
+| A15 | Added flapping and reopening (§11.4) and the closure hold (§12.6), and scoped §11.3 recurrence to firings outside the reopen window | A condition alternating between firing and recovery satisfied §11.3 literally and produced one episode and one notification per cycle — unbounded volume for one unchanged condition, working directly against G2. §11.3 and the new §11.4 were in conflict as written; the window is the boundary between them |
+| A16 | Added dependency suppression (§16.5), with dependencies declared from field equality or static parents only | §16.3 grouping relates peers and cannot express consequence, so one failing host notified once per service on it. Discovery of topology stays excluded as §5.2 excludes root-cause analysis |
+| A17 | Made the grouping window extendable with a mandatory maximum, a late-join grace, retroactive adoption, a minimum member count and an optional digest (§16.3) | A fixed window measured from the first member split one storm across several groups, never adopted episodes that opened just before the group formed, and left a group silent for its whole life after the first notification |

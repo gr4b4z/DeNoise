@@ -18,11 +18,12 @@ service episodes are peers, and all forty notify. There is no relation on the ep
 Automatic topology discovery, service maps and dependency inference stay out of v1 — they are the slope towards the RCA that
 spec §5.2 excludes.
 
-## Spec delta required (owner sign-off before build)
+## Spec basis — merged
 
-- **New §16.5 "Dependency suppression"** — the parent/child relation, the dependency window, what a muted child is (visible,
-  owned, actionable; not notified), and the rule that dependents are **never hidden from the UI, only from notification**.
-- **§22 rows to add:**
+- **§16.5 "Dependency suppression"** — the parent/child relation, the dependency window, what a muted child is (visible,
+  owned, actionable; not notified), the rule that dependents are **never hidden from the UI, only from notification**, the
+  observation mode, and the exclusion of discovered topology.
+- **§22 rows (merged):**
 
 | Scenario | Required result |
 |---|---|
