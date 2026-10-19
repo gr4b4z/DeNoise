@@ -133,6 +133,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IPolicyValidator, DeNoise.Application.Topology.TopologyPolicyValidator>();
         services.AddScoped<DeNoise.Application.Topology.TopologyService>();
         services.AddScoped<IJobHandler, DeNoise.Application.Topology.DependencyReleaseJobHandler>();
+        // Milestone 15: group digests (spec §16.3).
+        services.AddScoped<IJobHandler, DeNoise.Application.Grouping.GroupDigestJobHandler>();
         services.AddScoped<DeNoise.Application.Heartbeats.HeartbeatEffects>();
         services.AddScoped<DeNoise.Application.Heartbeats.HeartbeatPingService>();
         services.AddScoped<DeNoise.Application.Heartbeats.HeartbeatMonitor>();

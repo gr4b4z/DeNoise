@@ -21,6 +21,8 @@ public interface IPolicyImpactQueries
     Task<IReadOnlyList<Episode>> OpenEpisodesOpenedSinceAsync(DateTimeOffset since, int limit, CancellationToken ct = default);
     /// <summary>The latest normalised event per episode (topology predicates read event fields).</summary>
     Task<IReadOnlyDictionary<Guid, Domain.Alerts.NormalisedEvent>> LatestNormalisedEventsAsync(IReadOnlyCollection<Guid> episodeIds, CancellationToken ct = default);
+    /// <summary>Groups opened since <paramref name="since"/>, oldest first (grouping preview).</summary>
+    Task<IReadOnlyList<AlertGroup>> GroupsOpenedSinceAsync(DateTimeOffset since, int limit, CancellationToken ct = default);
 }
 
 public sealed record PolicyImpactSample(Guid EpisodeId, string? Summary, string Severity, DateTimeOffset LastSeen, DateTimeOffset? CurrentAutoResolveAt, DateTimeOffset? ProposedAutoResolveAt, string Note);
@@ -66,8 +68,10 @@ public sealed class PolicyImpactService(IPolicyRepository policies, IPolicyImpac
                 }
             case PolicyKinds.Topology:
                 return await TopologyPreviewAsync(policyId, version, Topology.TopologyPolicyDocument.Parse(JsonNode.Parse(target.Body)!, version), now, ct);
+            case PolicyKinds.Grouping:
+                return await GroupingPreviewAsync(policyId, version, Grouping.GroupingPolicyDocument.Parse(JsonNode.Parse(target.Body)!, version), now, ct);
             default:
-                return new PolicyImpact(kind, policyId, version, 0, [], "Impact preview applies to lifecycle, routing and topology policies.");
+                return new PolicyImpact(kind, policyId, version, 0, [], "Impact preview applies to lifecycle, routing, grouping and topology policies.");
         }
     }
 
@@ -110,6 +114,52 @@ public sealed class PolicyImpactService(IPolicyRepository policies, IPolicyImpac
         }
         return new PolicyImpact(PolicyKinds.Topology, policyId, version, attributed, sample,
             $"Of {episodes.Count} episode(s) opened in the last 24 h and still open, {attributed} would have been attributed to an open parent by this version and {muted} of those would have had their opening notification muted. Activation changes nothing for existing episodes: dependencies are decided when a child opens.");
+    }
+
+    /// <summary>
+    /// Grouping (spec §16.3): of the groups opened in the last 24 h, how many consecutive groups of the same key would this version have
+    /// merged — the successor opened inside the predecessor's window as the proposed rule would have extended it (initial, per-member
+    /// extension from the last member, late-join grace, all capped at the maximum). Rules are matched to groups by their key fields.
+    /// </summary>
+    private async Task<PolicyImpact> GroupingPreviewAsync(Guid policyId, int version, Grouping.GroupingPolicyDocument doc, DateTimeOffset now, CancellationToken ct)
+    {
+        var groups = await queries.GroupsOpenedSinceAsync(now - TimeSpan.FromHours(24), 5000, ct);
+        var merges = 0;
+        var sample = new List<PolicyImpactSample>();
+        foreach (var chain in groups.GroupBy(g => g.KeyValues, StringComparer.Ordinal))
+        {
+            string[] keyFields;
+            try
+            {
+                keyFields = (JsonNode.Parse(chain.Key) as JsonObject)?.Select(p => p.Key).OrderBy(k => k, StringComparer.Ordinal).ToArray() ?? [];
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                continue;
+            }
+            var rule = doc.Rules.FirstOrDefault(r => r.Key.OrderBy(k => k, StringComparer.Ordinal).SequenceEqual(keyFields, StringComparer.Ordinal));
+            if (rule is null) continue;
+            AlertGroup? previous = null;
+            foreach (var group in chain.OrderBy(g => g.OpenedAt))
+            {
+                if (previous is not null)
+                {
+                    var hardEnd = previous.OpenedAt + rule.Window.Max;
+                    var end = previous.OpenedAt + rule.Window.Initial;
+                    if (rule.Window.ExtendBy is { } by && previous.LastMemberAt + by > end) end = previous.LastMemberAt + by;
+                    if (end > hardEnd) end = hardEnd;
+                    if (group.OpenedAt <= end + rule.Window.LateJoin)
+                    {
+                        merges++;
+                        if (sample.Count < 10) sample.Add(new PolicyImpactSample(group.GroupId, $"group {group.GroupId:N}"[..14] + "… would have joined " + $"{previous.GroupId:N}"[..8], group.Severity, group.OpenedAt, null, null,
+                            $"opened {(group.OpenedAt - previous.OpenedAt).TotalMinutes:F0} min after its predecessor; rule '{rule.DisplayName}' would have kept the window open until {end:HH:mm} (+{rule.Window.LateJoin.TotalMinutes:F0} min grace)"));
+                    }
+                }
+                previous = group;
+            }
+        }
+        return new PolicyImpact(PolicyKinds.Grouping, policyId, version, merges, sample,
+            $"Of {groups.Count} group(s) opened in the last 24 h, {merges} would have joined the group before them under this version's windows instead of starting a new one. Open groups keep their current window at activation; the new parameters apply to groups formed from now on.");
     }
 
     private static DateTimeOffset Max(DateTimeOffset a, DateTimeOffset b) => a > b ? a : b;

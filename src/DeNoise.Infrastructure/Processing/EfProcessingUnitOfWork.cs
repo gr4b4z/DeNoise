@@ -228,6 +228,26 @@ internal sealed class EfProcessingSession(DeNoiseDbContext db) : IProcessingSess
     public Task<bool> HasPendingJobAsync(Guid episodeId, string kind, DateTimeOffset notBefore, CancellationToken ct = default)
         => db.Jobs.AsNoTracking().AnyAsync(j => j.EpisodeId == episodeId && j.Kind == kind && j.NotBefore == notBefore && (j.Status == Domain.Ops.JobStatus.Pending || j.Status == Domain.Ops.JobStatus.Reserved), ct);
 
+    public Task<int> RescheduleGroupJobsAsync(Guid groupId, string kind, DateTimeOffset notBefore, CancellationToken ct = default)
+    {
+        var id = groupId.ToString();
+        return db.Database.ExecuteSqlInterpolatedAsync($"UPDATE ops.job SET not_before = {notBefore}, updated_at = now() WHERE kind = {kind} AND status = 'pending' AND payload->>'groupId' = {id}", ct);
+    }
+
+    public async Task<IReadOnlyList<string>> OutboxStatusesAsync(Guid episodeId, string type, CancellationToken ct = default)
+        => await db.Outbox.AsNoTracking().Where(o => o.EpisodeId == episodeId && o.Type == type).Select(o => o.Status).ToListAsync(ct);
+
+    public Task<Domain.Episodes.AlertGroup?> FindLatestClosedGroupAsync(Guid ruleId, string keyValues, CancellationToken ct = default)
+        => db.AlertGroups.FromSqlInterpolated($"SELECT * FROM alert.alert_group WHERE rule_id = {ruleId} AND key_values = {keyValues}::jsonb AND closed_at IS NOT NULL ORDER BY closed_at DESC LIMIT 1").AsNoTracking().FirstOrDefaultAsync(ct);
+
+    public async Task<IReadOnlyList<Episode>> ListGroupMembersJoinedSinceAsync(Guid groupId, DateTimeOffset since, bool inclusive, CancellationToken ct = default)
+    {
+        var id = groupId.ToString();
+        return inclusive
+            ? await db.Episodes.FromSqlInterpolated($"SELECT e.* FROM alert.episode e WHERE e.group_id = {groupId} AND e.episode_id IN (SELECT ev.episode_id FROM alert.episode_event ev WHERE ev.kind = 'grouped' AND ev.detail->>'groupId' = {id} AND ev.at >= {since}) ORDER BY e.first_seen").ToListAsync(ct)
+            : await db.Episodes.FromSqlInterpolated($"SELECT e.* FROM alert.episode e WHERE e.group_id = {groupId} AND e.episode_id IN (SELECT ev.episode_id FROM alert.episode_event ev WHERE ev.kind = 'grouped' AND ev.detail->>'groupId' = {id} AND ev.at > {since}) ORDER BY e.first_seen").ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<Guid>> PriorRecipientsAsync(Guid episodeId, CancellationToken ct = default)
         => await db.Outbox.AsNoTracking()
             .Where(o => o.EpisodeId == episodeId && o.Status != Domain.Ops.OutboxStatus.Cancelled && o.Status != Domain.Ops.OutboxStatus.Coalesced)

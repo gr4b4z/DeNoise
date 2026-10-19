@@ -22,6 +22,9 @@ public sealed class PolicyImpactQueries(DeNoiseDbContext db) : IPolicyImpactQuer
     public async Task<IReadOnlyList<Episode>> OpenEpisodesOpenedSinceAsync(DateTimeOffset since, int limit, CancellationToken ct = default)
         => await db.Episodes.AsNoTracking().Where(e => e.HandlingState != HandlingState.Closed && e.FirstSeen >= since).OrderByDescending(e => e.FirstSeen).Take(limit).ToListAsync(ct);
 
+    public async Task<IReadOnlyList<AlertGroup>> GroupsOpenedSinceAsync(DateTimeOffset since, int limit, CancellationToken ct = default)
+        => await db.AlertGroups.AsNoTracking().Where(g => g.OpenedAt >= since).OrderBy(g => g.OpenedAt).Take(limit).ToListAsync(ct);
+
     public async Task<IReadOnlyDictionary<Guid, Domain.Alerts.NormalisedEvent>> LatestNormalisedEventsAsync(IReadOnlyCollection<Guid> episodeIds, CancellationToken ct = default)
     {
         if (episodeIds.Count == 0) return new Dictionary<Guid, Domain.Alerts.NormalisedEvent>();

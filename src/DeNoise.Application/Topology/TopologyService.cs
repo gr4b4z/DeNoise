@@ -304,6 +304,8 @@ public sealed class TopologyService(
                     KeyValues = key,
                     OpenedAt = now,
                     WindowEndsAt = windowEnd,
+                    WindowHardEndAt = windowEnd,
+                    LastMemberAt = now,
                     Severity = parent.Severity.ToWire(),
                     MemberCount = 1,
                 };
@@ -326,6 +328,7 @@ public sealed class TopologyService(
             }
         }
         group.MemberCount++;
+        group.LastMemberAt = now;
         if (child.Severity.Rank() > SeverityExtensions.ParseWire(group.Severity).Rank()) group.Severity = child.Severity.ToWire();
         child.GroupId = group.GroupId;
         session.AddEpisodeEvent(new EpisodeEvent

@@ -175,6 +175,17 @@ export function useDeleteFilter() {
   });
 }
 
+// ---- groups ---------------------------------------------------------------------------------------------------------
+
+export type AlertGroup = Schemas['AlertGroupDto'];
+
+export const groupQuery = (id: string) =>
+  queryOptions({
+    queryKey: ['group', id],
+    queryFn: () => unwrap(api.GET('/api/v1/groups/{id}', { params: { path: { id } } })),
+    staleTime: 10_000,
+  });
+
 // ---- related --------------------------------------------------------------------------------------------------------
 
 export const relatedQuery = (id: string) =>

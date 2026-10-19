@@ -168,7 +168,9 @@ public sealed record SuppressionDto(Guid Id, string Kind, string? Name, System.T
 public sealed record CreateSuppressionRequest(string Kind, System.Text.Json.JsonElement Scope, string TimeZone, string Reason, DateTimeOffset? StartsAt = null, DateTimeOffset? EndsAt = null,
     DateTime? StartsLocal = null, DateTime? EndsLocal = null, bool AutoPauseHeartbeats = true, string? Name = null);
 public sealed record SuppressionEndedResponse(int EpisodesReleased, int NotificationsMuted, int TeamsSummarised, int SummaryRows);
-public sealed record AlertGroupDto(Guid Id, string AccessScope, Guid RuleId, System.Text.Json.JsonElement KeyValues, DateTimeOffset OpenedAt, DateTimeOffset WindowEndsAt, string Severity, int MemberCount, DateTimeOffset? ClosedAt);
+public sealed record AlertGroupDto(Guid Id, string AccessScope, Guid RuleId, System.Text.Json.JsonElement KeyValues, DateTimeOffset OpenedAt, DateTimeOffset WindowEndsAt, string Severity, int MemberCount, DateTimeOffset? ClosedAt,
+    DateTimeOffset? HardEndAt = null, DateTimeOffset? LastMemberAt = null, int ExtensionCount = 0, int AdoptedCount = 0, DateTimeOffset? DigestNextAt = null, DateTimeOffset? DigestLastAt = null, Guid? ContinuedFromGroupId = null,
+    IReadOnlyList<Guid>? AdoptedEpisodeIds = null);
 
 // --- Milestone 10: config-as-code and the audit log ---
 public sealed record ConfigImportRequest(string Yaml, bool DryRun = true);

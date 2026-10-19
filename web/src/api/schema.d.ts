@@ -1469,6 +1469,27 @@ export interface components {
             memberCount: number;
             /** Format: date-time */
             closedAt: null | string;
+            /** Format: date-time */
+            hardEndAt?: null | string;
+            /** Format: date-time */
+            lastMemberAt?: null | string;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            extensionCount: number;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            adoptedCount: number;
+            /** Format: date-time */
+            digestNextAt?: null | string;
+            /** Format: date-time */
+            digestLastAt?: null | string;
+            /** Format: uuid */
+            continuedFromGroupId?: null | string;
+            adoptedEpisodeIds?: null | string[];
         };
         AssignRequest: {
             /** Format: uuid */

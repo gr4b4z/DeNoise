@@ -86,7 +86,10 @@ public static class SuppressionEndpoints
             var g = await db.AlertGroups.AsNoTracking().SingleOrDefaultAsync(x => x.GroupId == id, http.RequestAborted);
             if (g is null || !http.Principal().CanSeeScope(g.AccessScope)) return Results.NotFound();
             using var key = JsonDocument.Parse(g.KeyValues);
-            return Results.Ok(new AlertGroupDto(g.GroupId, g.AccessScope, g.RuleId, key.RootElement.Clone(), g.OpenedAt, g.WindowEndsAt, g.Severity, g.MemberCount, g.ClosedAt));
+            var gid = g.GroupId.ToString();
+            var adopted = await db.Database.SqlQuery<Guid>($"SELECT DISTINCT episode_id AS \"Value\" FROM alert.episode_event WHERE kind = 'grouped' AND detail->>'groupId' = {gid} AND detail->>'adopted' = 'true'").ToListAsync(http.RequestAborted);
+            return Results.Ok(new AlertGroupDto(g.GroupId, g.AccessScope, g.RuleId, key.RootElement.Clone(), g.OpenedAt, g.WindowEndsAt, g.Severity, g.MemberCount, g.ClosedAt,
+                g.WindowHardEndAt, g.LastMemberAt, g.ExtensionCount, g.AdoptedCount, g.DigestNextAt, g.DigestLastAt, g.ContinuedFromGroupId, adopted));
         }).RequirePermission(Permissions.EpisodeRead).WithName("GetGroup").Produces<AlertGroupDto>().Produces(404);
 
         return app;

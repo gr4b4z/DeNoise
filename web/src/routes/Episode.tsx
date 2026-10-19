@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { relatedQuery } from '@/suppressions/queries';
+import { groupQuery, relatedQuery } from '@/suppressions/queries';
 import type { EpisodeDetail, Problem, TimelineEntry } from '@/api/types';
 import { useMe } from '@/auth/queries';
 import { can, P } from '@/auth/permissions';
@@ -479,12 +479,39 @@ function DependencySection({ id, released }: { id: string; released: boolean }) 
 function GroupSection({ id, groupId }: { id: string; groupId: string }) {
   const { t } = useTranslation();
   const related = useQuery(relatedQuery(id));
+  const group = useQuery(groupQuery(groupId));
   const members = related.data?.groupMembers.filter((m) => m.id !== id) ?? [];
+  const g = group.data;
+  const adopted = g?.adoptedEpisodeIds ?? [];
   return (
     <Section title={t('detail.group')}>
       <p className="m-0 text-xs text-ink-2">
         {t('detail.groupExplain', { count: members.length })} <span className="mono">{groupId.slice(0, 8)}</span>
       </p>
+      {g && (
+        <p className="m-0 mt-1 text-xs text-ink-2" data-testid="group-window">
+          {g.memberCount} {t('detail.groupMembers')}
+          {g.extensionCount > 0 && <> · {t('detail.groupExtended', { count: g.extensionCount })}</>}
+          {g.adoptedCount > 0 && <> · {t('detail.groupAdopted', { count: g.adoptedCount })}</>}
+          {' · '}
+          {g.closedAt ? (
+            t('detail.groupClosed')
+          ) : (
+            <>
+              {t('detail.groupCloses')} <RelativeTime iso={g.windowEndsAt} mode="sentence" />
+              {g.hardEndAt && g.hardEndAt !== g.windowEndsAt && <> ({t('detail.groupHardEnd')} <RelativeTime iso={g.hardEndAt} mode="sentence" />)</>}
+            </>
+          )}
+          {g.digestNextAt && !g.closedAt && (
+            <>
+              {' · '}
+              {t('detail.groupDigest')} <RelativeTime iso={g.digestNextAt} mode="sentence" />
+            </>
+          )}
+          {g.continuedFromGroupId && <> · {t('detail.groupContinues')} <span className="mono">{g.continuedFromGroupId.slice(0, 8)}</span></>}
+          {adopted.includes(id) && <> · {t('detail.groupThisAdopted')}</>}
+        </p>
+      )}
       {members.length > 0 && (
         <ul className="m-0 mt-1 list-none p-0">
           {members.map((m) => (

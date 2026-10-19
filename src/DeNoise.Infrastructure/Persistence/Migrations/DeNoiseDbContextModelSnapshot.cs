@@ -527,14 +527,42 @@ namespace DeNoise.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("access_scope");
 
+                    b.Property<int>("AdoptedCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("adopted_count");
+
                     b.Property<DateTimeOffset?>("ClosedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("closed_at");
+
+                    b.Property<Guid?>("ContinuedFromGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("continued_from_group_id");
+
+                    b.Property<DateTimeOffset?>("DigestLastAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("digest_last_at");
+
+                    b.Property<DateTimeOffset?>("DigestNextAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("digest_next_at");
+
+                    b.Property<int>("ExtensionCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("extension_count");
 
                     b.Property<string>("KeyValues")
                         .IsRequired()
                         .HasColumnType("jsonb")
                         .HasColumnName("key_values");
+
+                    b.Property<DateTimeOffset>("LastMemberAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_member_at");
 
                     b.Property<int>("MemberCount")
                         .HasColumnType("integer")
@@ -557,12 +585,19 @@ namespace DeNoise.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("window_ends_at");
 
+                    b.Property<DateTimeOffset>("WindowHardEndAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("window_hard_end_at");
+
                     b.HasKey("GroupId");
 
                     b.HasIndex("RuleId", "KeyValues")
                         .IsUnique()
                         .HasDatabaseName("alert_group_one_open_per_key")
                         .HasFilter("closed_at IS NULL");
+
+                    b.HasIndex(new[] { "DigestNextAt" }, "alert_group_digest_idx")
+                        .HasFilter("digest_next_at IS NOT NULL");
 
                     b.ToTable("alert_group", "alert");
                 });

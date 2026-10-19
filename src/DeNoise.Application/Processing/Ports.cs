@@ -115,6 +115,17 @@ public interface IProcessingSession
     Task<IReadOnlyList<Episode>> ListUnreleasedDependentsForUpdateAsync(Guid parentEpisodeId, CancellationToken ct = default);
     /// <summary>True when a pending job of the kind already exists for the episode at exactly that instant (one release timer per window end).</summary>
     Task<bool> HasPendingJobAsync(Guid episodeId, string kind, DateTimeOffset notBefore, CancellationToken ct = default);
+
+    // --- Adaptive grouping (milestone 15) ---
+
+    /// <summary>Moves the pending jobs of a kind that carry <c>groupId</c> in their payload to a new time (the window was extended, spec §16.3).</summary>
+    Task<int> RescheduleGroupJobsAsync(Guid groupId, string kind, DateTimeOffset notBefore, CancellationToken ct = default);
+    /// <summary>Statuses of the outbox rows of one type for an episode — adoption decides from them whether an opening notification already stands for the key.</summary>
+    Task<IReadOnlyList<string>> OutboxStatusesAsync(Guid episodeId, string type, CancellationToken ct = default);
+    /// <summary>The most recently closed group for (rule, key) — the predecessor a new group may continue (spec §16.3 "a chain of bounded groups").</summary>
+    Task<Domain.Episodes.AlertGroup?> FindLatestClosedGroupAsync(Guid ruleId, string keyValues, CancellationToken ct = default);
+    /// <summary>Members whose <c>grouped</c> timeline entry for the group is after <paramref name="since"/> (at or after when <paramref name="inclusive"/>), oldest first.</summary>
+    Task<IReadOnlyList<Episode>> ListGroupMembersJoinedSinceAsync(Guid groupId, DateTimeOffset since, bool inclusive, CancellationToken ct = default);
 }
 
 /// <summary>What a source-state query returned (04 §5.3 guard 7).</summary>

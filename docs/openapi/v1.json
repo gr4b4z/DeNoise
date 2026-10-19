@@ -5760,6 +5760,61 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "hardEndAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastMemberAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "extensionCount": {
+            "type": "integer",
+            "format": "int32",
+            "default": 0
+          },
+          "adoptedCount": {
+            "type": "integer",
+            "format": "int32",
+            "default": 0
+          },
+          "digestNextAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "digestLastAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "continuedFromGroupId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "adoptedEpisodeIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         }
       },

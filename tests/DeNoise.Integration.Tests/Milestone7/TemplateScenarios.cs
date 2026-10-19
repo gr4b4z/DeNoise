@@ -54,7 +54,7 @@ public sealed class TemplateScenarios(PostgresFixture postgres) : IAsyncLifetime
         var actor = Actor.System("setup");
         await TestServices.InScopeAsync(_services, async sp =>
         {
-            (await sp.GetRequiredService<TemplateService>().EnsureBuiltInsAsync()).Should().Be(4);
+            (await sp.GetRequiredService<TemplateService>().EnsureBuiltInsAsync()).Should().Be(5);
             var team = await sp.GetRequiredService<TeamService>().CreateAsync(new CreateTeam("mpt", ["scope-a"], IsTriage: true), actor);
             _team = team.TeamId;
             var destinations = sp.GetRequiredService<DestinationService>();

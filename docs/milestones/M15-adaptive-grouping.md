@@ -1,6 +1,42 @@
 # Milestone 15 — Adaptive grouping windows, late join, retro-adoption, digests
 
-Status: **planned**. Prerequisite: M9 (grouping), M14 (so dependency wins over sibling grouping where both apply).
+Status: **done** (backend, API, group window state in the episode detail, grouping impact preview). Prerequisite: M9 (grouping), M14 (so dependency wins over sibling grouping where both apply).
+
+## What exists
+
+| Area | Where | Notes |
+|---|---|---|
+| Policy | `GroupingPolicyDocument` (`GroupWindow`, `GroupDigest`, `GroupingRule.LookBack`, `MinMembers`) | `window: 10m` (scalar — unchanged behaviour: initial only, no extension, no grace, no retro) or `window: { initial, extend_by, max, late_join }` with `max` **mandatory whenever `extend_by` is present** and ≥ `initial`; `retro: { look_back }`; `min_members` (1–100, default 1); `notify: first_only \| first_and_new_critical \| digest`; `digest: { every, max_items }` required with and only with `notify: digest`. Every bound is validated with a JSON path. |
+| Data | migration `AdaptiveGrouping`: `window_hard_end_at`, `last_member_at` (existing rows back-filled from `window_ends_at` / `opened_at`), `extension_count`, `adopted_count`, `digest_next_at`, `digest_last_at`, `continued_from_group_id`; `alert_group_digest_idx` | `AlertGroup.Accepts(at, lateJoin)` and `AlertGroup.Extend(by)` hold the window arithmetic. |
+| Engine | `GroupingService.ApplyAsync` | **Join**: an open group for (rule, key) that still accepts members (`window_ends_at + late_join`) takes the episode, moves `last_member_at`, extends the end by `extend_by` capped at the hard end (`extension_count++`) and moves the pending `group_window_close` job with it. **Successor**: a group past its grace is closed in-line (so the one-open-group-per-key index admits the successor) and the new group records `continued_from_group_id`; a predecessor the timer closed is continued when the next member arrives within one initial window of that close. **Materialise**: a new group adopts open episodes of the same rule and key first seen inside `retro.look_back` (or inside the initial window when `min_members` > 1), `adopted_count` per member, timeline `grouped` with `adopted: true`; exactly one opening notification stands for the key — a dispatched one is never retracted, otherwise the earliest pending one is kept — and the other undispatched ones are coalesced; the new member notifies only when nothing stands yet (or as a new critical child under `first_and_new_critical`). **min_members**: below it no group exists and the episode notifies at once (timeline `belowMinMembers`); the group materialises on the next member and adopts the first. |
+| Jobs | `group_window_close` (re-arms itself when the end moved after it was queued; closes hard at `max` even while members arrive), `group_digest` (`GroupDigestJobHandler`) | Digest: one `episode.group_digest` per team with the members that joined since the previous digest (first digest: everything since the group opened), capped at `max_items` with a `more` count, timeline `notify` on each listed member; re-armed every `every` while the group is open, one last time after it closed; shadow-integration members never reach the outbox. New built-in template `group-digest` (JSON; clone-only like the others). |
+| API | `AlertGroupDto` gains `hardEndAt`, `lastMemberAt`, `extensionCount`, `adoptedCount`, `digestNextAt`, `digestLastAt`, `continuedFromGroupId`, `adoptedEpisodeIds`; `POST /policies/grouping/{id}/{v}/impact` | Preview: of the groups opened in the last 24 h, how many consecutive groups of the same key the proposed windows would have merged. |
+| UI (`web/`) | Episode detail group section: *N episodes · window extended 4× · 2 adopted · window closes in 6 min (at the latest …) · next digest … · continues group …*; policy editor hint and impact preview for grouping. | |
+
+## Acceptance
+
+| Scenario | Test |
+|---|---|
+| A group member arrives just after the window closed | `Milestone15/AdaptiveGroupingScenarios.Scenario_AGroupMemberArrivesJustAfterTheWindowClosed_*` |
+| Group members keep arriving | `Scenario_GroupMembersKeepArriving_*` (extension, cap, hard close by the timer, continuation) |
+| A group forms after episodes of its key are already open | `Scenario_AGroupFormsAfterEpisodesOfItsKeyAreAlreadyOpen_*` (sent kept, pending coalesced, no duplicate, outside look-back untouched) |
+| Group digest configured | `Scenario_GroupDigestConfigured_*` (cap, `more`, only new joins next time, no empty digest) |
+| A lone episode never becomes a group | `Scenario_ALoneEpisodeNeverBecomesAGroup_*` |
+| Scalar window regression | `Scalar_window_keeps_the_fixed_window_behaviour`, `Milestone9/GroupingScenarios` unchanged |
+| Unit | `Application.Tests/Grouping/GroupingPolicyTests` |
+
+## Decisions made
+
+- **One opening notification per key, never a retraction.** Adoption keeps a notification that was already dispatched; otherwise the earliest pending one stands and the rest, including the new member's, are not staged. This is how "no duplicate notification" and "nothing already sent is retracted" hold at the same time.
+- **A group under `min_members` leaves a trace** (`grouped` timeline entry with `belowMinMembers`), so the UI can say why a lone alert has no group.
+- **A stale open group is closed in-line** by the successor's transaction instead of waiting for its close job: the partial unique index on open (rule, key) would otherwise refuse the successor. This also fixes the M9 race where a member arriving between window end and the close job's run conflicted.
+- **Continuation** is recorded when the predecessor was closed in the same transaction (grace or maximum passed) or when the timer closed it less than one initial window before the next member; later members start an unrelated group.
+- **The first digest lists every member** that joined since the group opened (the first member's own notification already went out); later digests list only what joined since the previous one; a quiet interval produces no digest.
+- **Metrics** (`denoise_group_window_extensions_total`, `denoise_group_digests_total`, …) wait for the Application-layer metrics port noted in M13 and M14; `extension_count`, `adopted_count` and the digest timestamps on the group row give the read.
+
+## Original plan
+
+Prerequisite: M9 (grouping), M14 (so dependency wins over sibling grouping where both apply).
 
 ## Problem
 

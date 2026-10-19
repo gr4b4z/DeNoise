@@ -16,7 +16,7 @@ export const POLICY_KINDS = ['routing', 'escalation', 'lifecycle', 'grouping', '
 export type PolicyKind = (typeof POLICY_KINDS)[number];
 export const SINGLE_DOCUMENT_KINDS: readonly PolicyKind[] = ['routing', 'grouping', 'topology'];
 /** Kinds whose activation has an impact preview (08 §3.6: shown before Activate enables). */
-export const IMPACT_KINDS: readonly PolicyKind[] = ['lifecycle', 'routing', 'topology'];
+export const IMPACT_KINDS: readonly PolicyKind[] = ['lifecycle', 'routing', 'grouping', 'topology'];
 
 export function isPolicyKind(value: string | undefined): value is PolicyKind {
   return (POLICY_KINDS as readonly string[]).includes(value ?? '');
