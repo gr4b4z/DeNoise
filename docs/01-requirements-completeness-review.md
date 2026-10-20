@@ -52,7 +52,7 @@ Legend — **D** = decided in this pack (overridable by the owner), **O** = open
 | # | Question | Why it blocks | Default the pack assumes until answered |
 |---|---|---|---|
 | C1 | ~~Company frontend standard~~ **Resolved by owner: modern UI built to the design direction in 08 §0; no company design-system dependency** | — | — |
-| C2 | Entra ID tenant/app registration, group → team mapping | **Deferred by owner:** v1 uses local username/password (ADR-14); OIDC is milestone 11b | Local identity provider; permissions stored locally so the switch is additive |
+| C2 | Entra ID tenant/app registration, **four app roles**, group → `access_scope` mapping | **Deferred by owner:** v1 uses local username/password (ADR-14); OIDC is milestone 11b, designed in `docs/milestones/M11b-oidc-entra-id.md`. Needs single-tenant registration with *Assignment required* = Yes, or every account in the tenant can sign in | Local identity provider; permissions stored locally so the switch is additive |
 | C3 | ~~Teams Workflows provisioning~~ **Resolved by owner: no Teams channel; delivery is via generic webhooks. Only a receiver URL is needed for the pilot** | — | — |
 | C4 | SMTP relay details or Graph app permissions | Email delivery | SMTP with config placeholders |
 | C5 | Captured real payload samples: Azure CAS (metric, log, activity log, resource health), Atlas (at least 5 alert types), each in-house webhook producer | Mapping correctness is unverifiable without them | Microsoft doc samples, marked provisional |
