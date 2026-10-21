@@ -1469,6 +1469,27 @@ export interface components {
             memberCount: number;
             /** Format: date-time */
             closedAt: null | string;
+            /** Format: date-time */
+            hardEndAt?: null | string;
+            /** Format: date-time */
+            lastMemberAt?: null | string;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            extensionCount: number;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            adoptedCount: number;
+            /** Format: date-time */
+            digestNextAt?: null | string;
+            /** Format: date-time */
+            digestLastAt?: null | string;
+            /** Format: uuid */
+            continuedFromGroupId?: null | string;
+            adoptedEpisodeIds?: null | string[];
         };
         AssignRequest: {
             /** Format: uuid */
@@ -1818,6 +1839,24 @@ export interface components {
             resolutionEvidence: null | string;
             /** Format: int32 */
             version: number;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            reopenCount: number;
+            /** @default false */
+            flapping: boolean;
+            /** Format: date-time */
+            closureHoldUntil?: null | string;
+            /** Format: uuid */
+            dependsOnEpisodeId?: null | string;
+            /** @default false */
+            dependencyReleased: boolean;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            dependents: number;
         };
         HeartbeatCreatedResponse: {
             heartbeat: components["schemas"]["HeartbeatSummary"];
@@ -2272,6 +2311,8 @@ export interface components {
             nextEpisodeId: null | string;
             sameIdentity: components["schemas"]["EpisodeListItem"][];
             groupMembers: components["schemas"]["EpisodeListItem"][];
+            dependsOn?: null | components["schemas"]["EpisodeListItem"];
+            dependents?: null | components["schemas"]["EpisodeListItem"][];
         };
         RenderDraftRequest: {
             format: string;
@@ -3269,6 +3310,8 @@ export interface operations {
                 limit?: number;
                 cursor?: string;
                 includeTotal?: boolean;
+                flapping?: boolean;
+                dependents?: boolean;
             };
             header?: never;
             path?: never;

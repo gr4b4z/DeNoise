@@ -210,6 +210,16 @@ internal sealed class EpisodeConfiguration : IEntityTypeConfiguration<Episode>
         b.Property(x => x.SuppressedUntil).HasColumnName("suppressed_until");
         b.Property(x => x.SuppressionSource).HasColumnName("suppression_source");
         b.Property(x => x.GroupId).HasColumnName("group_id");
+        b.Property(x => x.ReopenCount).HasColumnName("reopen_count").HasDefaultValue(0);
+        b.Property(x => x.FlapWindowStartedAt).HasColumnName("flap_window_started_at");
+        b.Property(x => x.IsFlapping).HasColumnName("is_flapping").HasDefaultValue(false);
+        b.Property(x => x.ClosureHoldUntil).HasColumnName("closure_hold_until");
+        b.Property(x => x.DependsOnEpisodeId).HasColumnName("depends_on_episode_id");
+        b.Property(x => x.DependencyRuleId).HasColumnName("dependency_rule_id");
+        b.Property(x => x.DependencyAction).HasColumnName("dependency_action");
+        b.Property(x => x.DependencyWindowEndsAt).HasColumnName("dependency_window_ends_at");
+        b.Property(x => x.DependencyReleasedAt).HasColumnName("dependency_released_at");
+        b.Ignore(x => x.IsDependent);
         b.Property(x => x.Summary).HasColumnName("summary");
         b.Property(x => x.ResourceName).HasColumnName("resource_name");
         b.Property(x => x.RuleName).HasColumnName("rule_name");
@@ -231,6 +241,10 @@ internal sealed class EpisodeConfiguration : IEntityTypeConfiguration<Episode>
         b.HasIndex(x => new { x.OwningTeamId, x.HandlingState, x.AckDeadlineAt }, "episode_team_idx");
         b.HasIndex(x => x.ClosedAt, "episode_closed_idx").HasFilter("handling_state = 'closed'");
         b.HasIndex(x => new { x.IntegrationId, x.HandlingState }, "episode_integration_idx");
+        b.HasIndex(x => x.ClosureHoldUntil, "episode_closure_hold_idx").HasFilter("closure_hold_until IS NOT NULL");
+        b.HasOne<Episode>().WithMany().HasForeignKey(x => x.DependsOnEpisodeId).HasConstraintName("episode_depends_on_fk").OnDelete(DeleteBehavior.SetNull);
+        b.HasIndex(x => x.DependsOnEpisodeId, "episode_depends_on_idx").HasFilter("depends_on_episode_id IS NOT NULL");
+        b.HasIndex(x => new { x.AccessScope, x.FirstSeen }, "episode_scope_first_seen_idx").HasFilter("handling_state <> 'closed'");
         // search_tsv (generated tsvector) and its GIN index are created by SQL in the migration; EF does not map them.
     }
 }

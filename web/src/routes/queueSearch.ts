@@ -8,6 +8,8 @@ export interface QueueSearch {
   environment?: string[];
   service?: string;
   q?: string;
+  /** Only episodes labelled flapping (spec §11.4). */
+  flapping?: boolean;
   episode?: string;
 }
 

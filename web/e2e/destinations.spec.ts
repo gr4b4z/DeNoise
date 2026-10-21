@@ -16,7 +16,7 @@ test('clone a built-in template, save it and activate the version', async ({ pag
   await loginAsAdmin(page);
   await page.goto('/templates');
   await expect(page.getByRole('heading', { name: 'Webhook templates' })).toBeVisible();
-  await expect(page.locator('tr[data-builtin="true"]')).toHaveCount(4);
+  await expect(page.locator('tr[data-builtin="true"]')).toHaveCount(5);
   await noSeriousViolations(page);
 
   await page.getByRole('link', { name: 'teams-adaptive-card' }).click();

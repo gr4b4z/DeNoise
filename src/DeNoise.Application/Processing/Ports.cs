@@ -39,6 +39,7 @@ public interface IProcessingSession
     Task IncrementIdentityEpisodeCountAsync(string fingerprint, CancellationToken ct = default);
     /// <summary>The open episode for the identity, locked <c>FOR UPDATE</c> for the rest of the transaction.</summary>
     Task<Episode?> FindOpenEpisodeForUpdateAsync(string fingerprint, CancellationToken ct = default);
+    /// <summary>The most recently closed episode of the identity, locked <c>FOR UPDATE</c> (a reopen inside the window mutates it, spec §11.4).</summary>
     Task<Episode?> FindLatestClosedEpisodeAsync(string fingerprint, CancellationToken ct = default);
     Task<Episode?> FindEpisodeAsync(Guid episodeId, CancellationToken ct = default);
     Task<SourceInstanceState?> GetSourceInstanceStateAsync(Guid integrationId, string sourceAlertId, CancellationToken ct = default);
@@ -99,8 +100,32 @@ public interface IProcessingSession
     Task<int> SuppressPendingOutboxAsync(Guid episodeId, CancellationToken ct = default);
     /// <summary>Suppressed outbox rows of an episode become <c>coalesced</c>: muted notifications are never replayed (spec §16.3).</summary>
     Task<int> CoalesceSuppressedOutboxAsync(Guid episodeId, string reason, CancellationToken ct = default);
+    /// <summary>Pending (not yet claimed) outbox rows of one type become <c>coalesced</c> — e.g. an undelivered <c>episode.closed</c> when the episode reopens (spec §11.4).</summary>
+    Task<int> CoalescePendingOutboxAsync(Guid episodeId, string type, string reason, CancellationToken ct = default);
     /// <summary>Keeps the last <paramref name="keep"/> runs of a heartbeat (the ring of spec §13.3.3).</summary>
     Task<int> TrimHeartbeatRunsAsync(Guid heartbeatId, int keep, CancellationToken ct = default);
+
+    // --- Topology / dependency suppression (milestone 14) ---
+
+    /// <summary>Open episodes of one access scope first seen at or after <paramref name="since"/>, newest first, optionally locked <c>FOR UPDATE</c> (parent and child searches of spec §16.5 never cross scopes).</summary>
+    Task<IReadOnlyList<Episode>> ListOpenEpisodesOpenedSinceAsync(string accessScope, DateTimeOffset since, int limit, bool forUpdate, CancellationToken ct = default);
+    /// <summary>The latest normalised event of each episode (field references such as <c>rule_id</c>, <c>resource_id</c>, <c>dimensions.*</c> live on the event, not the episode).</summary>
+    Task<IReadOnlyDictionary<Guid, NormalisedEvent>> LatestNormalisedEventsAsync(IReadOnlyCollection<Guid> episodeIds, CancellationToken ct = default);
+    /// <summary>Dependents of a parent that have not been released, locked <c>FOR UPDATE</c>.</summary>
+    Task<IReadOnlyList<Episode>> ListUnreleasedDependentsForUpdateAsync(Guid parentEpisodeId, CancellationToken ct = default);
+    /// <summary>True when a pending job of the kind already exists for the episode at exactly that instant (one release timer per window end).</summary>
+    Task<bool> HasPendingJobAsync(Guid episodeId, string kind, DateTimeOffset notBefore, CancellationToken ct = default);
+
+    // --- Adaptive grouping (milestone 15) ---
+
+    /// <summary>Moves the pending jobs of a kind that carry <c>groupId</c> in their payload to a new time (the window was extended, spec §16.3).</summary>
+    Task<int> RescheduleGroupJobsAsync(Guid groupId, string kind, DateTimeOffset notBefore, CancellationToken ct = default);
+    /// <summary>Statuses of the outbox rows of one type for an episode — adoption decides from them whether an opening notification already stands for the key.</summary>
+    Task<IReadOnlyList<string>> OutboxStatusesAsync(Guid episodeId, string type, CancellationToken ct = default);
+    /// <summary>The most recently closed group for (rule, key) — the predecessor a new group may continue (spec §16.3 "a chain of bounded groups").</summary>
+    Task<Domain.Episodes.AlertGroup?> FindLatestClosedGroupAsync(Guid ruleId, string keyValues, CancellationToken ct = default);
+    /// <summary>Members whose <c>grouped</c> timeline entry for the group is after <paramref name="since"/> (at or after when <paramref name="inclusive"/>), oldest first.</summary>
+    Task<IReadOnlyList<Episode>> ListGroupMembersJoinedSinceAsync(Guid groupId, DateTimeOffset since, bool inclusive, CancellationToken ct = default);
 }
 
 /// <summary>What a source-state query returned (04 §5.3 guard 7).</summary>
@@ -153,6 +178,9 @@ public interface ITransitionHook
 
     /// <summary>A closure without a source event (auto-resolve, expiry, coverage): cancel timers and notify prior recipients (04 §6 "resolved / cancelled / expired").</summary>
     Task OnSystemClosureAsync(Episode episode, IProcessingSession session, CancellationToken ct) => Task.CompletedTask;
+
+    /// <summary>The held closure notification of a flapping episode is due (spec §12.6): stage <c>episode.closed</c> now if the episode is still closed.</summary>
+    Task OnHeldClosureDueAsync(Episode episode, IProcessingSession session, CancellationToken ct) => Task.CompletedTask;
 
     /// <summary>
     /// An episode the Hub opened itself with ownership already decided (heartbeat miss: the definition names the team). Routing rules are

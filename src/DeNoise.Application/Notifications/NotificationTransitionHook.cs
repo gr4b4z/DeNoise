@@ -29,7 +29,7 @@ namespace DeNoise.Application.Notifications;
 public sealed class NotificationTransitionHook(
     IPolicyRepository policies, ITeamRepository teams, IDestinationRepository destinations, IIntegrationRepository integrations, Lifecycle.LifecycleScheduler lifecycle,
     IOptions<NotificationOptions> options, TimeProvider time, ILogger<NotificationTransitionHook> logger,
-    Grouping.GroupingService grouping, Suppressions.SuppressionService suppressions) : ITransitionHook
+    Grouping.GroupingService grouping, Suppressions.SuppressionService suppressions, Topology.TopologyService topology) : ITransitionHook
 {
     private static readonly IReadOnlyList<string> AllTimers = [JobKinds.AckDeadline, JobKinds.FollowUp, JobKinds.EscalationStep, JobKinds.AutoResolve, JobKinds.VerifyState, JobKinds.StaleReview, JobKinds.AdminExpiry, JobKinds.InformationalExpiry];
 
@@ -64,7 +64,34 @@ public sealed class NotificationTransitionHook(
             case EpisodeTransitionKind.Cancelled:
                 await CloseAsync(episode, evt, integration, session, now, ct);
                 break;
+            case EpisodeTransitionKind.Reopened:
+                await OnReopenedAsync(episode, evt, integration, session, now, ct);
+                break;
         }
+    }
+
+    /// <summary>
+    /// The held closure notification of a flapping episode is due (spec §12.6): the episode is still closed, so prior recipients get
+    /// <c>episode.closed</c> with the evidence recorded at closure. Nothing happens if the episode reopened meanwhile.
+    /// </summary>
+    public async Task OnHeldClosureDueAsync(Episode episode, IProcessingSession session, CancellationToken ct)
+    {
+        if (episode.IsOpen || episode.ClosureHoldUntil is null) return;
+        var integration = await integrations.GetCurrentAsync(episode.IntegrationId, ct);
+        if (integration is null) return;
+        var now = time.GetUtcNow();
+        var heldSince = episode.ClosureHoldUntil;
+        episode.ClosureHoldUntil = null;
+        episode.Touch(now);
+        session.AddEpisodeEvent(new EpisodeEvent
+        {
+            Id = Ids.New(time),
+            EpisodeId = episode.EpisodeId,
+            At = now,
+            Kind = EpisodeEventKind.FlapHold,
+            Detail = JsonSerializer.Serialize(new { action = "released", dueAt = heldSince, reason = "the hold elapsed with the condition still resolved; the closure notification goes out with its recorded evidence (spec §12.6)" }, JsonDefaults.Stored),
+        });
+        await StageClosedAsync(episode, null, integration, session, now, ct);
     }
 
     /// <summary>Closure without a source event (auto-resolve, expiry, coverage): timers cancelled, prior recipients told (04 §6).</summary>
@@ -78,6 +105,51 @@ public sealed class NotificationTransitionHook(
     private async Task CloseAsync(Episode episode, NormalisedEvent? evt, Integration integration, IProcessingSession session, DateTimeOffset now, CancellationToken ct)
     {
         await session.CancelJobsAsync(episode.EpisodeId, AllTimers, ct);
+        // Dependents are released inside the parent's closing transaction (spec §16.5; AGENTS.md §5.4).
+        await topology.ReleaseDependentsAsync(episode, "parent closed", session, now, ct);
+
+        // Closure hold (spec §12.6): a flapping episode's closure notification waits for a bounded period; a re-fire inside it cancels the hold.
+        if (episode.IsFlapping && episode.ClosureReason is { } reason && Episode.ReopenableClosures.Contains(reason))
+        {
+            var flap = (await lifecycle.ResolveAsync(episode, integration, null, ct)).Document.Flap;
+            if (flap.CloseHold > TimeSpan.Zero && flap.Enabled)
+            {
+                var holdUntil = now + flap.CloseHold;
+                var chainCap = (episode.FlapWindowStartedAt ?? now) + flap.HoldMax; // a chain of holds never spans more than hold_max in total
+                if (holdUntil > chainCap) holdUntil = chainCap;
+                if (holdUntil > now)
+                {
+                    episode.ClosureHoldUntil = holdUntil;
+                    session.AddJob(new Job
+                    {
+                        JobId = Ids.New(time),
+                        Kind = JobKinds.FlapHold,
+                        NotBefore = holdUntil,
+                        EpisodeId = episode.EpisodeId,
+                        IntegrationId = integration.IntegrationId,
+                        ExpectedVersion = episode.Version,
+                        Payload = JsonSerializer.Serialize(new FlapHoldJobPayload(episode.EpisodeId), JsonDefaults.Stored),
+                        CreatedAt = now,
+                        UpdatedAt = now,
+                    });
+                    session.AddEpisodeEvent(new EpisodeEvent
+                    {
+                        Id = Ids.New(time),
+                        EpisodeId = episode.EpisodeId,
+                        At = now,
+                        Kind = EpisodeEventKind.FlapHold,
+                        EventId = evt?.EventId,
+                        Detail = JsonSerializer.Serialize(new { action = "held", until = holdUntil, hold = flap.CloseHold.ToString(), holdMax = flap.HoldMax.ToString(), reopenCount = episode.ReopenCount, reason = "closure recorded now; the notification is held because the condition has been flapping (spec §12.6)" }, JsonDefaults.Stored),
+                    });
+                    return;
+                }
+            }
+        }
+        await StageClosedAsync(episode, evt, integration, session, now, ct);
+    }
+
+    private async Task StageClosedAsync(Episode episode, NormalisedEvent? evt, Integration integration, IProcessingSession session, DateTimeOffset now, CancellationToken ct)
+    {
         var recipients = await session.PriorRecipientsAsync(episode.EpisodeId, ct);
         if (recipients.Count == 0) return;
         var team = episode.OwningTeamId is { } t ? await teams.GetAsync(t, ct) : null;
@@ -135,9 +207,12 @@ public sealed class NotificationTransitionHook(
 
         if (!episode.IsActionable) return; // informational: queue only (spec §2.1)
 
-        // Suppression (04 §2.3) and grouping (04 §7.4) decide how the opened notification is staged: muted, skipped as a quiet group member, or sent.
+        // Suppression (04 §2.3), dependency (spec §16.5) and grouping (04 §7.4) decide how the opened notification is staged: muted, skipped as a quiet group member, or sent.
         await suppressions.ApplyToNewEpisodeAsync(episode, evt, integration, session, now, ct);
-        var grouped = await grouping.ApplyAsync(episode, evt, integration, session, now, ct);
+        var dependency = await topology.ApplyAsync(episode, evt, integration, session, now, ct);
+        var grouped = dependency.Group is not null
+            ? new Grouping.GroupingOutcome(dependency.Group, false, dependency.GroupNotify, dependency.Rule?.DisplayName)
+            : await grouping.ApplyAsync(episode, evt, integration, session, now, ct);
 
         var targets = await TeamDestinationsAsync(decision.TeamId, ct);
         foreach (var extra in decision.ExtraDestinations)
@@ -151,6 +226,9 @@ public sealed class NotificationTransitionHook(
                 previous: grouped.Group is null ? null : new { groupId = grouped.Group.GroupId, groupSeverity = grouped.Group.Severity, groupMembers = grouped.Group.MemberCount, groupRule = grouped.RuleName });
             Stage(session, episode, NotificationTypes.EpisodeOpened, opened, targets, integration, now);
         }
+
+        // Parent side (spec §16.5): children that fired first inside the look-back are adopted now.
+        await topology.AdoptAsync(episode, evt, integration, session, now, ct);
 
         if (decision.IsRoutingFailure)
         {
@@ -169,6 +247,71 @@ public sealed class NotificationTransitionHook(
                 AccessScope = episode.AccessScope,
                 After = JsonSerializer.Serialize(new { decision.Why, teamId = decision.TeamId }, JsonDefaults.Stored),
                 CorrelationId = evt.EventId.ToString("N"),
+            });
+        }
+    }
+
+    /// <summary>
+    /// Reopen (spec §11.4): ownership, handling and the acknowledgement deadline are kept; lifecycle timers restart from the new signal;
+    /// suppression and grouping apply as to a new episode; <c>episode.opened</c> is staged only as <c>notify_on_reopen</c> allows.
+    /// </summary>
+    private async Task OnReopenedAsync(Episode episode, NormalisedEvent evt, Integration integration, IProcessingSession session, DateTimeOffset now, CancellationToken ct)
+    {
+        var effective = await lifecycle.ResolveAsync(episode, integration, null, ct);
+        await lifecycle.ScheduleAsync(episode, integration, effective, session, now, ct);
+        var team = episode.OwningTeamId is { } t ? await teams.GetAsync(t, ct) : null;
+
+        // The deadline is not restarted (spec §11.4): an unacknowledged episode keeps its original one; if it has passed, the overdue escalation runs now.
+        if (episode.HandlingState == HandlingState.New && episode.AckDeadlineAt is { } deadline && episode.IsActionable)
+        {
+            var escalationId = team?.DefaultEscalationPolicyId;
+            if (escalationId is { } eid && await policies.GetActiveAsync(PolicyKinds.Escalation, eid, ct) is { } ev)
+            {
+                session.AddJob(new Job
+                {
+                    JobId = Ids.New(time),
+                    Kind = JobKinds.AckDeadline,
+                    NotBefore = deadline > now ? deadline : now,
+                    EpisodeId = episode.EpisodeId,
+                    IntegrationId = integration.IntegrationId,
+                    ExpectedVersion = episode.Version,
+                    Payload = JsonSerializer.Serialize(new EscalationJobPayload(episode.EpisodeId, eid, ev.Version, 0, 0), JsonDefaults.Stored),
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                });
+            }
+        }
+
+        if (!episode.IsActionable) return;
+        await suppressions.ApplyToNewEpisodeAsync(episode, evt, integration, session, now, ct);
+        var dependency = await topology.ApplyAsync(episode, evt, integration, session, now, ct);
+        var grouped = dependency.Group is not null
+            ? new Grouping.GroupingOutcome(dependency.Group, false, dependency.GroupNotify, dependency.Rule?.DisplayName)
+            : await grouping.ApplyAsync(episode, evt, integration, session, now, ct);
+        await topology.AdoptAsync(episode, evt, integration, session, now, ct);
+        var flap = effective.Document.Flap;
+        var notify = flap.NotifyOnReopen switch
+        {
+            Lifecycle.NotifyOnReopen.Every => true,
+            Lifecycle.NotifyOnReopen.Never => false,
+            _ => episode.ReopenCount == 1,
+        };
+        if (notify && grouped.Notify)
+        {
+            var model = NotificationModel.ForEpisode(NotificationTypes.EpisodeOpened, episode, evt, integration, team, options.Value.PublicBaseUrl,
+                previous: new { reopened = true, reopenCount = episode.ReopenCount, flapping = episode.IsFlapping, groupId = grouped.Group?.GroupId, groupRule = grouped.RuleName });
+            Stage(session, episode, NotificationTypes.EpisodeOpened, model, await TeamDestinationsAsync(episode.OwningTeamId, ct), integration, now);
+        }
+        else
+        {
+            session.AddEpisodeEvent(new EpisodeEvent
+            {
+                Id = Ids.New(time),
+                EpisodeId = episode.EpisodeId,
+                At = now,
+                Kind = EpisodeEventKind.Notify,
+                EventId = evt.EventId,
+                Detail = JsonSerializer.Serialize(new { type = NotificationTypes.EpisodeOpened, skipped = true, reason = notify ? "quiet group member" : $"notify_on_reopen is '{flap.NotifyOnReopen}' and this is reopen #{episode.ReopenCount} (spec §11.4)" }, JsonDefaults.Stored),
             });
         }
     }
@@ -260,3 +403,35 @@ public sealed class NotificationTransitionHook(
 
 /// <summary>Payload of <c>ack_deadline</c> / <c>escalation_step</c> jobs.</summary>
 public sealed record EscalationJobPayload(Guid EpisodeId, Guid PolicyId, int PolicyVersion, int StepIndex, int Repeat);
+
+/// <summary>Payload of the <c>flap_hold</c> timer (spec §12.6).</summary>
+public sealed record FlapHoldJobPayload(Guid EpisodeId);
+
+/// <summary><c>flap_hold</c>: the held closure notification is due. Reopened episodes cancelled the job; a stale one finds the episode open and does nothing.</summary>
+public sealed class FlapHoldJobHandler(IProcessingUnitOfWork uow, ITransitionHook hook, IEpisodeChangePublisher publisher, ILogger<FlapHoldJobHandler> logger) : Ops.IJobHandler
+{
+    public string Kind => JobKinds.FlapHold;
+
+    public async Task HandleAsync(Job job, Ops.JobContext context, CancellationToken ct)
+    {
+        var payload = JsonSerializer.Deserialize<FlapHoldJobPayload>(job.Payload, JsonDefaults.Stored) ?? throw new InvalidOperationException("flap_hold without payload");
+        var changed = await uow.RunAsync(async session =>
+        {
+            var episode = await session.FindEpisodeAsync(payload.EpisodeId, ct);
+            if (episode is null || episode.IsOpen || episode.ClosureHoldUntil is null) return null;
+            await hook.OnHeldClosureDueAsync(episode, session, ct);
+            return episode;
+        }, ct);
+        if (changed is not null)
+        {
+            try
+            {
+                await publisher.PublishAsync(changed, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogDebug(ex, "change publish after flap_hold failed; clients resync");
+            }
+        }
+    }
+}

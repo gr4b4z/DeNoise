@@ -25,8 +25,8 @@ export function QueuePage() {
   const me = useMe();
   const { pulsing } = useRealtime();
   const filters: QueueFilters = useMemo(
-    () => ({ view: search.view, severity: search.severity, team: search.team, environment: search.environment, service: search.service, q: search.q }),
-    [search.view, search.severity, search.team, search.environment, search.service, search.q],
+    () => ({ view: search.view, severity: search.severity, team: search.team, environment: search.environment, service: search.service, q: search.q, flapping: search.flapping }),
+    [search.view, search.severity, search.team, search.environment, search.service, search.q, search.flapping],
   );
   const episodes = useInfiniteQuery(episodesQuery(filters));
   const items = useMemo(() => episodes.data?.pages.flatMap((p) => p.items) ?? [], [episodes.data]);
@@ -160,6 +160,16 @@ export function QueuePage() {
               );
             })}
           </div>
+          <button
+            type="button"
+            aria-pressed={search.flapping === true}
+            onClick={() => update({ flapping: search.flapping ? undefined : true })}
+            className={`btn btn-sm ${search.flapping ? 'bg-surface-2 font-semibold' : ''}`}
+            title={t('queue.flappingHint')}
+            data-testid="flapping-filter"
+          >
+            ⟲ {t('queue.flapping')}
+          </button>
           <form
             className="ml-auto flex items-center gap-1"
             onSubmit={(e) => {
@@ -190,6 +200,7 @@ export function QueuePage() {
               for (const s of search.severity ?? []) params.append('severity', s);
               for (const e of search.environment ?? []) params.append('environment', e);
               for (const [k, v] of Object.entries({ team: search.team, service: search.service, q: search.q })) if (v) params.set(k, v);
+              if (search.flapping) params.set('flapping', 'true');
               saveFilter.mutate({ name: name.trim(), query: params.toString() }, { onError: (e) => setProblem(e as unknown as Problem) });
             }}
           >
@@ -357,7 +368,18 @@ function QueueTable({ items, cursor, selectedId, pulsing, me, onOpen, onPrimary,
                       </span>
                     )}
                     {item.suppressedUntil && <span title="Silenced">⏸</span>}
+                    {item.flapping && (
+                      <span title={`Flapping: reopened ${item.reopenCount} time(s) inside the reopen window`} data-testid="flap-badge" style={{ color: 'var(--sev-high)' }}>
+                        ⟲{item.reopenCount}
+                      </span>
+                    )}
                     {item.groupId && <span title="Member of a group">⧉</span>}
+                    {item.dependsOnEpisodeId && !item.dependencyReleased && <span title="Dependent: attributed to an open parent episode" data-testid="dependent-flag">⤷</span>}
+                    {item.dependents > 0 && (
+                      <span title={`${item.dependents} dependent episode(s) rolled up under this one`} data-testid="dependents-flag">
+                        +{item.dependents}
+                      </span>
+                    )}
                     {item.stale && <span title="Stale: not verified with the source">◌</span>}
                     {item.routingCorrectionRequired && <span title="Routing correction required">↯</span>}
                     <CoverageBadge state={item.coverageState} />

@@ -91,8 +91,7 @@ public sealed class ConfigBundleService(IPolicyRepository policies, PolicyServic
                 var name = item["name"]?.ToString();
                 Guid policyId;
                 if (item["id"] is JsonValue idv && Guid.TryParse(idv.ToString(), out var parsed)) policyId = parsed;
-                else if (kind == PolicyKinds.Routing) policyId = WellKnownPolicies.Routing;
-                else if (kind == PolicyKinds.Grouping) policyId = WellKnownPolicies.Grouping;
+                else if (WellKnownPolicies.SingleDocumentId(kind) is { } wellKnown) policyId = wellKnown;
                 else
                 {
                     errors.Add($"{path}: escalation and lifecycle policies need an 'id' (uuid) so re-imports address the same policy");
