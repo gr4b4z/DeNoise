@@ -117,17 +117,30 @@ export function Shell() {
                   </li>
                 )}
               </ul>
-              {teams.data && teams.data.length > 0 && (
+              {((teams.data && teams.data.length > 0) || can(me.data, P.teamManage)) && (
                 <>
                   <RailHeading>{t('nav.teams')}</RailHeading>
                   <ul className="m-0 list-none p-0">
-                    {teams.data.map((team) => (
+                    {teams.data?.map((team) => (
                       <li key={team.id}>
                         <Link to="/teams/$id" params={{ id: team.id }} className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }}>
                           {team.name}
                         </Link>
                       </li>
                     ))}
+                    {can(me.data, P.teamManage) && (
+                      <li>
+                        <Link
+                          to="/teams"
+                          className="flex h-7 items-center rounded-sm px-2 text-sm text-ink-2 hover:bg-surface hover:no-underline"
+                          activeProps={{ className: 'bg-surface font-semibold text-ink' }}
+                          activeOptions={{ exact: true }}
+                          data-testid="nav-teams-admin"
+                        >
+                          {t('nav.teamsAdmin')}
+                        </Link>
+                      </li>
+                    )}
                   </ul>
                 </>
               )}

@@ -21,7 +21,8 @@
     "policies": "Policies",
     "config": "Config as code",
     "audit": "Audit log",
-    "hub": "Hub health"
+    "hub": "Hub health",
+    "teamsAdmin": "Manage teams"
   },
   "views": {
     "needsAttention": "Needs attention",
@@ -816,6 +817,30 @@
       "error": "Last error",
       "episode": "Episode",
       "retry": "Retry"
+    }
+  },
+  "teamsAdmin": {
+    "title": "Teams",
+    "new": "New team",
+    "empty": "No teams yet",
+    "emptyDetail": "Routing needs at least one team, and one of them must be the triage team that owns alerts no rule matches.",
+    "columns": {
+      "name": "Team",
+      "scopes": "Access scopes",
+      "members": "Members",
+      "role": "Role"
+    },
+    "form": {
+      "name": "Name",
+      "scopes": "Access scopes",
+      "scopesPlaceholder": "mpt, prism",
+      "scopesHelp": "Separate with commas or spaces. A team sees an episode only when its scope is one of these.",
+      "triage": "Triage team",
+      "triageHelp": "Receives alerts that no routing rule matches. Exactly one team holds this role.",
+      "triageReplaces": "{{name}} is the triage team today and will lose the role.",
+      "afterCreate": "Members are added from the team's own page once the team exists.",
+      "create": "Create team",
+      "creating": "Creating…"
     }
   }
 }
