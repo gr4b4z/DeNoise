@@ -2,13 +2,15 @@ using DeNoise.Domain.Notifications;
 
 namespace DeNoise.Application.Notifications.Templates;
 
-/// <summary>The four read-only templates of ADR-7 / 06 §7, seeded as version 1 and active. Administrators clone, never edit.</summary>
+/// <summary>The read-only templates of ADR-7 / 06 §7 (four of milestone 7 plus the milestone 15 group digest), seeded as version 1 and active. Administrators clone, never edit.</summary>
 public static class BuiltInTemplates
 {
     public static readonly Guid GenericJson = Guid.Parse("00000000-0000-0000-0000-00000000f001");
     public static readonly Guid TeamsAdaptiveCard = Guid.Parse("00000000-0000-0000-0000-00000000f002");
     public static readonly Guid SlackBlocks = Guid.Parse("00000000-0000-0000-0000-00000000f003");
     public static readonly Guid PlainText = Guid.Parse("00000000-0000-0000-0000-00000000f004");
+    /// <summary>Roll-up body for <c>episode.group_digest</c> (spec §16.3, milestone 15); other event types render their generic fields.</summary>
+    public static readonly Guid GroupDigest = Guid.Parse("00000000-0000-0000-0000-00000000f005");
 
     public static IReadOnlyList<WebhookTemplate> Create(DateTimeOffset now) =>
     [
@@ -95,6 +97,32 @@ public static class BuiltInTemplates
             Seen {{ episode.occurrenceCount }} time(s) since {{ episode.firstSeen }}{% if episode.closure %}
             Closed: {{ episode.closure.reason }} (evidence {{ episode.closure.evidence }}){% endif %}
             {{ episode.url }}
+            """,
+        },
+        new()
+        {
+            TemplateId = GroupDigest, Version = 1, Name = "group-digest", Builtin = true, Format = TemplateFormats.Json, ContentType = "application/json", CreatedBy = "system", CreatedAt = now, ActivatedAt = now,
+            Description = "Group digest (spec §16.3): the members that joined since the previous digest, capped at max_items; for other event types a compact generic body.",
+            Body = """
+            {
+              "event": "{{ event }}",
+              "summary": "{% if group %}{{ summary }}{% else %}[{{ episode.severity }}] {{ episode.summary }}{% endif %}",
+              "team": "{{ team.name }}",
+              "group": {
+                "id": "{{ group.id }}",
+                "rule": "{{ group.rule }}",
+                "severity": "{{ group.severity }}",
+                "members": "{{ group.memberCount }}",
+                "windowExtended": "{{ group.extensionCount }}",
+                "windowEndsAt": "{{ group.windowEndsAt }}",
+                "open": "{{ group.open }}"
+              },
+              "joined": [{% for e in episodes %}
+                { "id": "{{ e.id }}", "severity": "{{ e.severity }}", "summary": "{{ e.summary }}", "service": "{{ e.service }}", "environment": "{{ e.environment }}", "resource": "{{ e.resource }}", "handling": "{{ e.handlingState }}", "url": "{{ e.url }}" }{% unless forloop.last %},{% endunless %}{% endfor %}
+              ],
+              "more": "{{ more }}",
+              "episode": { "id": "{{ episode.id }}", "severity": "{{ episode.severity }}", "summary": "{{ episode.summary }}", "url": "{{ episode.url }}" }
+            }
             """,
         },
     ];

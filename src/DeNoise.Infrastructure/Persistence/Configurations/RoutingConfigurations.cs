@@ -105,7 +105,7 @@ internal sealed class PolicyVersionConfiguration : IEntityTypeConfiguration<Poli
 {
     public void Configure(EntityTypeBuilder<PolicyVersion> b)
     {
-        b.ToTable("policy", "cfg", t => t.HasCheckConstraint("policy_kind_chk", "kind IN ('routing','escalation','lifecycle','grouping')"));
+        b.ToTable("policy", "cfg", t => t.HasCheckConstraint("policy_kind_chk", "kind IN ('routing','escalation','lifecycle','grouping','topology')"));
         b.HasKey(x => new { x.Kind, x.PolicyId, x.Version });
         b.Property(x => x.Kind).HasColumnName("kind");
         b.Property(x => x.PolicyId).HasColumnName("policy_id");

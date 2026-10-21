@@ -7,6 +7,14 @@ public static class SuppressionKinds
     public static readonly IReadOnlyList<string> All = [Silence, Maintenance];
 }
 
+/// <summary>Values of <c>episode.suppression_source</c>: the user-created kinds plus the dependency mute of spec §16.5.</summary>
+public static class SuppressionSources
+{
+    public const string Silence = SuppressionKinds.Silence;
+    public const string Maintenance = SuppressionKinds.Maintenance;
+    public const string Topology = "topology";
+}
+
 /// <summary>
 /// A silence or maintenance window (<c>cfg.suppression</c>, 04 §7.5, spec §16.3): time-bounded, scoped by a predicate,
 /// with a mandatory reason and an explicit time zone. Suppression blocks delivery only — never ingestion, ownership or history.

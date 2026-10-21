@@ -11,12 +11,12 @@ export type ConfigImportEntry = Schemas['ConfigImportEntryDto'];
 export type AuditEntry = Schemas['AuditEntryDto'];
 export type PagedAudit = Schemas['PagedResponseOfAuditEntryDto'];
 
-/** 04 §7: the four policy kinds; routing and grouping are single documents with well-known ids, escalation and lifecycle are many. */
-export const POLICY_KINDS = ['routing', 'escalation', 'lifecycle', 'grouping'] as const;
+/** 04 §7 + spec §16.5: the policy kinds; routing, grouping and topology are single documents with well-known ids, escalation and lifecycle are many. */
+export const POLICY_KINDS = ['routing', 'escalation', 'lifecycle', 'grouping', 'topology'] as const;
 export type PolicyKind = (typeof POLICY_KINDS)[number];
-export const SINGLE_DOCUMENT_KINDS: readonly PolicyKind[] = ['routing', 'grouping'];
+export const SINGLE_DOCUMENT_KINDS: readonly PolicyKind[] = ['routing', 'grouping', 'topology'];
 /** Kinds whose activation has an impact preview (08 §3.6: shown before Activate enables). */
-export const IMPACT_KINDS: readonly PolicyKind[] = ['lifecycle', 'routing'];
+export const IMPACT_KINDS: readonly PolicyKind[] = ['lifecycle', 'routing', 'grouping', 'topology'];
 
 export function isPolicyKind(value: string | undefined): value is PolicyKind {
   return (POLICY_KINDS as readonly string[]).includes(value ?? '');
@@ -28,6 +28,8 @@ export const POLICY_SKELETONS: Record<PolicyKind, string> = {
   escalation: 'escalation:\n  ack_deadline: 15m\n  steps:\n    - { after: 0m, targets: [team_destinations] }\n    - { after: 15m, targets: [team_destinations] }\n  repeat_last_step_every: 30m\n  max_repeats: 2\n',
   lifecycle: 'lifecycle: { profile: repeating_while_active }\nauto_resolve: { after_silence: 45m }\n',
   grouping: 'grouping:\n  rules:\n    - name: by-service-and-environment\n      match: { exists: "service" }\n      key: [service, environment]\n      window: 10m\n      notify: first_and_new_critical\n',
+  topology:
+    'topology:\n  rules:\n    - name: host down suppresses its services\n      parent: { match: { eq: [rule_id, host-down] }, key: [resource_id] }\n      child: { match: { neq: [rule_id, host-down] }, key: [labels.host] }\n      window: 15m\n      look_back: 2m\n      action: annotate_only   # mute_child | group_under_parent | annotate_only\n',
 };
 
 async function unwrap<T>(promise: Promise<{ data?: T; error?: unknown; response: Response }>): Promise<T> {

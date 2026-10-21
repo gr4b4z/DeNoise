@@ -13,6 +13,7 @@ export interface QueueFilters {
   integration?: string;
   q?: string;
   sort?: string;
+  flapping?: boolean;
 }
 
 async function unwrap<T>(promise: Promise<{ data?: T; error?: unknown; response: Response }>): Promise<T> {
@@ -38,6 +39,7 @@ export const episodesQuery = (filters: QueueFilters, limit = 100) =>
               integration: filters.integration || undefined,
               q: filters.q || undefined,
               sort: filters.sort || undefined,
+              flapping: filters.flapping || undefined,
               limit,
               cursor: pageParam || undefined,
               includeTotal: !pageParam,

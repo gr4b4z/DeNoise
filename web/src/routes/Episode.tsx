@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { relatedQuery } from '@/suppressions/queries';
+import { groupQuery, relatedQuery } from '@/suppressions/queries';
 import type { EpisodeDetail, Problem, TimelineEntry } from '@/api/types';
 import { useMe } from '@/auth/queries';
 import { can, P } from '@/auth/permissions';
@@ -262,9 +262,20 @@ function Overview({ d }: { d: EpisodeDetail }) {
           Seen {item.occurrenceCount}
           {item.occurrenceCountExact ? '' : '+'} time{item.occurrenceCount === 1 ? '' : 's'} since {utc(item.firstSeen)} · identity confidence {d.identityConfidence ?? 'exact'}
         </p>
+        {item.reopenCount > 0 && (
+          <p className="m-0 mt-1 text-xs" data-testid="reopen-note">
+            {item.flapping && (
+              <span className="badge mr-2" style={{ color: 'var(--sev-high)', borderColor: 'var(--sev-high)' }} data-testid="flapping-badge">
+                ⟲ {t('detail.flapping')}
+              </span>
+            )}
+            {t('detail.reopened', { count: item.reopenCount })}
+          </p>
+        )}
       </Section>
 
       {item.groupId && <GroupSection id={item.id} groupId={item.groupId} />}
+      {(item.dependsOnEpisodeId || item.dependents > 0) && <DependencySection id={item.id} released={item.dependencyReleased} />}
 
       <Section title={t('detail.lifecycle')}>
         <dl className="m-0 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1">
@@ -345,6 +356,11 @@ function Overview({ d }: { d: EpisodeDetail }) {
             {d.closure.by && <span className="text-ink-2">by {d.closure.by.displayName}</span>}
           </div>
           {d.closure.note && <p className="m-0 mt-1 whitespace-pre-line">{d.closure.note}</p>}
+          {item.closureHoldUntil && (
+            <p className="m-0 mt-1 rounded-md border border-dashed border-line px-2 py-1 text-xs text-ink-2" data-testid="closure-held">
+              {t('detail.closureHeld')} <RelativeTime iso={item.closureHoldUntil} mode="sentence" />
+            </p>
+          )}
           {d.closure.restoredFromReason && <p className="m-0 mt-1 text-ink-2">Previously restored from {d.closure.restoredFromReason}.</p>}
         </Section>
       )}
@@ -366,7 +382,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-const KINDS = ['', 'source_event', 'late_event', 'ack', 'assign', 'note', 'close', 'restore', 'notify', 'escalate', 'suppress', 'auto_resolve'];
+const KINDS = ['', 'source_event', 'late_event', 'reopen', 'flap_hold', 'ack', 'assign', 'note', 'close', 'restore', 'notify', 'escalate', 'suppress', 'grouped', 'auto_resolve'];
 
 function Timeline({ id }: { id: string }) {
   const [kind, setKind] = useState('');
@@ -420,15 +436,82 @@ export function EpisodePage({ id }: { id: string }) {
 }
 
 /** Group membership (04 §7.4): the other members of the bounded-window group, each with its own state. */
+function DependencySection({ id, released }: { id: string; released: boolean }) {
+  const { t } = useTranslation();
+  const related = useQuery(relatedQuery(id));
+  const parent = related.data?.dependsOn ?? null;
+  const dependents = related.data?.dependents ?? [];
+  return (
+    <>
+      {parent && (
+        <Section title={t('detail.dependsOn')}>
+          <div className="flex items-center gap-2" data-testid="depends-on">
+            <SeverityBadge severity={parent.severity} compact />
+            <Link to="/episodes/$id" params={{ id: parent.id }} className="min-w-0 flex-1 truncate">
+              {parent.summary ?? parent.id}
+            </Link>
+            <HandlingBadge state={parent.handlingState} />
+          </div>
+          <p className="m-0 mt-1 text-xs text-ink-2">{released ? t('detail.dependsOnReleased') : t('detail.dependsOnExplain')}</p>
+        </Section>
+      )}
+      {dependents.length > 0 && (
+        <Section title={t('detail.dependents')}>
+          <p className="m-0 text-xs text-ink-2">{t('detail.dependentsExplain', { count: dependents.length })}</p>
+          <ul className="m-0 mt-1 list-none p-0" data-testid="dependents">
+            {dependents.map((m) => (
+              <li key={m.id} className="flex items-center gap-2 border-t border-line py-1">
+                <SeverityBadge severity={m.severity} compact />
+                <Link to="/episodes/$id" params={{ id: m.id }} className="min-w-0 flex-1 truncate">
+                  {m.summary ?? m.id}
+                </Link>
+                {m.dependencyReleased && <span className="badge border-dashed">released</span>}
+                <HandlingBadge state={m.handlingState} />
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+    </>
+  );
+}
+
 function GroupSection({ id, groupId }: { id: string; groupId: string }) {
   const { t } = useTranslation();
   const related = useQuery(relatedQuery(id));
+  const group = useQuery(groupQuery(groupId));
   const members = related.data?.groupMembers.filter((m) => m.id !== id) ?? [];
+  const g = group.data;
+  const adopted = g?.adoptedEpisodeIds ?? [];
   return (
     <Section title={t('detail.group')}>
       <p className="m-0 text-xs text-ink-2">
         {t('detail.groupExplain', { count: members.length })} <span className="mono">{groupId.slice(0, 8)}</span>
       </p>
+      {g && (
+        <p className="m-0 mt-1 text-xs text-ink-2" data-testid="group-window">
+          {g.memberCount} {t('detail.groupMembers')}
+          {g.extensionCount > 0 && <> · {t('detail.groupExtended', { count: g.extensionCount })}</>}
+          {g.adoptedCount > 0 && <> · {t('detail.groupAdopted', { count: g.adoptedCount })}</>}
+          {' · '}
+          {g.closedAt ? (
+            t('detail.groupClosed')
+          ) : (
+            <>
+              {t('detail.groupCloses')} <RelativeTime iso={g.windowEndsAt} mode="sentence" />
+              {g.hardEndAt && g.hardEndAt !== g.windowEndsAt && <> ({t('detail.groupHardEnd')} <RelativeTime iso={g.hardEndAt} mode="sentence" />)</>}
+            </>
+          )}
+          {g.digestNextAt && !g.closedAt && (
+            <>
+              {' · '}
+              {t('detail.groupDigest')} <RelativeTime iso={g.digestNextAt} mode="sentence" />
+            </>
+          )}
+          {g.continuedFromGroupId && <> · {t('detail.groupContinues')} <span className="mono">{g.continuedFromGroupId.slice(0, 8)}</span></>}
+          {adopted.includes(id) && <> · {t('detail.groupThisAdopted')}</>}
+        </p>
+      )}
       {members.length > 0 && (
         <ul className="m-0 mt-1 list-none p-0">
           {members.map((m) => (

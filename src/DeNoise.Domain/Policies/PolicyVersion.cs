@@ -6,7 +6,9 @@ public static class PolicyKinds
     public const string Escalation = "escalation";
     public const string Lifecycle = "lifecycle";
     public const string Grouping = "grouping";
-    public static readonly IReadOnlyList<string> All = [Routing, Escalation, Lifecycle, Grouping];
+    /// <summary>Dependency suppression rules (spec §16.5): one ordered document, like routing and grouping.</summary>
+    public const string Topology = "topology";
+    public static readonly IReadOnlyList<string> All = [Routing, Escalation, Lifecycle, Grouping, Topology];
 }
 
 /// <summary>

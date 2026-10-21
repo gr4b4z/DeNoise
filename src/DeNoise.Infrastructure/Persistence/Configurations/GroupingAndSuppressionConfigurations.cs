@@ -17,6 +17,14 @@ internal sealed class AlertGroupConfiguration : IEntityTypeConfiguration<AlertGr
         b.Property(x => x.KeyValues).HasColumnName("key_values").HasColumnType("jsonb");
         b.Property(x => x.OpenedAt).HasColumnName("opened_at");
         b.Property(x => x.WindowEndsAt).HasColumnName("window_ends_at");
+        b.Property(x => x.WindowHardEndAt).HasColumnName("window_hard_end_at");
+        b.Property(x => x.LastMemberAt).HasColumnName("last_member_at");
+        b.Property(x => x.ExtensionCount).HasColumnName("extension_count").HasDefaultValue(0);
+        b.Property(x => x.AdoptedCount).HasColumnName("adopted_count").HasDefaultValue(0);
+        b.Property(x => x.DigestNextAt).HasColumnName("digest_next_at");
+        b.Property(x => x.DigestLastAt).HasColumnName("digest_last_at");
+        b.Property(x => x.ContinuedFromGroupId).HasColumnName("continued_from_group_id");
+        b.HasIndex(x => x.DigestNextAt, "alert_group_digest_idx").HasFilter("digest_next_at IS NOT NULL");
         b.Property(x => x.Severity).HasColumnName("severity");
         b.Property(x => x.MemberCount).HasColumnName("member_count");
         b.Property(x => x.ClosedAt).HasColumnName("closed_at");

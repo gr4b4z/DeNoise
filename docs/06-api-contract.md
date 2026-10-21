@@ -8,6 +8,9 @@ Two hosts. **Ingest host** (public, minimal): `/ingest/*`, `/hb/*`, `/healthz/*`
 - Errors: RFC 9457 `application/problem+json` with `type` URN (`urn:denoise:error:version-conflict`), `status`, `title`, `detail`, `traceId`, and `errors[]` for validation.
 - Pagination: cursor-based. Request `?limit=50&cursor=…`; response `{ items, nextCursor, total? }` (`total` only when `?includeTotal=true`, capped at 10,000).
 - Filtering: repeatable query params, e.g. `?severity=critical&severity=high&handling=new&team=…&scope=…&q=text`. Sorting: `?sort=-severity,lastSeen`.
+- `flapping=true` limits `/episodes` to episodes labelled flapping (spec §11.4); list items carry `reopenCount`, `flapping` and `closureHoldUntil` (§12.6).
+- `dependents=true|false` keeps or drops unreleased dependents (spec §16.5); list items carry `dependsOnEpisodeId`, `dependencyReleased` and `dependents` (open dependents rolled up); `/episodes/{id}/related` adds `dependsOn` and `dependents[]`. Policy kind `topology` is a single document (`/api/v1/policies/topology`) with an impact preview.
+- `GET /api/v1/groups/{id}` carries the window state (`hardEndAt`, `lastMemberAt`, `extensionCount`, `adoptedCount`, `digestNextAt`, `digestLastAt`, `continuedFromGroupId`, `adoptedEpisodeIds`; spec §16.3). Grouping policies have an impact preview. Notification type `episode.group_digest` (default subscription) carries `group`, `episodes[]` and `more`.
 - `environment` is repeatable and free-form (`?environment=production&environment=unknown`); the value `unknown` also matches episodes whose mapping produced no environment (spec §15.5). Absent ⇒ every environment. Applies to `/episodes` and `/history`.
 - Optimistic concurrency: mutating episode/heartbeat/config endpoints require `If-Match: "<version>"`; mismatch ⇒ `409` with current representation in `detail`.
 - Idempotency: `Idempotency-Key` header (UUID) required on all `POST` actions; stored 24 h per user; replay returns the original response.

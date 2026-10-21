@@ -34,7 +34,7 @@ public sealed class TemplateService(ITemplateRepository templates, TemplateRende
     public Task<IReadOnlyList<WebhookTemplate>> ListVersionsAsync(Guid id, CancellationToken ct = default) => templates.ListVersionsAsync(id, ct);
     public Task<WebhookTemplate?> GetAsync(Guid id, int version, CancellationToken ct = default) => templates.GetAsync(id, version, ct);
 
-    /// <summary>Seeds the four built-ins when missing (API start, seed-dev, tests). Idempotent.</summary>
+    /// <summary>Seeds the five built-ins when missing (API start, seed-dev, tests). Idempotent.</summary>
     public async Task<int> EnsureBuiltInsAsync(CancellationToken ct = default)
     {
         var now = time.GetUtcNow();

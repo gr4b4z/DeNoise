@@ -1,6 +1,41 @@
 # Milestone 13 — Flap dampening (anti-flap)
 
-Status: **planned**. Prerequisite: M5 (lifecycle policies, evidence model), M9 (grouping/suppression muting machinery).
+Status: **done** (backend, API, queue badge and filter, episode detail). Prerequisite: M5 (lifecycle policies, evidence model), M9 (grouping/suppression muting machinery).
+
+## What exists
+
+| Area | Where | Notes |
+|---|---|---|
+| Policy | `flap` block of the `lifecycle` kind (`LifecyclePolicyDocument.Flap`, `FlapSettings`), under `lifecycle:` or at the top level | `reopen_window` (0 = off, ≤ 24 h), `rejoin_closures` (may only narrow `source_resolved`, `verified_resolved`, `inactivity_timeout`; a human or administrative closure is refused at validation with `$.flap.rejoin_closures`), `notify_on_reopen: never\|first\|every` (default `first`), `threshold` (default 3), `close_hold` (default 0), `hold_max` (default 30 m, ≥ `close_hold`). Resolved with the same precedence as every lifecycle setting (`LifecycleScheduler.ResolveAsync`): routing rule → integration profile defaults → mapping hint → type preset. Round-trips through policy versions, impact preview, rollback and config-as-code untouched. |
+| Domain | `Episode.CanReopen`, `Episode.Reopen`, `Episode.ReopenableClosures`, `EpisodeTransitionKind.Reopened`, columns `reopen_count`, `flap_window_started_at`, `is_flapping`, `closure_hold_until` (migration `FlapDampening`, partial index `episode_closure_hold_idx`) | A reopen clears the closure fields into the timeline, keeps handling state (acknowledged stays acknowledged; new stays new with its original `ack_deadline_at`, which closure no longer clears), assignee, occurrence history and ownership; `occurrence_count` and `reopen_count` increment; `is_flapping` is set at the threshold and kept as history. The open-episode uniqueness index is untouched: the reopen happens in the same transaction that would otherwise open. |
+| Processing | `EventProcessor.ReopenAsync` | After the late/duplicate checks, a `firing`/`update` with no open episode asks the latest closed one (now locked `FOR UPDATE`) whether it may rejoin; if so: timeline `reopen` (closure reason, evidence, closed-at, window, count), audit `episode.reopen`, pending `flap_hold` cancelled, an undelivered `episode.closed` row coalesced, then the hook. Outcome `ProcessingOutcome.Reopened`. Internal (coverage/heartbeat) episodes never reopen. |
+| Notifications | `NotificationTransitionHook.OnReopenedAsync`, `CloseAsync` hold branch, `OnHeldClosureDueAsync`, `FlapHoldJobHandler` (`JobKinds.FlapHold`, scheduler role) | Reopen: lifecycle timers restart from the new signal; an unacknowledged episode gets its original deadline re-armed (or the overdue escalation now, if it passed); suppression and grouping run as for a new episode; `episode.opened` is staged per `notify_on_reopen` with `reopened`, `reopenCount`, `flapping` in the model. Closure hold: when a flapping episode closes for a reopenable reason and `close_hold > 0`, the closure is recorded immediately, `closure_hold_until` is set (capped so a chain of holds never spans more than `hold_max` from the first reopen) and a `flap_hold` job replaces the `episode.closed` rows; the job stages them if the episode is still closed; a re-fire cancels it (`flap_hold` timeline entry `cancelled`). Manual closes are never held and never reopened. |
+| API | `EpisodeListItem.reopenCount`, `flapping`, `closureHoldUntil`; `GET /api/v1/episodes?flapping=true` | Explanation paragraph states the reopen count, the flapping label and a held closure. |
+| UI (`web/`) | Queue flag `⟲N` and a *Flapping* filter chip (URL `flapping=true`, saved filters carry it); episode overview reopen note and *Flapping* badge; closure section states the held notification and when it is due; timeline filter offers `reopen` and `flap_hold`. | |
+
+## Acceptance
+
+| Scenario | Test |
+|---|---|
+| Condition flaps within the reopen window | `Milestone13/FlapScenarios.Scenario_ConditionFlapsWithinTheReopenWindow_*` |
+| Flapping condition is acknowledged, then re-fires | `Scenario_FlappingConditionIsAcknowledgedThenRefires_*` |
+| Flapping stops | `Scenario_FlappingStops_*` (hold, cancel inside the hold, release after the hold) |
+| Human closed the episode, source re-fires | `Scenario_HumanClosedTheEpisodeSourceRefires_*` |
+| Reopen window expires before the next firing | `Scenario_ReopenWindowExpiresBeforeTheNextFiring_*` |
+| Unit | `Domain.Tests/Episodes/EpisodeReopenTests`, `Application.Tests/Lifecycle/FlapPolicyTests` |
+
+## Decisions made
+
+- **The reopen window is off by default** (`reopen_window: 0` in every preset). Spec §11.4 speaks of the *configured* window and §12.6 makes the hold default zero; a firing after closure therefore stays recurrence (§11.3) until an operator opens the window per source, which is the conservative reading of AGENTS.md §5.11 and keeps every earlier acceptance case unchanged.
+- **Handling state after a reopen is derived**: acknowledged if `acknowledged_at` is set, otherwise new. An episode restored from an administrative expiry and later closed by inference therefore reopens as `new` (restore does not record an acknowledgement).
+- **A re-armed deadline uses the team's default escalation policy.** The routing rule's escalation choice is not stored on the episode; the team default is the same fallback routing used when the rule named none.
+- **`hold_max` is measured from the first reopen** (`flap_window_started_at`), so a chain of closures and reopens cannot hold notifications for longer than that in total.
+- **`is_flapping` stays set after a clean close.** It is a statement about the source's behaviour and is useful history; it never affects a new episode of the same identity.
+- **Metrics** (`denoise_episode_reopens_total`, `denoise_flapping_open`) are not emitted yet: the Application layer has no metrics port, and adding one is a cross-cutting change outside this slice. The reopen audit action and the `is_flapping` column give the same read through the audit API and SQL.
+
+## Original plan
+
+Prerequisite: M5 (lifecycle policies, evidence model), M9 (grouping/suppression muting machinery).
 
 ## Problem
 

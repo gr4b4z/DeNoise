@@ -32,7 +32,7 @@ public sealed record ActionResult(Episode Episode, bool Changed);
 /// </summary>
 public sealed class EpisodeActionService(
     IProcessingUnitOfWork uow, IIntegrationRepository integrations, ITeamRepository teams, IDestinationRepository destinations, IUserRepository users,
-    IChangeBroadcaster broadcaster, IOptions<NotificationOptions> options, TimeProvider time)
+    IChangeBroadcaster broadcaster, IOptions<NotificationOptions> options, Topology.TopologyService topology, TimeProvider time)
 {
     public Task<ActionResult> AcknowledgeAsync(DeNoisePrincipal actor, Guid episodeId, int expectedVersion, bool force, string correlationId, CancellationToken ct = default)
         => RunAsync(actor, Permissions.EpisodeAck, episodeId, expectedVersion, correlationId, async (episode, session, now) =>
@@ -85,6 +85,7 @@ public sealed class EpisodeActionService(
             await session.CancelJobsAsync(episode.EpisodeId, [JobKinds.AckDeadline, JobKinds.FollowUp, JobKinds.EscalationStep, JobKinds.AutoResolve, JobKinds.VerifyState, JobKinds.StaleReview, JobKinds.AdminExpiry], ct);
             session.AddEpisodeEvent(Timeline(episode, now, EpisodeEventKind.Close, actor.UserId, new { reason = reason.Trim(), condition = episode.ConditionState }));
             session.AddAudit(Audit(actor, "episode.close", episode, correlationId, new { reason = reason.Trim(), condition = episode.ConditionState, evidence = Evidence.Human }));
+            await topology.ReleaseDependentsAsync(episode, "parent closed by an operator", session, now, ct);
             await StageClosedAsync(session, episode, now, ct);
             return true;
         }, ct);

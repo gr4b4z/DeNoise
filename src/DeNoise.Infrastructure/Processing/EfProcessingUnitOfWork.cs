@@ -87,8 +87,8 @@ internal sealed class EfProcessingSession(DeNoiseDbContext db) : IProcessingSess
             .SingleOrDefaultAsync(ct);
 
     public Task<Episode?> FindLatestClosedEpisodeAsync(string fingerprint, CancellationToken ct = default)
-        => db.Episodes.Where(e => e.Fingerprint == fingerprint && e.HandlingState == HandlingState.Closed)
-            .OrderByDescending(e => e.ClosedAt).FirstOrDefaultAsync(ct);
+        => db.Episodes.FromSqlInterpolated($"SELECT * FROM alert.episode WHERE fingerprint = {Fingerprint.ToBytes(fingerprint)} AND handling_state = 'closed' ORDER BY closed_at DESC LIMIT 1 FOR UPDATE")
+            .FirstOrDefaultAsync(ct);
 
     public Task<Episode?> FindEpisodeAsync(Guid episodeId, CancellationToken ct = default)
         => db.Episodes.SingleOrDefaultAsync(e => e.EpisodeId == episodeId, ct);
@@ -187,6 +187,9 @@ internal sealed class EfProcessingSession(DeNoiseDbContext db) : IProcessingSess
     public Task<int> CoalesceSuppressedOutboxAsync(Guid episodeId, string reason, CancellationToken ct = default)
         => db.Database.ExecuteSqlInterpolatedAsync($"UPDATE ops.outbox SET status = 'coalesced', last_error = {reason} WHERE episode_id = {episodeId} AND status = 'suppressed'", ct);
 
+    public Task<int> CoalescePendingOutboxAsync(Guid episodeId, string type, string reason, CancellationToken ct = default)
+        => db.Database.ExecuteSqlInterpolatedAsync($"UPDATE ops.outbox SET status = 'coalesced', last_error = {reason} WHERE episode_id = {episodeId} AND type = {type} AND status = 'pending'", ct);
+
     public Task<Domain.Heartbeats.Heartbeat?> FindHeartbeatForUpdateAsync(Guid heartbeatId, CancellationToken ct = default)
         => db.Heartbeats.FromSqlInterpolated($"SELECT * FROM hb.heartbeat WHERE heartbeat_id = {heartbeatId} FOR UPDATE").SingleOrDefaultAsync(ct);
 
@@ -205,6 +208,45 @@ internal sealed class EfProcessingSession(DeNoiseDbContext db) : IProcessingSess
         => db.Database.ExecuteSqlInterpolatedAsync($"""
             DELETE FROM hb.run WHERE heartbeat_id = {heartbeatId} AND seq <= (SELECT max(seq) FROM hb.run WHERE heartbeat_id = {heartbeatId}) - {keep}
             """, ct);
+
+    public async Task<IReadOnlyList<Episode>> ListOpenEpisodesOpenedSinceAsync(string accessScope, DateTimeOffset since, int limit, bool forUpdate, CancellationToken ct = default)
+        => forUpdate
+            ? await db.Episodes.FromSqlInterpolated($"SELECT * FROM alert.episode WHERE access_scope = {accessScope} AND handling_state <> 'closed' AND first_seen >= {since} ORDER BY first_seen DESC, episode_id DESC LIMIT {limit} FOR UPDATE").ToListAsync(ct)
+            : await db.Episodes.FromSqlInterpolated($"SELECT * FROM alert.episode WHERE access_scope = {accessScope} AND handling_state <> 'closed' AND first_seen >= {since} ORDER BY first_seen DESC, episode_id DESC LIMIT {limit}").ToListAsync(ct);
+
+    public async Task<IReadOnlyDictionary<Guid, NormalisedEvent>> LatestNormalisedEventsAsync(IReadOnlyCollection<Guid> episodeIds, CancellationToken ct = default)
+    {
+        if (episodeIds.Count == 0) return new Dictionary<Guid, NormalisedEvent>();
+        var ids = episodeIds.ToArray();
+        var rows = await db.NormalisedEvents.FromSqlInterpolated($"SELECT DISTINCT ON (episode_id) * FROM alert.normalised_event WHERE episode_id = ANY({ids}) ORDER BY episode_id, received_at DESC").AsNoTracking().ToListAsync(ct);
+        return rows.Where(r => r.EpisodeId is not null).ToDictionary(r => r.EpisodeId!.Value);
+    }
+
+    public async Task<IReadOnlyList<Episode>> ListUnreleasedDependentsForUpdateAsync(Guid parentEpisodeId, CancellationToken ct = default)
+        => await db.Episodes.FromSqlInterpolated($"SELECT * FROM alert.episode WHERE depends_on_episode_id = {parentEpisodeId} AND dependency_released_at IS NULL ORDER BY first_seen FOR UPDATE").ToListAsync(ct);
+
+    public Task<bool> HasPendingJobAsync(Guid episodeId, string kind, DateTimeOffset notBefore, CancellationToken ct = default)
+        => db.Jobs.AsNoTracking().AnyAsync(j => j.EpisodeId == episodeId && j.Kind == kind && j.NotBefore == notBefore && (j.Status == Domain.Ops.JobStatus.Pending || j.Status == Domain.Ops.JobStatus.Reserved), ct);
+
+    public Task<int> RescheduleGroupJobsAsync(Guid groupId, string kind, DateTimeOffset notBefore, CancellationToken ct = default)
+    {
+        var id = groupId.ToString();
+        return db.Database.ExecuteSqlInterpolatedAsync($"UPDATE ops.job SET not_before = {notBefore}, updated_at = now() WHERE kind = {kind} AND status = 'pending' AND payload->>'groupId' = {id}", ct);
+    }
+
+    public async Task<IReadOnlyList<string>> OutboxStatusesAsync(Guid episodeId, string type, CancellationToken ct = default)
+        => await db.Outbox.AsNoTracking().Where(o => o.EpisodeId == episodeId && o.Type == type).Select(o => o.Status).ToListAsync(ct);
+
+    public Task<Domain.Episodes.AlertGroup?> FindLatestClosedGroupAsync(Guid ruleId, string keyValues, CancellationToken ct = default)
+        => db.AlertGroups.FromSqlInterpolated($"SELECT * FROM alert.alert_group WHERE rule_id = {ruleId} AND key_values = {keyValues}::jsonb AND closed_at IS NOT NULL ORDER BY closed_at DESC LIMIT 1").AsNoTracking().FirstOrDefaultAsync(ct);
+
+    public async Task<IReadOnlyList<Episode>> ListGroupMembersJoinedSinceAsync(Guid groupId, DateTimeOffset since, bool inclusive, CancellationToken ct = default)
+    {
+        var id = groupId.ToString();
+        return inclusive
+            ? await db.Episodes.FromSqlInterpolated($"SELECT e.* FROM alert.episode e WHERE e.group_id = {groupId} AND e.episode_id IN (SELECT ev.episode_id FROM alert.episode_event ev WHERE ev.kind = 'grouped' AND ev.detail->>'groupId' = {id} AND ev.at >= {since}) ORDER BY e.first_seen").ToListAsync(ct)
+            : await db.Episodes.FromSqlInterpolated($"SELECT e.* FROM alert.episode e WHERE e.group_id = {groupId} AND e.episode_id IN (SELECT ev.episode_id FROM alert.episode_event ev WHERE ev.kind = 'grouped' AND ev.detail->>'groupId' = {id} AND ev.at > {since}) ORDER BY e.first_seen").ToListAsync(ct);
+    }
 
     public async Task<IReadOnlyList<Guid>> PriorRecipientsAsync(Guid episodeId, CancellationToken ct = default)
         => await db.Outbox.AsNoTracking()

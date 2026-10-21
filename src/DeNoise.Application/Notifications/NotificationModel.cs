@@ -42,6 +42,8 @@ public static class NotificationModel
                 ["firstSeen"] = episode.FirstSeen.ToString("O"),
                 ["lastSeen"] = episode.LastSeen.ToString("O"),
                 ["occurrenceCount"] = episode.OccurrenceCount,
+                ["reopenCount"] = episode.ReopenCount,
+                ["flapping"] = episode.IsFlapping,
                 ["ackDeadlineAt"] = episode.AckDeadlineAt?.ToString("O"),
                 ["sourceUrl"] = episode.SourceUrl,
                 ["runbookUrl"] = episode.RunbookUrl,

@@ -25,6 +25,8 @@ public enum ProcessingOutcome
     Updated,
     Resolved,
     Cancelled,
+    /// <summary>A firing signal inside the reopen window rejoined the recently closed episode (spec §11.4).</summary>
+    Reopened,
 }
 
 public sealed record ProcessingResult(ProcessingOutcome Outcome, Guid? EpisodeId = null, string? Detail = null);
@@ -36,7 +38,7 @@ public sealed record ProcessingResult(ProcessingOutcome Outcome, Guid? EpisodeId
 /// </summary>
 public sealed class EventProcessor(
     IRawEventReader rawEvents, IIntegrationRepository integrations, IMappingResolver mappings, IProcessingUnitOfWork uow,
-    ITransitionHook transitionHook, IEpisodeChangePublisher publisher, Coverage.ICoverageSignalSink coverage, TimeProvider time, ILogger<EventProcessor> logger)
+    ITransitionHook transitionHook, IEpisodeChangePublisher publisher, Coverage.ICoverageSignalSink coverage, Lifecycle.LifecycleScheduler lifecycle, TimeProvider time, ILogger<EventProcessor> logger)
 {
     public const int MaxConflictRetries = 5;
 
@@ -250,6 +252,16 @@ public sealed class EventProcessor(
             return (new ProcessingResult(ProcessingOutcome.Duplicate), null);
         }
 
+        // Flapping (spec §11.4): a firing signal inside the reopen window of the last closure rejoins that episode instead of opening a new one.
+        if (latestClosed is not null && evt.EventType is EventTypes.Firing or EventTypes.Update && !Lifecycle.LifecycleProfiles.IsInternal(latestClosed.LifecycleProfile))
+        {
+            var flap = (await lifecycle.ResolveAsync(latestClosed, integration, null, ct)).Document.Flap;
+            if (latestClosed.CanReopen(now, flap.ReopenWindow, flap.RejoinClosures))
+            {
+                return (await ReopenAsync(session, integration, evt, latestClosed, flap, actor, now, ct), latestClosed);
+            }
+        }
+
         await session.EnsureIdentityAsync(new AlertIdentity
         {
             Fingerprint = evt.Fingerprint,
@@ -271,6 +283,47 @@ public sealed class EventProcessor(
         session.AddAudit(AuditFor(actor, "episode.open", episode, now, new { severity = episode.Severity.ToWire(), condition = episode.ConditionState, previousEpisodeId = latestClosed?.EpisodeId }));
         await transitionHook.OnTransitionAsync(episode, evt, new EpisodeTransition(EpisodeTransitionKind.Opened, ConditionState.Firing, episode.ConditionState, episode.Severity, episode.Severity), session, ct);
         return (new ProcessingResult(ProcessingOutcome.Opened, episode.EpisodeId), episode);
+    }
+
+    /// <summary>Reopen (spec §11.4): same episode, timeline and audit entry with the window that admitted it, held closure cancelled, hook staged as a transition.</summary>
+    private async Task<ProcessingResult> ReopenAsync(IProcessingSession session, Integration integration, NormalisedEvent evt, Episode episode, Lifecycle.FlapSettings flap, Actor actor, DateTimeOffset now, CancellationToken ct)
+    {
+        var (transition, closure) = episode.Reopen(evt, now, flap.Threshold);
+        evt.EpisodeId = episode.EpisodeId;
+        session.AddNormalisedEvent(evt);
+        var heldCancelled = await session.CancelJobsAsync(episode.EpisodeId, [Domain.Ops.JobKinds.FlapHold], ct);
+        var closedCoalesced = await session.CoalescePendingOutboxAsync(episode.EpisodeId, Domain.Notifications.NotificationTypes.EpisodeClosed, "episode reopened before the closure notification was delivered (spec §11.4)", ct);
+        session.AddEpisodeEvent(Timeline(episode.EpisodeId, evt, now, EpisodeEventKind.Reopen, new
+        {
+            eventType = evt.EventType,
+            severity = evt.Severity.ToWire(),
+            reopenCount = episode.ReopenCount,
+            flapping = episode.IsFlapping,
+            reopenWindow = flap.ReopenWindow.ToString(),
+            closedAt = closure.ClosedAt,
+            closureReason = closure.Reason,
+            closureEvidence = closure.Evidence,
+            sinceClosure = (now - closure.ClosedAt).ToString(),
+            occurrenceCount = episode.OccurrenceCount,
+            heldClosureCancelled = heldCancelled > 0,
+            undeliveredClosureCoalesced = closedCoalesced,
+        }));
+        if (heldCancelled > 0)
+        {
+            session.AddEpisodeEvent(Timeline(episode.EpisodeId, evt, now, EpisodeEventKind.FlapHold, new { action = "cancelled", reason = "condition fired again inside the hold (spec §12.6)" }));
+        }
+        session.AddAudit(AuditFor(actor, "episode.reopen", episode, now, new
+        {
+            reopenCount = episode.ReopenCount,
+            flapping = episode.IsFlapping,
+            reopenWindow = flap.ReopenWindow.ToString(),
+            closedAt = closure.ClosedAt,
+            closureReason = closure.Reason,
+            severity = episode.Severity.ToWire(),
+            handlingState = episode.HandlingState,
+        }));
+        await transitionHook.OnTransitionAsync(episode, evt, transition, session, ct);
+        return new ProcessingResult(ProcessingOutcome.Reopened, episode.EpisodeId);
     }
 
     private static async Task<ProcessingResult> RecordLateAsync(IProcessingSession session, Integration integration, NormalisedEvent evt, Episode? episode, DateTimeOffset now, string why, CancellationToken ct)

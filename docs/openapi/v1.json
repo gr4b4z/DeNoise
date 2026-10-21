@@ -966,6 +966,20 @@
             "schema": {
               "type": "boolean"
             }
+          },
+          {
+            "name": "flapping",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "dependents",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -5746,6 +5760,61 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "hardEndAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastMemberAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "extensionCount": {
+            "type": "integer",
+            "format": "int32",
+            "default": 0
+          },
+          "adoptedCount": {
+            "type": "integer",
+            "format": "int32",
+            "default": 0
+          },
+          "digestNextAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "digestLastAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "continuedFromGroupId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "adoptedEpisodeIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         }
       },
@@ -7224,6 +7293,38 @@
           "version": {
             "type": "integer",
             "format": "int32"
+          },
+          "reopenCount": {
+            "type": "integer",
+            "format": "int32",
+            "default": 0
+          },
+          "flapping": {
+            "type": "boolean",
+            "default": false
+          },
+          "closureHoldUntil": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "dependsOnEpisodeId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "dependencyReleased": {
+            "type": "boolean",
+            "default": false
+          },
+          "dependents": {
+            "type": "integer",
+            "format": "int32",
+            "default": 0
           }
         }
       },
@@ -8974,6 +9075,25 @@
           },
           "groupMembers": {
             "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EpisodeListItem"
+            }
+          },
+          "dependsOn": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EpisodeListItem"
+              }
+            ]
+          },
+          "dependents": {
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "$ref": "#/components/schemas/EpisodeListItem"
             }

@@ -13,7 +13,9 @@ public sealed record EpisodeListItem(
     DateTimeOffset FirstSeen, DateTimeOffset LastSeen, int OccurrenceCount, bool OccurrenceCountExact,
     DateTimeOffset? AckDeadlineAt, bool AckOverdue, DateTimeOffset? NextEscalationAt, DateTimeOffset? AutoResolveAt, bool AutoResolveSuspended,
     string CoverageState, bool Stale, DateTimeOffset? SuppressedUntil, bool DeliveryFailure, Guid? GroupId, bool RoutingCorrectionRequired,
-    Guid IntegrationId, string IntegrationName, string AccessScope, bool IsActionable, DateTimeOffset? ClosedAt, string? ClosureReason, string? ResolutionEvidence, int Version);
+    Guid IntegrationId, string IntegrationName, string AccessScope, bool IsActionable, DateTimeOffset? ClosedAt, string? ClosureReason, string? ResolutionEvidence, int Version,
+    int ReopenCount = 0, bool Flapping = false, DateTimeOffset? ClosureHoldUntil = null,
+    Guid? DependsOnEpisodeId = null, bool DependencyReleased = false, int Dependents = 0);
 
 public sealed record IdentityComponentDto(string Name, string Value);
 public sealed record RoutingDto(Guid? RuleId, string? RuleName, string? Why);
@@ -28,7 +30,8 @@ public sealed record EpisodeDetail(
 
 public sealed record TimelineEntry(Guid Id, DateTimeOffset At, string Kind, string Source, UserRef? Actor, Guid? EventId, string? Detail, string? DeliveryStatus, string? DestinationName);
 
-public sealed record RelatedEpisodes(Guid? PreviousEpisodeId, Guid? NextEpisodeId, IReadOnlyList<EpisodeListItem> SameIdentity, IReadOnlyList<EpisodeListItem> GroupMembers);
+public sealed record RelatedEpisodes(Guid? PreviousEpisodeId, Guid? NextEpisodeId, IReadOnlyList<EpisodeListItem> SameIdentity, IReadOnlyList<EpisodeListItem> GroupMembers,
+    EpisodeListItem? DependsOn = null, IReadOnlyList<EpisodeListItem>? Dependents = null);
 
 public sealed record AckRequest(bool Force = false);
 public sealed record AssignRequest(Guid? TeamId, Guid? UserId);
@@ -165,7 +168,9 @@ public sealed record SuppressionDto(Guid Id, string Kind, string? Name, System.T
 public sealed record CreateSuppressionRequest(string Kind, System.Text.Json.JsonElement Scope, string TimeZone, string Reason, DateTimeOffset? StartsAt = null, DateTimeOffset? EndsAt = null,
     DateTime? StartsLocal = null, DateTime? EndsLocal = null, bool AutoPauseHeartbeats = true, string? Name = null);
 public sealed record SuppressionEndedResponse(int EpisodesReleased, int NotificationsMuted, int TeamsSummarised, int SummaryRows);
-public sealed record AlertGroupDto(Guid Id, string AccessScope, Guid RuleId, System.Text.Json.JsonElement KeyValues, DateTimeOffset OpenedAt, DateTimeOffset WindowEndsAt, string Severity, int MemberCount, DateTimeOffset? ClosedAt);
+public sealed record AlertGroupDto(Guid Id, string AccessScope, Guid RuleId, System.Text.Json.JsonElement KeyValues, DateTimeOffset OpenedAt, DateTimeOffset WindowEndsAt, string Severity, int MemberCount, DateTimeOffset? ClosedAt,
+    DateTimeOffset? HardEndAt = null, DateTimeOffset? LastMemberAt = null, int ExtensionCount = 0, int AdoptedCount = 0, DateTimeOffset? DigestNextAt = null, DateTimeOffset? DigestLastAt = null, Guid? ContinuedFromGroupId = null,
+    IReadOnlyList<Guid>? AdoptedEpisodeIds = null);
 
 // --- Milestone 10: config-as-code and the audit log ---
 public sealed record ConfigImportRequest(string Yaml, bool DryRun = true);

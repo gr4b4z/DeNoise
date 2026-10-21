@@ -19,6 +19,10 @@ public static class NotificationTypes
     public const string EpisodeRoutingFailure = "episode.routing_failure";
     public const string EpisodeAcknowledged = "episode.acknowledged";
     public const string EpisodeSummaryAfterSuppression = "episode.summary_after_suppression";
+    /// <summary>Dependents released with their condition still firing: one current summary per team (spec §16.5).</summary>
+    public const string EpisodeSummaryAfterDependency = "episode.summary_after_dependency";
+    /// <summary>Periodic roll-up of what joined a group since the previous digest (spec §16.3).</summary>
+    public const string EpisodeGroupDigest = "episode.group_digest";
     public const string HubDeliveryFailure = "hub.delivery_failure";
     public const string CoverageLost = "coverage.lost";
     public const string CoverageRestored = "coverage.restored";
@@ -29,7 +33,7 @@ public static class NotificationTypes
     public static readonly IReadOnlyList<string> All =
     [
         EpisodeOpened, EpisodeEscalatedSeverity, EpisodeAckOverdue, EpisodeFollowUpDue, EpisodeClosed, EpisodeStaleCritical,
-        EpisodeRoutingFailure, EpisodeAcknowledged, EpisodeSummaryAfterSuppression, HubDeliveryFailure, CoverageLost, CoverageRestored,
+        EpisodeRoutingFailure, EpisodeAcknowledged, EpisodeSummaryAfterSuppression, EpisodeSummaryAfterDependency, EpisodeGroupDigest, HubDeliveryFailure, CoverageLost, CoverageRestored,
         HeartbeatMissed, HeartbeatRecovered, DestinationTest,
     ];
 
@@ -37,7 +41,7 @@ public static class NotificationTypes
     public static bool IsSupersededByClosure(string type) => type is EpisodeOpened or EpisodeEscalatedSeverity or EpisodeAckOverdue or EpisodeFollowUpDue or EpisodeStaleCritical;
 
     /// <summary>Default subscription for a new destination.</summary>
-    public static readonly string[] DefaultSubscription = [EpisodeOpened, EpisodeEscalatedSeverity, EpisodeAckOverdue, EpisodeFollowUpDue, EpisodeStaleCritical, EpisodeClosed, EpisodeRoutingFailure, EpisodeSummaryAfterSuppression, HubDeliveryFailure, CoverageLost, CoverageRestored, HeartbeatMissed, HeartbeatRecovered];
+    public static readonly string[] DefaultSubscription = [EpisodeOpened, EpisodeEscalatedSeverity, EpisodeAckOverdue, EpisodeFollowUpDue, EpisodeStaleCritical, EpisodeClosed, EpisodeRoutingFailure, EpisodeSummaryAfterSuppression, EpisodeSummaryAfterDependency, EpisodeGroupDigest, HubDeliveryFailure, CoverageLost, CoverageRestored, HeartbeatMissed, HeartbeatRecovered];
 }
 
 /// <summary>
