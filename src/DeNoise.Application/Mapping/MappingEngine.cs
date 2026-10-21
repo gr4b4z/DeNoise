@@ -42,7 +42,7 @@ public static class MappingEngine
     public static bool AppliesTo(MappingDocument doc, JsonNode? body, JsonObject headers)
     {
         if (doc.AppliesWhen is null) return true;
-        var fields = new Dictionary<string, JsonNode?>(StringComparer.Ordinal);
+        var fields = new FieldScope(body, headers, null);
         return PredicateEvaluator.Evaluate(doc.AppliesWhen, reference => Resolve(reference, body, headers, fields));
     }
 
@@ -50,21 +50,17 @@ public static class MappingEngine
     {
         var body = input.ParseBody();
         var headers = input.HeadersAsJson();
-        var fields = new Dictionary<string, JsonNode?>(StringComparer.Ordinal);
-
-        foreach (var (name, rule) in doc.Fields)
+        // Fields may reference each other (`when`, `lookup.from`, templates) in any order: a reference to a field that is not
+        // evaluated yet evaluates it on demand, so the document's key order — which jsonb storage does not preserve — never matters.
+        var fields = new FieldScope(body, headers, doc.Fields);
+        foreach (var name in doc.Fields.Keys)
         {
-            var value = EvaluateRule(rule, name, body, headers, fields);
-            if (CanonicalFields.ObjectFields.Contains(name) && value is not null && value is not JsonObject)
-            {
-                throw new MappingException($"'{name}' must map to an object", name);
-            }
-            fields[name] = value;
+            fields.Get(name);
         }
 
         foreach (var required in doc.Required)
         {
-            if (ValueCoercion.IsEmpty(fields.GetValueOrDefault(required)))
+            if (ValueCoercion.IsEmpty(fields.Get(required)))
             {
                 throw new MappingException($"required field '{required}' is missing or empty", required);
             }
@@ -72,27 +68,27 @@ public static class MappingEngine
 
         foreach (var step in doc.Enrich)
         {
-            if (step.WhenEmpty && !ValueCoercion.IsEmpty(fields.GetValueOrDefault(step.Set))) continue;
-            var key = ValueCoercion.AsDisplayString(fields.GetValueOrDefault(step.Key));
+            if (step.WhenEmpty && !ValueCoercion.IsEmpty(fields.Get(step.Set))) continue;
+            var key = ValueCoercion.AsDisplayString(fields.Get(step.Key));
             if (key.Length == 0 || !doc.LookupTables.TryGetValue(step.LookupTable, out var table) || !table.TryGetValue(key, out var found)) continue;
-            fields[step.Set] = JsonValue.Create(found);
+            fields.Set(step.Set, JsonValue.Create(found));
         }
 
-        var eventType = ValueCoercion.AsDisplayString(fields.GetValueOrDefault(CanonicalFields.EventType)).Trim().ToLowerInvariant();
+        var eventType = ValueCoercion.AsDisplayString(fields.Get(CanonicalFields.EventType)).Trim().ToLowerInvariant();
         if (!EventTypes.IsKnown(eventType))
         {
             throw new MappingException($"event_type '{eventType}' is not one of {string.Join("|", EventTypes.All)}", CanonicalFields.EventType);
         }
 
-        var occurredAtNode = fields.GetValueOrDefault(CanonicalFields.OccurredAt);
+        var occurredAtNode = fields.Get(CanonicalFields.OccurredAt);
         DateTimeOffset? occurredAt = ValueCoercion.IsEmpty(occurredAtNode) ? null : ValueCoercion.ParseTimestamp(occurredAtNode!, CanonicalFields.OccurredAt);
         var occurredAtFromSource = occurredAt is not null;
 
-        var severityText = ValueCoercion.AsDisplayString(fields.GetValueOrDefault(CanonicalFields.Severity));
+        var severityText = ValueCoercion.AsDisplayString(fields.Get(CanonicalFields.Severity));
         var severity = SeverityExtensions.ParseWire(severityText);
 
-        var dimensions = ValueCoercion.AsStringObject(fields.GetValueOrDefault(CanonicalFields.Dimensions));
-        var labels = ValueCoercion.AsStringObject(fields.GetValueOrDefault(CanonicalFields.Labels));
+        var dimensions = ValueCoercion.AsStringObject(fields.Get(CanonicalFields.Dimensions));
+        var labels = ValueCoercion.AsStringObject(fields.Get(CanonicalFields.Labels));
 
         string? fingerprint = null;
         IReadOnlyList<IdentityComponent>? components = null;
@@ -152,21 +148,21 @@ public static class MappingEngine
             IdentityConfidence = deliveryKey.Confidence,
             LifecycleProfileHint = doc.LifecycleProfileHint,
         };
-        return new MappingResult(evt, fields, occurredAtFromSource);
+        return new MappingResult(evt, fields.Values, occurredAtFromSource);
     }
 
-    private static string? Text(Dictionary<string, JsonNode?> fields, string name)
+    private static string? Text(FieldScope fields, string name)
     {
-        var node = fields.GetValueOrDefault(name);
+        var node = fields.Get(name);
         if (ValueCoercion.IsEmpty(node)) return null;
         return ValueCoercion.AsDisplayString(node);
     }
 
-    private static IdentityInput IdentityInputFor(IdentitySpec spec, JsonNode? body, JsonObject headers, Dictionary<string, JsonNode?> fields)
+    private static IdentityInput IdentityInputFor(IdentitySpec spec, JsonNode? body, JsonObject headers, FieldScope fields)
     {
         JsonNode? value = spec.Path is not null
             ? JsonPathEvaluator.First(spec.Path, body, headers)
-            : fields.GetValueOrDefault(spec.Field!);
+            : fields.Get(spec.Field!);
         if (ValueCoercion.IsEmpty(value)) return new IdentityInput(spec.Name, null, null, spec.Optional, spec.CaseInsensitive);
         if (value is JsonObject obj)
         {
@@ -177,19 +173,19 @@ public static class MappingEngine
     }
 
     /// <summary>Resolves a predicate/template reference: JSONPath against body/headers, or an already-mapped canonical field.</summary>
-    internal static JsonNode? Resolve(string reference, JsonNode? body, JsonObject headers, IReadOnlyDictionary<string, JsonNode?> fields)
+    internal static JsonNode? Resolve(string reference, JsonNode? body, JsonObject headers, FieldScope fields)
     {
         if (reference.StartsWith('$')) return JsonPathEvaluator.First(reference, body, headers);
-        if (fields.TryGetValue(reference, out var direct)) return direct;
+        if (fields.Contains(reference)) return fields.Get(reference);
         var dot = reference.IndexOf('.', StringComparison.Ordinal);
-        if (dot > 0 && fields.TryGetValue(reference[..dot], out var parent) && parent is JsonObject obj)
+        if (dot > 0 && fields.Get(reference[..dot]) is JsonObject obj)
         {
             return obj[reference[(dot + 1)..]];
         }
-        return null;
+        return fields.Get(reference);
     }
 
-    private static JsonNode? EvaluateRule(MappingRule rule, string field, JsonNode? body, JsonObject headers, Dictionary<string, JsonNode?> fields)
+    internal static JsonNode? EvaluateRule(MappingRule rule, string field, JsonNode? body, JsonObject headers, FieldScope fields)
     {
         if (rule.When is not null && !PredicateEvaluator.Evaluate(rule.When, r => Resolve(r, body, headers, fields)))
         {
@@ -232,7 +228,7 @@ public static class MappingEngine
         return value;
     }
 
-    private static JsonNode? EvaluateLookup(LookupRule rule, JsonNode? body, JsonObject headers, Dictionary<string, JsonNode?> fields)
+    private static JsonNode? EvaluateLookup(LookupRule rule, JsonNode? body, JsonObject headers, FieldScope fields)
     {
         var from = Resolve(rule.From, body, headers, fields);
         var key = ValueCoercion.AsDisplayString(from);
@@ -250,7 +246,7 @@ public static class MappingEngine
         return rule.HasLookupDefault ? rule.LookupDefault?.DeepClone() : null;
     }
 
-    private static JsonNode EvaluateObject(ObjectRule rule, string field, JsonNode? body, JsonObject headers, Dictionary<string, JsonNode?> fields)
+    private static JsonNode EvaluateObject(ObjectRule rule, string field, JsonNode? body, JsonObject headers, FieldScope fields)
     {
         var obj = new JsonObject();
         foreach (var (name, member) in rule.Members)
@@ -274,7 +270,7 @@ public static class MappingEngine
         return obj;
     }
 
-    private static JsonNode? EvaluateArray(ArrayRule rule, string field, JsonNode? body, JsonObject headers, Dictionary<string, JsonNode?> fields)
+    private static JsonNode? EvaluateArray(ArrayRule rule, string field, JsonNode? body, JsonObject headers, FieldScope fields)
     {
         var items = JsonPathEvaluator.Evaluate(rule.From, body, headers);
         var results = new List<JsonNode?>();
@@ -299,4 +295,40 @@ public static class MappingEngine
         var start = Math.Max(lastDot, lastBracket) + 1;
         return trimmed[start..].Trim('\'', '"');
     }
+}
+
+/// <summary>
+/// The canonical fields of one normalisation, evaluated on demand: a reference to a field whose rule has not run yet runs it
+/// first (memoised), so field order in the document is irrelevant; a cyclic reference resolves to empty instead of recursing.
+/// </summary>
+internal sealed class FieldScope(JsonNode? body, JsonObject headers, IReadOnlyDictionary<string, MappingRule>? rules)
+{
+    private readonly Dictionary<string, JsonNode?> _values = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _evaluating = new(StringComparer.Ordinal);
+
+    public IReadOnlyDictionary<string, JsonNode?> Values => _values;
+
+    public bool Contains(string name) => _values.ContainsKey(name);
+
+    public JsonNode? Get(string name)
+    {
+        if (_values.TryGetValue(name, out var value)) return value;
+        if (rules is null || !rules.TryGetValue(name, out var rule) || !_evaluating.Add(name)) return null;
+        try
+        {
+            value = MappingEngine.EvaluateRule(rule, name, body, headers, this);
+            if (CanonicalFields.ObjectFields.Contains(name) && value is not null && value is not JsonObject)
+            {
+                throw new MappingException($"'{name}' must map to an object", name);
+            }
+            _values[name] = value;
+            return value;
+        }
+        finally
+        {
+            _evaluating.Remove(name);
+        }
+    }
+
+    public void Set(string name, JsonNode? value) => _values[name] = value;
 }

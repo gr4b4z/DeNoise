@@ -34,6 +34,15 @@ public sealed class IntegrationIngestAuthenticator(IIntegrationRepository integr
         return integration;
     }
 
+    public async Task<Integration?> ResolveSignedOnlyAsync(string ingestKeyId, CancellationToken ct = default)
+    {
+        if (ingestKeyId.Length != TokenGenerator.KeyIdLength) return null;
+        var integration = await integrations.FindCurrentByIngestKeyAsync(ingestKeyId, ct);
+        if (integration is null || !integration.Active || integration.HmacSecretEnc is null) return null;
+        var hmac = HmacConfig.Parse(integration.HmacConfig);
+        return hmac is { Required: true } ? integration : null;
+    }
+
     private static string CacheKey(string keyId, string token, int version)
     {
         var digest = SHA256.HashData(Encoding.UTF8.GetBytes($"{keyId}{version}{token}"));

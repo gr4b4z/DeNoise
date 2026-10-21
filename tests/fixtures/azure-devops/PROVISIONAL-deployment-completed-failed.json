@@ -1,0 +1,22 @@
+{ "id": "PROVISIONAL-ado-release-1", "eventType": "ms.vss-release.deployment-completed-event", "publisherId": "rm",
+  "message": { "text": "Deployment of release Release-57 on stage Production failed." },
+  "detailedMessage": { "text": "Deployment of release Release-57 on stage Production failed." },
+  "resource": {
+    "environment": {
+      "id": 1557, "releaseId": 57, "name": "Production", "status": "rejected", "rank": 3, "definitionEnvironmentId": 3,
+      "createdOn": "2026-10-21T13:00:00Z", "modifiedOn": "2026-10-21T13:12:05Z", "triggerReason": "Manual",
+      "release": { "id": 57, "name": "Release-57", "url": "https://vsrm.dev.azure.com/fabrikam/Orders/_apis/Release/releases/57",
+        "_links": { "web": { "href": "https://dev.azure.com/fabrikam/Orders/_release?releaseId=57&_a=release-summary" } } },
+      "releaseDefinition": { "id": 5, "name": "orders-release", "url": "https://vsrm.dev.azure.com/fabrikam/Orders/_apis/Release/definitions/5",
+        "_links": { "web": { "href": "https://dev.azure.com/fabrikam/Orders/_release?definitionId=5" } } },
+      "releaseCreatedBy": { "displayName": "Release Bot", "uniqueName": "release.bot@example.com" } },
+    "project": { "id": "11111111-2222-3333-4444-555555555555", "name": "Orders" },
+    "deployment": { "id": 3012, "definitionEnvironmentId": 3, "attempt": 1, "deploymentStatus": "failed", "operationStatus": "Rejected",
+      "release": { "id": 57, "name": "Release-57" }, "releaseEnvironment": { "id": 1557, "name": "Production" },
+      "queuedOn": "2026-10-21T13:00:10Z", "startedOn": "2026-10-21T13:00:30Z", "completedOn": "2026-10-21T13:12:05Z",
+      "requestedBy": { "displayName": "Release Bot" } },
+    "stageName": "Production",
+    "url": "https://vsrm.dev.azure.com/fabrikam/Orders/_apis/Release/releases/57" },
+  "resourceVersion": "3.0-preview.1",
+  "resourceContainers": { "collection": { "id": "c0000000-0000-0000-0000-000000000001" }, "account": { "id": "a0000000-0000-0000-0000-000000000001" }, "project": { "id": "11111111-2222-3333-4444-555555555555" } },
+  "createdDate": "2026-10-21T13:12:06Z" }

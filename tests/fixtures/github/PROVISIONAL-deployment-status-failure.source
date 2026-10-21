@@ -1,0 +1,1 @@
+https://docs.github.com/en/webhooks/webhook-events-and-payloads#deployment_status — shape of the documented deployment_status webhook payload (action created, state failure), trimmed; values invented, not a capture. PROVISIONAL until a real delivery replaces it.

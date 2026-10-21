@@ -1,6 +1,6 @@
 # Milestone 16 — CI/CD pipeline sources: Azure DevOps and GitHub
 
-Status: **planned**. Prerequisite: M8 (integrations, reference mappings, HMAC verification), M13 (flapping builds are one episode), M14 (a failing deployment can be the parent of the alerts it causes).
+Status: **Phase A implemented** (PR #3); Phase B not needed so far; Phase C deferred (decision 5). Prerequisite: M8 (integrations, reference mappings, HMAC verification), M13 (flapping builds are one episode), M14 (a failing deployment can be the parent of the alerts it causes).
 
 ## Problem
 
@@ -106,6 +106,42 @@ and counted, but never notify or escalate — the same outcome the prompt wanted
 side table. Routing policies decide the team per integration or per `labels.pipeline`; grouping policies (M15) collapse a
 storm of failing jobs of one run into one notification (`key: [resource_id, dimensions.run]`, `min_members: 2`).
 
+## Pipeline kinds — the three shapes that exist here
+
+The owner's estate has three kinds of pipeline; they need two identity patterns, not three mechanisms.
+
+| Kind | What a run means | Identity | Severity | Notes |
+|---|---|---|---|---|
+| **build** (artifact pipelines; from feature *and* protected branches; some also push to `dev`) | the artifact built or did not | `environment: ci`, pipeline, rule `build-failed`, dims `{branch, stage}` | by branch class: protected → `high`, PR validation → `informational`, other → `low` | a build that also deploys to `dev` stays a build; a chain of red runs on one branch is one episode (occurrences), red-green-red is flapping (M13) |
+| **deploy** (GitOps, `helm upgrade --atomic`) | **the deployment itself**: success = chart installed and pods Ready; failure = rolled back to the previous release | pipeline, **target environment**, rule `deploy-failed`, dims `{chart}` when a stage deploys several charts | by environment class: `production` → `high`, `staging` → `medium`, `development` / `ephemeral` → `low` | `--atomic` waits for readiness, so the pipeline result *is* the deployment result: no controller signal, no "deployment started" events, no warm-up needed. The `summary` says *rolled back to the previous release*; a failure before the helm step (lint, tests, credentials) is the same identity with another `labels.failed_step`. `occurred_at` is the run's end, so a long rollout orders correctly (04 §5) |
+| **promote** (copy an artifact from one place to another) | the artifact is or is not in the target | pipeline, **target environment/stage**, rule `promotion-failed`; the artifact version is a label, never identity | `production` → `high`, else `medium` | one episode per target until a promotion succeeds, whatever the versions tried in between |
+
+Across all three: **only a failure opens an episode, a success only resolves one, a start opens nothing.** Starts,
+cancellations and skips that do arrive (GitHub sends `requested` / `in_progress` for every `workflow_run`) are mapped to
+`informational` *without* a `rule_id`, so the identity cannot resolve and the event is recorded without an episode
+(04 §2.1) — nothing new in the vocabulary, nothing in the quarantine. A green day produces resolved events that find no
+open episode and are recorded as such.
+
+Kind and target environment come from the pipeline *name* (payloads carry no tags and the ingestion path makes no API calls),
+through one `lookup.regex_map` in the reference mapping that operators adjust per integration. **Assumed naming convention
+until the real names arrive** (owner input, see below):
+
+| Pattern (pipeline / workflow name) | Kind | Environment |
+|---|---|---|
+| `*-ci`, `ci-*`, `build-*` | build | `ci` |
+| `*-cd-<env>`, `deploy-<env>-*`, or a stage named after the environment | deploy | `<env>` through the environment class lookup |
+| `promote-*`, `*-promotion` | promote | from the stage / target parameter, else `unknown` |
+| anything else | build | `ci` |
+
+Unknown names therefore fall back to the least noisy reading (a build on its branch class), never to a production deployment.
+
+**Which webhooks to subscribe, so one run never becomes two episodes:** Azure DevOps `build.complete` for single-stage
+builds and promotions, `stage-state-changed` for multi-stage deploy pipelines where stage = environment (then *not*
+`run-state-changed` for the same pipeline); GitHub `workflow_run` (completed) by default, `workflow_job` only for a
+workflow whose jobs are the environments (then `applies_when` excludes that workflow's `workflow_run`); `deployment` /
+`deployment_status` only for teams that use GitHub Environments. Service Hook status filters: Failed, PartiallySucceeded,
+Succeeded.
+
 ## Security — what the producers can actually do
 
 | Producer | Can send | DeNoise today | Change |
@@ -183,23 +219,49 @@ Two of the prompt's rules are new behaviour, not mapping:
 Both wait for the owner's sign-off on the amendment text before any code (AGENTS.md §5.1); they are not required for the
 Phase A acceptance scenarios.
 
-## Decisions proposed (for the owner)
+## Decisions made (owner, 2026-10-21)
 
-- **Builds carry `environment: ci`.** It keeps the identity honest and lets operators route CI noise separately. Consequence:
-  the default queue view (`production + unknown`, §15.5) does not show build failures; the integration docs recommend a
-  saved filter or an entry-point link including `environment=ci`. Alternative rejected: setting `production` on `main`
-  builds would be a lie that pollutes the production view and the G1 numbers.
-- **No new event types, no "pipeline" severity scale.** The spec's severity table applies as is.
-- **Signature-as-credential only for `hmac.required` integrations** (ADR-16); never a token in the URL query.
-- **PR validation runs are `informational`**, not dropped: they expire after `informational_after` and are searchable in the
-  meantime, which is what the "flaky counter" was for.
+1. **A failed production deployment with an atomic rollback is `high`** (`staging` → `medium`, lower classes → `low`). The
+   environment keeps running the previous release, but a failed production deployment is work for a person now.
+2. **Builds carry `environment: ci`.** It keeps the identity honest and lets operators route CI noise separately. Consequence:
+   the default queue view (`production + unknown`, §15.5) does not show build failures; the integration docs recommend a
+   saved filter or an entry-point link including `environment=ci`. Alternative rejected: setting `production` on `main`
+   builds would be a lie that pollutes the production view and the G1 numbers.
+3. **ADR-16 signature-as-credential** for `hmac.required` integrations is the GitHub authentication path; never a token in
+   the URL query, no proxy in front of DeNoise.
+4. **PR validation runs are `informational`, feature-branch builds `low`**, persisted and queue-only: they expire or sit in
+   the queue, searchable, which is what the "flaky counter" was for. Nothing is dropped before commit.
+5. **Phase C is deferred.** `--atomic` already waits for readiness, so no warm-up; ephemeral environments expire
+   administratively through a short `unverified_expire_after` on the routing rule for `environment_class = ephemeral`.
+6. **No new event types, no "pipeline" severity scale.** The spec's severity table applies as is.
+7. **Pipeline names follow the assumed convention above until the real names arrive**; the lookups are per integration and
+   change without a release.
+
+### Decisions made while implementing Phase A (listed per AGENTS.md §5.11)
+
+8. **A cancelled or stopped run is recorded without an episode**, not as a `cancelled` event: it proves nothing about the
+   build and must not close an open failure. Same for GitHub `skipped`, `neutral`, `stale`, `action_required` and the
+   transient `deployment_status` states.
+9. **A deploy or promote pipeline whose target cannot be classified gets `environment: unknown` and `severity: medium`**:
+   unknown stays visible in the default view (§15.5) and a person decides; it is never read as production.
+10. **`source_version` stays unset** for both sources: run ids repeat across re-runs of one run (ADO retry, GitHub
+    `run_attempt`) and attempts restart per run, so the run's finish time orders instead (04 §5 fallback).
+11. **Spec / implementation gap found, not fixed here:** the spec's severity table makes `low` *queue only*, but the
+    notification hook gates only `informational` (`IsActionable`), so a `low` opening still stages `episode.opened`
+    today (M14's mute scenarios rely on it). Feature-branch failures are therefore `low` as decided but *do* notify
+    until that gap is closed; the scenario asserts severity and queue visibility, not the absence of an outbox row.
+    Needs an owner decision: enforce the table in the hook (and revisit M14's `mute_severities` default) or amend §9.
+12. **The 60-minute explicit-recovery backstop stays** (spec §12.2). The integration guides tell operators to lengthen
+    `auto_resolve.after_silence` for pipelines that are not re-run quickly; high episodes get the stale-state escalation
+    before closure either way.
 
 ## Open owner inputs
 
+- The real pipeline / workflow naming convention (or three or four real names per kind) — replaces the assumed table.
 - Which Azure DevOps organisations/projects and GitHub organisations go first (one integration each; names decide
   `access_scope` and the owning team's routing rule).
-- Real captures for the eight events to replace the `PROVISIONAL-` fixtures (C5 pattern).
-- Whether Phase C is wanted at all for the pilot; if yes, the amendment text goes through the spec first.
+- Real captures for the events to replace the `PROVISIONAL-` fixtures (C5 pattern): at least `build.complete` failed,
+  `stage-state-changed` failed and `workflow_run` completed/failure.
 
 ## Effort
 

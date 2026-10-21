@@ -24,6 +24,8 @@ public sealed class ReferenceMappingsTests
     [InlineData(IntegrationTypes.AzureMonitor, 4)]
     [InlineData(IntegrationTypes.Atlas, 1)]
     [InlineData(IntegrationTypes.GenericWebhook, 0)]
+    [InlineData(IntegrationTypes.AzureDevops, 4)]
+    [InlineData(IntegrationTypes.Github, 5)]
     public void Every_reference_mapping_parses_and_passes_its_samples(string type, int expectedCount)
     {
         var refs = ReferenceMappings.For(type);

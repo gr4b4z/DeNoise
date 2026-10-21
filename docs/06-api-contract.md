@@ -24,6 +24,8 @@ Two hosts. **Ingest host** (public, minimal): `/ingest/*`, `/hb/*`, `/healthz/*`
 POST /ingest/{integrationKeyId}
   Authorization: Bearer <integration token>        (all types)
   X-MMS-Signature (type=atlas; HMAC over raw body with hmac_secret, algorithm per integration config — see 07 §3; reject if hmac.required and invalid)
+  X-Hub-Signature-256: sha256=<hex> (type=github; the <algorithm>= prefix is tolerated for any integration)
+  X-GitHub-Delivery, X-GitHub-Event (type=github; stored with the raw event and used by the reference mappings)
   Content-Type: any (stored as-is)
   Body ≤ limits.payloadBytes (default 256 KiB)
 
@@ -33,6 +35,11 @@ POST /ingest/{integrationKeyId}
   503 durable acceptance failed (no commit) — sources retry
 ```
 No other status codes. Never `200` before commit. Response body is fixed-size; no echo of input.
+
+**Signature as credential (ADR-16, milestone 16).** A request *without* `Authorization` is still authenticated when the
+integration's HMAC verification is configured `required: true` with a secret and the presented signature verifies over the raw
+body; GitHub webhooks cannot send a bearer. For every other integration a missing bearer stays `401`. Integration types:
+`azure_monitor`, `atlas`, `generic_webhook`, `azure_devops`, `github`.
 
 Optional `X-DeNoise-Source-Time: <RFC3339>` header lets webhook producers supply `occurred_at` when the body has none.
 

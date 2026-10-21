@@ -1,0 +1,1 @@
+https://learn.microsoft.com/en-us/azure/devops/service-hooks/events?view=azure-devops#build.complete — shape of the documented "Build completed" sample (resourceVersion 2.0 fields: result, sourceBranch, definition, project); values invented, not a capture. PROVISIONAL until a real Service Hook delivery replaces it (owner input, M16).

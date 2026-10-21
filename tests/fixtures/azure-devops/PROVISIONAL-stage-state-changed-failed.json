@@ -1,0 +1,17 @@
+{ "id": "PROVISIONAL-ado-stage-1", "eventType": "ms.vss-pipelines.stage-state-changed-event", "publisherId": "pipelines",
+  "message": { "text": "Run 20261021.5 stage production failed" }, "detailedMessage": { "text": "Run 20261021.5 stage production failed" },
+  "resource": {
+    "stage": {
+      "_links": { "web": { "href": "https://dev.azure.com/fabrikam/Orders/_build/results?buildId=9105&view=logs&s=stage-production" }, "pipeline.web": { "href": "https://dev.azure.com/fabrikam/Orders/_build/definition?definitionId=8" } },
+      "id": "4e1a3b2c-0000-0000-0000-000000000001", "name": "production", "displayName": "production", "state": "completed", "result": "failed" },
+    "run": {
+      "_links": { "web": { "href": "https://dev.azure.com/fabrikam/Orders/_build/results?buildId=9105" } },
+      "pipeline": { "url": "https://dev.azure.com/fabrikam/Orders/_apis/pipelines/8?revision=12", "id": 8, "revision": 12, "name": "orders-cd", "folder": "\\" },
+      "state": "inProgress", "createdDate": "2026-10-21T12:00:00Z",
+      "url": "https://dev.azure.com/fabrikam/Orders/_apis/pipelines/8/runs/9105", "id": 9105, "name": "20261021.5",
+      "resources": { "repositories": { "self": { "refName": "refs/heads/main", "version": "9fceb02d0ae598e95dc970b74767f19372d61af8" } } } },
+    "pipeline": { "url": "https://dev.azure.com/fabrikam/Orders/_apis/pipelines/8?revision=12", "id": 8, "revision": 12, "name": "orders-cd", "folder": "\\" },
+    "runUrl": "https://dev.azure.com/fabrikam/Orders/_build/results?buildId=9105" },
+  "resourceVersion": "5.1-preview.1",
+  "resourceContainers": { "collection": { "id": "c0000000-0000-0000-0000-000000000001" }, "account": { "id": "a0000000-0000-0000-0000-000000000001" }, "project": { "id": "11111111-2222-3333-4444-555555555555" } },
+  "createdDate": "2026-10-21T12:09:30Z" }

@@ -141,14 +141,20 @@ export function IntegrationWizardPage() {
   const createCredentials = () => {
     setProblem(null);
     const isAtlas = state.type === 'atlas';
+    const isGithub = state.type === 'github';
+    // GitHub cannot send a bearer: the signature is the credential (ADR-16), so it is sha256 / hex / X-Hub-Signature-256 and required.
+    const hmac = isGithub
+      ? { algorithm: 'sha256' as const, header: 'X-Hub-Signature-256', encoding: 'hex' as const, required: true }
+      : { algorithm: state.hmacAlgorithm, header: 'X-MMS-Signature', encoding: 'base64' as const, required: state.hmacRequired };
+    const signed = (isAtlas || isGithub) && state.hmacSecret.length > 0;
     create.mutate(
       {
         name: state.name.trim(),
         type: state.type,
         accessScope: state.accessScope.trim(),
         ownerTeamId: state.ownerTeamId || null,
-        hmacSecret: isAtlas && state.hmacSecret ? state.hmacSecret : null,
-        hmac: isAtlas && state.hmacSecret ? { algorithm: state.hmacAlgorithm, header: 'X-MMS-Signature', encoding: 'base64', required: state.hmacRequired } : null,
+        hmacSecret: signed ? state.hmacSecret : null,
+        hmac: signed ? hmac : null,
       },
       {
         onSuccess: (r) => {
@@ -286,13 +292,15 @@ export function IntegrationWizardPage() {
 
             {step === 'credentials' && !created && (
               <>
-                {state.type === 'atlas' && (
-                  <fieldset className="rounded-md border border-line p-3">
+                {(state.type === 'atlas' || state.type === 'github') && (
+                  <fieldset className="rounded-md border border-line p-3" data-testid="wizard-hmac">
                     <legend className="px-1 text-ink-2">{t('integrations.form.hmac')}</legend>
                     <label className="block">
-                      <span className="text-ink-2">{t('integrations.form.hmacSecret')}</span>
+                      <span className="text-ink-2">{t(state.type === 'github' ? 'integrations.form.githubSecret' : 'integrations.form.hmacSecret')}</span>
                       <input className="input mono mt-1" type="password" autoComplete="off" value={state.hmacSecret} onChange={(e) => set('hmacSecret', e.target.value)} />
                     </label>
+                    {state.type === 'github' && <p className="m-0 mt-2 text-xs text-ink-2">{t('integrations.form.githubHint')}</p>}
+                    {state.type === 'atlas' && (
                     <div className="mt-2 flex flex-wrap items-center gap-4">
                       <label className="flex items-center gap-2">
                         <span className="text-ink-2">{t('integrations.form.hmacAlgorithm')}</span>
@@ -306,9 +314,11 @@ export function IntegrationWizardPage() {
                         {t('integrations.form.hmacRequired')}
                       </label>
                     </div>
-                    <p className="m-0 mt-2 text-xs text-ink-2">{t('integrations.form.hmacHint')}</p>
+                    )}
+                    {state.type === 'atlas' && <p className="m-0 mt-2 text-xs text-ink-2">{t('integrations.form.hmacHint')}</p>}
                   </fieldset>
                 )}
+                {(state.type === 'azure_devops' || state.type === 'github') && <p className="m-0 text-ink-2">{t(state.type === 'github' ? 'integrations.wizard.githubCredentials' : 'integrations.wizard.azureDevopsCredentials')}</p>}
                 {state.type === 'atlas' && (
                   <fieldset className="rounded-md border border-line p-3">
                     <legend className="px-1 text-ink-2">{t('integrations.form.atlasApi')}</legend>
