@@ -50,7 +50,18 @@ public sealed class NotificationTransitionHook(
                     var effective = await lifecycle.ResolveAsync(episode, integration, null, ct);
                     await lifecycle.ScheduleAsync(episode, integration, effective, session, now, ct);
                     if (transition.IsMaterialSeverityIncrease) await grouping.OnSeverityRaisedAsync(episode, session, ct);
-                    if (transition.IsMaterialSeverityIncrease && episode.IsActionable)
+                    var leftQueueOnly = transition.PreviousSeverity == Severity.Low && !episode.IsQueueOnly;
+                    if (leftQueueOnly)
+                    {
+                        // A queue-only episode rising out of `low` is a new actionable episode for its recipients (spec §9, §18): the
+                        // opening notification and the acknowledgement deadline it never had, not a severity change nobody heard the start of.
+                        var team = episode.OwningTeamId is { } t ? await teams.GetAsync(t, ct) : null;
+                        if (episode.HandlingState == HandlingState.New) await ScheduleAckDeadlineAsync(episode, integration, team?.DefaultEscalationPolicyId, session, now, ct);
+                        var opened = NotificationModel.ForEpisode(NotificationTypes.EpisodeOpened, episode, evt, integration, team, options.Value.PublicBaseUrl,
+                            previous: new { severity = transition.PreviousSeverity.ToWire(), queueOnlyBefore = true });
+                        Stage(session, episode, NotificationTypes.EpisodeOpened, opened, await TeamDestinationsAsync(episode.OwningTeamId, ct), integration, now);
+                    }
+                    else if (transition.IsMaterialSeverityIncrease && !episode.IsQueueOnly)
                     {
                         var team = episode.OwningTeamId is { } t ? await teams.GetAsync(t, ct) : null;
                         var model = NotificationModel.ForEpisode(NotificationTypes.EpisodeEscalatedSeverity, episode, evt, integration, team, options.Value.PublicBaseUrl,
@@ -220,7 +231,8 @@ public sealed class NotificationTransitionHook(
             if (targets.All(d => d.DestinationId != extra) && await destinations.GetAsync(extra, ct) is { } d) targets.Add(d);
         }
 
-        if (grouped.Notify)
+        // Queue only (spec §9): low episodes are routed, owned, grouped and attributed like any other, but nobody is told about them.
+        if (grouped.Notify && !episode.IsQueueOnly)
         {
             var opened = NotificationModel.ForEpisode(NotificationTypes.EpisodeOpened, episode, evt, integration, team, options.Value.PublicBaseUrl,
                 previous: grouped.Group is null ? null : new { groupId = grouped.Group.GroupId, groupSeverity = grouped.Group.Severity, groupMembers = grouped.Group.MemberCount, groupRule = grouped.RuleName });
@@ -262,7 +274,7 @@ public sealed class NotificationTransitionHook(
         var team = episode.OwningTeamId is { } t ? await teams.GetAsync(t, ct) : null;
 
         // The deadline is not restarted (spec §11.4): an unacknowledged episode keeps its original one; if it has passed, the overdue escalation runs now.
-        if (episode.HandlingState == HandlingState.New && episode.AckDeadlineAt is { } deadline && episode.IsActionable)
+        if (episode.HandlingState == HandlingState.New && episode.AckDeadlineAt is { } deadline && !episode.IsQueueOnly)
         {
             var escalationId = team?.DefaultEscalationPolicyId;
             if (escalationId is { } eid && await policies.GetActiveAsync(PolicyKinds.Escalation, eid, ct) is { } ev)
@@ -296,7 +308,7 @@ public sealed class NotificationTransitionHook(
             Lifecycle.NotifyOnReopen.Never => false,
             _ => episode.ReopenCount == 1,
         };
-        if (notify && grouped.Notify)
+        if (notify && grouped.Notify && !episode.IsQueueOnly)
         {
             var model = NotificationModel.ForEpisode(NotificationTypes.EpisodeOpened, episode, evt, integration, team, options.Value.PublicBaseUrl,
                 previous: new { reopened = true, reopenCount = episode.ReopenCount, flapping = episode.IsFlapping, groupId = grouped.Group?.GroupId, groupRule = grouped.RuleName });
@@ -357,7 +369,7 @@ public sealed class NotificationTransitionHook(
                 logger.LogError(ex, "Escalation policy {PolicyId} v{Version} does not parse; no deadline scheduled", eid, ev.Version);
             }
         }
-        if (episode.IsActionable && escalation?.AckDeadline is { } deadline)
+        if (!episode.IsQueueOnly && escalation?.AckDeadline is { } deadline)
         {
             episode.AckDeadlineAt = now + deadline;
             session.AddJob(new Job

@@ -246,11 +246,13 @@ Phase A acceptance scenarios.
    unknown stays visible in the default view (§15.5) and a person decides; it is never read as production.
 10. **`source_version` stays unset** for both sources: run ids repeat across re-runs of one run (ADO retry, GitHub
     `run_attempt`) and attempts restart per run, so the run's finish time orders instead (04 §5 fallback).
-11. **Spec / implementation gap found, not fixed here:** the spec's severity table makes `low` *queue only*, but the
-    notification hook gates only `informational` (`IsActionable`), so a `low` opening still stages `episode.opened`
-    today (M14's mute scenarios rely on it). Feature-branch failures are therefore `low` as decided but *do* notify
-    until that gap is closed; the scenario asserts severity and queue visibility, not the absence of an outbox row.
-    Needs an owner decision: enforce the table in the hook (and revisit M14's `mute_severities` default) or amend §9.
+11. **Spec / implementation gap found and closed (owner: "implement everything"):** the spec's severity table makes
+    `low` *queue only*, but the notification hook gated only `informational`. `Episode.IsQueueOnly`
+    (`!IsActionable || severity == low`) now gates the opening notification, the acknowledgement deadline and the
+    reopen notification; a `low` episode that later rises out of `low` is announced as a new actionable episode
+    (`episode.opened` with `queueOnlyBefore`, deadline scheduled then). Routing, ownership, grouping, suppression and
+    topology attribution are unchanged for `low`, so a low dependent still hangs under its parent — it just has no
+    rows to mute (M14 scenario adjusted). Feature-branch failures therefore really are queue only.
 12. **The 60-minute explicit-recovery backstop stays** (spec §12.2). The integration guides tell operators to lengthen
     `auto_resolve.after_silence` for pipelines that are not re-run quickly; high episodes get the stale-state escalation
     before closure either way.

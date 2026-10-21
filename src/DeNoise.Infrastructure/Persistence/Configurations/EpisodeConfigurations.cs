@@ -183,6 +183,7 @@ internal sealed class EpisodeConfiguration : IEntityTypeConfiguration<Episode>
         b.Property(x => x.HandlingState).HasColumnName("handling_state");
         b.Property(x => x.Severity).HasColumnName("severity").HasConversion(Converters.SeverityToWire);
         b.Property(x => x.IsActionable).HasColumnName("is_actionable");
+        b.Ignore(x => x.IsQueueOnly);
         b.Property(x => x.FirstSeen).HasColumnName("first_seen");
         b.Property(x => x.LastSeen).HasColumnName("last_seen");
         b.Property(x => x.LastReceivedAt).HasColumnName("last_received_at");

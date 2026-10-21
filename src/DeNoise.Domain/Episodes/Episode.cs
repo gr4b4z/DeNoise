@@ -20,6 +20,13 @@ public sealed class Episode
     public string HandlingState { get; private set; } = Episodes.HandlingState.New;
     public Severity Severity { get; private set; }
     public bool IsActionable { get; private set; }
+
+    /// <summary>
+    /// Spec §9 severity table: <c>low</c> and <c>informational</c> episodes are <em>queue only</em> — no opening notification, no
+    /// acknowledgement escalation. They are still owned, routed, grouped, visible and searchable; a later increase out of <c>low</c>
+    /// is announced as a new actionable episode.
+    /// </summary>
+    public bool IsQueueOnly => !IsActionable || Severity == Severity.Low;
     public DateTimeOffset FirstSeen { get; private set; }
     public DateTimeOffset LastSeen { get; private set; }
     public DateTimeOffset LastReceivedAt { get; private set; }

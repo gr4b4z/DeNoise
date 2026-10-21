@@ -185,6 +185,8 @@ public sealed class PipelineScenarios(PostgresFixture postgres) : IAsyncLifetime
         episode.Severity.Should().Be(Severity.Low, "feature-branch failures are queue only (M16 decision 4)");
         episode.Environment.Should().Be("ci");
         episode.IsOpen.Should().BeTrue("it stays visible and searchable in the queue");
+        (await OutboxAsync(feature.EpisodeId!.Value, NotificationTypes.EpisodeOpened)).Should().BeEmpty("low is queue only (spec §9): no outbox row");
+        (await TestServices.InDbAsync(_services, db => db.Jobs.CountAsync(j => j.EpisodeId == feature.EpisodeId && j.Kind == JobKinds.AckDeadline))).Should().Be(0, "and no acknowledgement escalation");
 
         var pr = await SendAsync(_ado, AdoBuild("failed", branch: "refs/pull/77/merge", reason: "pullRequest", buildId: 5003));
         pr.Outcome.Should().Be(ProcessingOutcome.Opened, pr.Detail);
