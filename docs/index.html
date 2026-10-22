@@ -632,7 +632,7 @@ cd web &amp;&amp; pnpm test &amp;&amp; pnpm e2e             <span class="c"># Vi
 pnpm generate:api                           <span class="c"># regenerate the typed client from docs/openapi/v1.json</span></code></pre>
       </div>
       <div class="tabpanel" role="tabpanel" id="panel-images" aria-labelledby="tab-images" hidden>
-        <p class="small">A tag <code>vX.Y.Z</code> publishes <code>ghcr.io/gr4b4z/denoise-{api,ingest,workers,migrator}:vX.Y.Z</code> (<code>.github/workflows/release-images.yml</code>). This repository ships no deployment manifests. The platform runs the images and passes the configuration as environment variables; the full contract is in <a href="https://github.com/gr4b4z/DeNoise/blob/main/docs/03-architecture-and-adrs.md#4-deployment-shape-environment-variable-contract">03 §4</a>. Production runs on Azure Container Apps, deployed from <code>softwareone-platform/ops-alertsstore-release</code>. Every release runs the migrator once and then rolls the three hosts to the same tag (ADR-10).</p>
+        <p class="small">A tag <code>vX.Y.Z</code> publishes <code>ghcr.io/gr4b4z/denoise-{api,ingest,workers,migrator}:vX.Y.Z</code> (<code>.github/workflows/release-images.yml</code>). This repository ships no deployment manifests. The platform runs the images and passes the configuration as environment variables; the full contract is in <a href="https://github.com/gr4b4z/DeNoise/blob/main/docs/03-architecture-and-adrs.md#4-deployment-shape-environment-variable-contract">03 §4</a>. Production runs on Azure Container Apps, deployed from the separate release repository. Every release runs the migrator once and then rolls the three hosts to the same tag (ADR-10).</p>
 <pre><code>TAG=v0.2.0
 DB=<span class="s">"Host=…;Database=denoise;Username=…;Password=…"</span>
 KEY=<span class="s">"$(cat key.xml)"</span>   <span class="c"># migrator generate-dataprotection-key, kept in Key Vault (ADR-18)</span>
@@ -779,7 +779,7 @@ heartbeat pings ─► /hb        job queue   scheduler
       <a href="https://github.com/gr4b4z/DeNoise/blob/main/CHANGELOG.md"><b>Changelog</b><span>Keep-a-Changelog record of every milestone</span></a>
     </div>
     <div class="callout">
-      <p><strong>Status.</strong> Milestones 0–12 are implemented and green in CI. The project is pre-release: no version has been tagged and the repository does not yet carry a licence file — check with the maintainers before reuse outside SoftwareOne.</p>
+      <p><strong>Status.</strong> Milestones 0–12 are implemented and green in CI. The project is pre-release: no version has been tagged and the repository does not yet carry a licence file — check with the maintainers before reuse outside the organization.</p>
     </div>
   </div>
 </section>
@@ -793,7 +793,7 @@ heartbeat pings ─► /hb        job queue   scheduler
       <div><h4>Run</h4><ul><li><a href="#deploy">Deploy</a></li><li><a href="#operate">Operate</a></li><li><a href="https://github.com/gr4b4z/DeNoise/blob/main/docker-compose.yml">docker-compose.yml</a></li><li><a href="https://github.com/gr4b4z/DeNoise/blob/main/docs/03-architecture-and-adrs.md#4-deployment-shape-environment-variable-contract">Environment variables</a></li></ul></div>
       <div><h4>Project</h4><ul><li><a href="https://github.com/gr4b4z/DeNoise">Repository</a></li><li><a href="https://github.com/gr4b4z/DeNoise/issues">Issues</a></li><li><a href="https://github.com/gr4b4z/DeNoise/blob/main/CHANGELOG.md">Changelog</a></li><li><a href="llms.txt">llms.txt</a></li></ul></div>
     </div>
-    <p>DeNoise · Shared Services, SoftwareOne · pre-release. This page is generated from the repository's documentation and OpenAPI document; where they disagree, the repository wins.</p>
+    <p>DeNoise · Engineering organization · pre-release. This page is generated from the repository's documentation and OpenAPI document; where they disagree, the repository wins.</p>
   </div>
 </footer>
 

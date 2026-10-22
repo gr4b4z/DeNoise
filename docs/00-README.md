@@ -1,6 +1,6 @@
 # DeNoise — Coding Agent Handoff Pack
 
-**Prepared:** 11 September 2026 · **Owner:** Sylwester Grabowski, Shared Services, SoftwareOne
+**Prepared:** 11 September 2026 · **Owner:** Project team, Engineering organization
 **Target stack:** .NET 10 backend, React 19 frontend, PostgreSQL, container images (Azure Container Apps)
 
 ## Contents

@@ -25,7 +25,7 @@ public static class PasswordPolicy
         "1qaz2wsx", "123321", "qwertyuiop", "superman", "asdfghjkl", "welcome", "admin", "administrator", "passw0rd", "password123", "p@ssw0rd",
         "p@ssword", "changeme", "letmein123", "welcome1", "welcome123", "qwerty1234", "1q2w3e4r5t", "trustno1", "football", "baseball", "master",
         "hello123", "freedom", "whatever", "starwars", "shadow", "michael", "jennifer", "computer", "michelle", "summer2024", "summer2025",
-        "winter2025", "spring2026", "summer2026", "denoise", "denoise123", "denoise", "softwareone", "softwareone1", "softwareone123",
+        "winter2025", "spring2026", "summer2026", "denoise", "denoise123", "company", "company1", "company123",
         "password!", "password1!", "passw0rd!", "qwerty!", "abcd1234", "abcd12345", "12341234", "1234qwer", "qwer1234", "asdf1234", "zxcvbnm",
         "iloveyou1", "monkey123", "dragon123", "123qwe", "123abc", "a123456", "aa123456", "112233", "121212", "123654", "159753", "666666",
         "777777", "888888", "987654321", "azerty", "azerty123", "loveme", "secret", "secret123", "temp1234", "temporary", "default", "guest",

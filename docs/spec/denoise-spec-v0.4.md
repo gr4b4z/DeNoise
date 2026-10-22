@@ -2,7 +2,7 @@
 
 **Version:** 0.4 (consolidates drafts 0.2 and 0.3)
 **Status:** For decision — not yet approved for implementation
-**Author:** Sylwester Grabowski, Shared Services, SoftwareOne
+**Author:** Project team
 **Date:** 11 September 2026
 
 **Blocking condition:** Section 6 is a decision gate. No implementation work beyond the measurement task in Section 3.3 should start until that gate is closed.
@@ -162,14 +162,14 @@ Draft 0.2 evaluated exactly one alternative (Keep) and justified building in .NE
 | Steady-state ownership | ≥ 0.5 FTE indefinitely, plus on-call for the Hub itself |
 | Hidden cost | DeNoise becomes a tier-0 dependency: if it is down, nobody learns that anything else is down |
 
-Shared Services is ~30 people across Platform Engineering, QA and UX, supporting four products and 50+ microservices. Committing 2–3 engineers for two or three quarters to an internal alerting tool is a portfolio decision, not a technical one.
+The engineering organization supports multiple products and services. Committing a small team for several months to an internal alerting tool is a portfolio decision, not a technical one.
 
 ### 6.3 Alternatives that must be assessed
 
 | Option | Strongest argument for | Strongest argument against | Must be checked |
 |---|---|---|---|
 | **Azure Monitor alert processing rules + action groups** | Already licensed and deployed; natively handles suppression, grouping and routing for the Azure estate at zero build cost | Does not cover Atlas or application webhooks; no cross-source queue or ownership model | What share of current alert volume is Azure-only? If it is most of it, the residual problem may not justify a platform |
-| **Jira Service Management alerting / on-call** | Atlassian is already in the stack; Opsgenie's alerting and on-call features were folded into JSM, and Opsgenie itself reaches end of support on 5 April 2027, so JSM is the supported path | Licence cost per responder; opinionated model; Jira operational overhead | Whether existing SoftwareOne Atlassian licensing already covers the required tier |
+| **Jira Service Management alerting / on-call** | Atlassian is already in the stack; Opsgenie's alerting and on-call features were folded into JSM, and Opsgenie itself reaches end of support on 5 April 2027, so JSM is the supported path | Licence cost per responder; opinionated model; Jira operational overhead | Whether existing Atlassian licensing already covers the required tier |
 | **Grafana IRM / OnCall** | Strong routing, schedules and escalation; self-hostable | Another platform to operate; licensing model has moved | Fit with existing Grafana usage, if any |
 | **Keep** | Closest to this specification's shape; open source | Previously assessed as heavy to install; edition boundaries between MIT-licensed content and the `ee` directory must be checked feature by feature | Whether the heaviness objection is an install-time or an operate-time objection |
 | **Build** | Exact fit; .NET maintainability within the team | Highest cost; permanent ownership; tier-0 risk | Only chosen if the alternatives fail the scenarios in Section 22 |
@@ -185,7 +185,7 @@ Build proceeds only if all of the following hold:
 3. A named owning team and a named long-term maintainer exist.
 4. The CTO explicitly accepts the steady-state cost in 6.2.
 
-**Decision owner:** Sylwester Grabowski. **Decision date:** to be set; recommended within 30 days of the baseline sheet.
+**Decision owner:** Project owner. **Decision date:** to be set; recommended within 30 days of the baseline sheet.
 
 ---
 
@@ -1025,11 +1025,11 @@ Release readiness requires processing correctness **and** successful operator co
 
 | # | Question | Owner | Needed by |
 |---|---|---|---|
-| 1 | What does the 14-day baseline actually show? | Sylwester Grabowski | Before the gate |
-| 2 | Does existing SoftwareOne Atlassian licensing already include JSM alerting at the required tier? | Sylwester Grabowski | Before the gate |
+| 1 | What does the 14-day baseline actually show? | Project owner | Before the gate |
+| 2 | Does existing Atlassian licensing already include JSM alerting at the required tier? | Project owner | Before the gate |
 | 3 | What share of current alert volume is Azure-only and already addressable by alert processing rules? | Integration owner | Before the gate |
 | 4 | Which team owns DeNoise in steady state, and who is on call for it? | CTO | Before the gate |
-| 5 | Which external system is the out-of-hours escalation target until rotations exist? | Sylwester Grabowski | Before pilot |
+| 5 | Which external system is the out-of-hours escalation target until rotations exist? | Project owner | Before pilot |
 | 6 | What is the cost and noise of an Azure canary rule per scope? | Integration owner | Before pilot |
 | 7 | Does any launch source require email ingestion? | Integration owner | Before build |
 | 8 | Data protection classification of Atlas and Azure payloads | DPO / security | Before pilot |

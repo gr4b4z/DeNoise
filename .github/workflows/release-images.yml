@@ -2,7 +2,7 @@ name: Release images
 
 # Publishes the four DeNoise images (api, ingest, workers, migrator) for a version tag and creates the matching
 # GitHub release. This repository owns building and publishing; the release repository
-# (softwareone-platform/ops-alertsstore-release) only deploys pinned tags: it mirrors them from GHCR into the
+# The separate release repository only deploys pinned tags: it mirrors them from GHCR into the
 # shared ACR, runs the migrator image as a one-shot job and then rolls the three apps to the same tag. The
 # configuration the images expect is the environment-variable contract in docs/03-architecture-and-adrs.md §4.
 #
@@ -213,7 +213,7 @@ jobs:
               echo "| ${host} | \`${ref}\` | \`${digest}\` |"
             done
             echo
-            echo "Deploy: bump \`envs/<env>.version\` to \`${VERSION}\` in softwareone-platform/ops-alertsstore-release."
+            echo "Deploy: bump \`envs/<env>.version\` to \`${VERSION}\` in the separate release repository."
           } > notes.md
           cat notes.md >> "$GITHUB_STEP_SUMMARY"
 

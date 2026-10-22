@@ -46,7 +46,7 @@
     "password": "Password",
     "keepSignedIn": "Keep me signed in",
     "signIn": "Sign in",
-    "sso": "Sign in with SoftwareOne SSO",
+    "sso": "Sign in with organization SSO",
     "changeTitle": "Set a new password",
     "changeWhy": "Your password was set by an administrator, so it must be replaced before you continue.",
     "current": "Current password",
