@@ -29,6 +29,19 @@ public sealed class IngestSignatureVerifierTests
         HmacConfig = config?.ToJson(),
     };
 
+    [Fact]
+    public void Algorithm_prefix_as_github_sends_it_is_tolerated_and_only_for_the_configured_algorithm()
+    {
+        var config = new HmacConfig("sha256", "X-Hub-Signature-256", "hex", Required: true);
+        var digest = IngestSignatureVerifier.Sign(config, "s3cret", Body);
+        var integration = Atlas("s3cret", config);
+        _verifier.Verify(integration, Body, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["X-Hub-Signature-256"] = "sha256=" + digest }).Should().Be(SignatureVerdict.Valid);
+        _verifier.Verify(integration, Body, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["X-Hub-Signature-256"] = "SHA256=" + digest }).Should().Be(SignatureVerdict.Valid, "the prefix is case-insensitive");
+        _verifier.Verify(integration, Body, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["X-Hub-Signature-256"] = "sha1=" + digest }).Should().Be(SignatureVerdict.Invalid, "a different algorithm name is not stripped");
+        _verifier.Verify(integration, Body, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["X-Hub-Signature-256"] = "sha256=" + IngestSignatureVerifier.Sign(config, "wrong", Body) }).Should().Be(SignatureVerdict.Invalid);
+        IngestSignatureVerifier.StripAlgorithmPrefix("abc=", "sha256").Should().Be("abc=", "base64 padding is not a prefix");
+    }
+
     [Theory]
     [InlineData("sha1", "base64")]
     [InlineData("sha256", "hex")]

@@ -1,0 +1,1 @@
+https://learn.microsoft.com/en-us/azure/devops/service-hooks/events?view=azure-devops#run-state-changed — shape of the documented "Run state changed" (ms.vss-pipelines.run-state-changed-event) sample; values invented, not a capture. PROVISIONAL until a real delivery replaces it.

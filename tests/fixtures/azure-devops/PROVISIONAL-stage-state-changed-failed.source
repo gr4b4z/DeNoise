@@ -1,0 +1,1 @@
+https://learn.microsoft.com/en-us/azure/devops/service-hooks/events?view=azure-devops#stage-state-changed — shape of the documented "Run stage state changed" (ms.vss-pipelines.stage-state-changed-event) sample; values invented, not a capture. PROVISIONAL until a real delivery replaces it.

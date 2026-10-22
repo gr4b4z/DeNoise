@@ -25,6 +25,9 @@ public static class LifecycleProfiles
     {
         Domain.Integrations.IntegrationTypes.AzureMonitor => ExplicitRecovery,
         Domain.Integrations.IntegrationTypes.Atlas => QueryableState,
+        // Every pipeline run reports its own end; a lost "completed" webhook is backstopped by the inactivity timer, as for Azure Monitor.
+        Domain.Integrations.IntegrationTypes.AzureDevops => ExplicitRecovery,
+        Domain.Integrations.IntegrationTypes.Github => ExplicitRecovery,
         _ => Unknown,
     };
 }

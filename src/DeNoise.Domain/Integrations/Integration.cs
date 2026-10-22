@@ -73,5 +73,9 @@ public static class IntegrationTypes
     public const string AzureMonitor = "azure_monitor";
     public const string Atlas = "atlas";
     public const string GenericWebhook = "generic_webhook";
-    public static readonly IReadOnlyList<string> All = [AzureMonitor, Atlas, GenericWebhook];
+    /// <summary>Azure DevOps Service Hooks (builds, YAML runs and stages, classic release deployments) — milestone 16.</summary>
+    public const string AzureDevops = "azure_devops";
+    /// <summary>GitHub webhooks (<c>workflow_run</c>, <c>workflow_job</c>, <c>deployment</c>, <c>deployment_status</c>) — milestone 16.</summary>
+    public const string Github = "github";
+    public static readonly IReadOnlyList<string> All = [AzureMonitor, Atlas, GenericWebhook, AzureDevops, Github];
 }

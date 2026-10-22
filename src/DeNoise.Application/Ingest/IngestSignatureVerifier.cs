@@ -73,8 +73,15 @@ public sealed class IngestSignatureVerifier(ISecretProtector protector) : IInges
         if (!headers.TryGetValue(config.Header, out var presented) || string.IsNullOrWhiteSpace(presented)) return SignatureVerdict.Missing;
         var secret = Encoding.UTF8.GetBytes(protector.Unprotect(integration.HmacSecretEnc));
         var expected = Compute(config.Algorithm, secret, body);
-        var actual = Decode(config.Encoding, presented.Trim());
+        var actual = Decode(config.Encoding, StripAlgorithmPrefix(presented.Trim(), config.Algorithm));
         return actual is not null && actual.Length == expected.Length && CryptographicOperations.FixedTimeEquals(actual, expected) ? SignatureVerdict.Valid : SignatureVerdict.Invalid;
+    }
+
+    /// <summary>GitHub (<c>X-Hub-Signature-256: sha256=…</c>) and others prefix the digest with the algorithm name; the prefix is not part of the digest.</summary>
+    public static string StripAlgorithmPrefix(string presented, string algorithm)
+    {
+        var separator = presented.IndexOf('=', StringComparison.Ordinal);
+        return separator > 0 && presented.AsSpan(0, separator).Equals(algorithm, StringComparison.OrdinalIgnoreCase) ? presented[(separator + 1)..] : presented;
     }
 
     /// <summary>Signs a body the way a producer would — used by the destination-free test send of the wizard and by tests.</summary>

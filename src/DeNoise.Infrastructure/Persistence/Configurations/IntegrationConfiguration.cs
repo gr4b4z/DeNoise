@@ -8,7 +8,7 @@ internal sealed class IntegrationConfiguration : IEntityTypeConfiguration<Integr
 {
     public void Configure(EntityTypeBuilder<Integration> b)
     {
-        b.ToTable("integration", "cfg", t => t.HasCheckConstraint("integration_type_chk", "type IN ('azure_monitor','atlas','generic_webhook')"));
+        b.ToTable("integration", "cfg", t => t.HasCheckConstraint("integration_type_chk", "type IN ('azure_monitor','atlas','generic_webhook','azure_devops','github')"));
         b.HasKey(x => new { x.IntegrationId, x.Version });
         b.Property(x => x.IntegrationId).HasColumnName("integration_id");
         b.Property(x => x.Version).HasColumnName("version");

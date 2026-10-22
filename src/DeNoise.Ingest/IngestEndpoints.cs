@@ -32,10 +32,15 @@ public static class IngestEndpoints
         var logger = loggerFactory.CreateLogger("DeNoise.Ingest");
         var limits = options.Value;
 
+        // Bearer token per integration (06 §2); without one, ADR-16: the webhook signature is the credential, but only for an
+        // integration that requires a signature and has a secret — the verdict check below then refuses anything but Valid.
         Domain.Integrations.Integration? integration;
+        var bearer = BearerToken(http.Request);
         try
         {
-            integration = await authenticator.AuthenticateAsync(integrationKeyId, BearerToken(http.Request), ct);
+            integration = bearer is null
+                ? await authenticator.ResolveSignedOnlyAsync(integrationKeyId, ct)
+                : await authenticator.AuthenticateAsync(integrationKeyId, bearer, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -82,7 +87,7 @@ public static class IngestEndpoints
             ? new Dictionary<string, string>(headers, StringComparer.OrdinalIgnoreCase) { [hmac.Header] = sig.ToString() }
             : headers;
         var verdict = signatures.Verify(integration, body, signatureHeaders);
-        if (verdict == SignatureVerdict.Invalid || (verdict == SignatureVerdict.Missing && hmac.Required))
+        if (verdict == SignatureVerdict.Invalid || (verdict == SignatureVerdict.Missing && hmac.Required) || (bearer is null && verdict != SignatureVerdict.Valid))
         {
             metrics.IngestRejected.Add(1, new KeyValuePair<string, object?>("reason", verdict == SignatureVerdict.Invalid ? "bad_signature" : "missing_signature"));
             logger.LogWarning("Signature {Verdict} for integration {IntegrationId} (trace {TraceId})", verdict, integration.IntegrationId, Activity.Current?.TraceId.ToString());

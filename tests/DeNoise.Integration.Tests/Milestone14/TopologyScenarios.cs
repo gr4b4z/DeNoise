@@ -148,7 +148,9 @@ public sealed class TopologyScenarios(PostgresFixture postgres) : IAsyncLifetime
             child.IsActionable.Should().BeTrue();
             child.OwningTeamId.Should().Be(_team, "owned like any other episode");
             child.HandlingState.Should().Be(HandlingState.New);
-            (await OutboxAsync(id, NotificationTypes.EpisodeOpened)).Should().HaveCount(2).And.OnlyContain(o => o.Status == OutboxStatus.Suppressed, "only the notification is muted");
+            var rows = await OutboxAsync(id, NotificationTypes.EpisodeOpened);
+            if (id == c) rows.Should().BeEmpty("a low child is queue only (spec §9): there is no notification to mute, the attribution still stands");
+            else rows.Should().HaveCount(2).And.OnlyContain(o => o.Status == OutboxStatus.Suppressed, "only the notification is muted");
             var timeline = await TimelineAsync(id, EpisodeEventKind.Dependency);
             timeline.Should().ContainSingle().Which.Detail.Should().Contain("\"muted\": true").And.Contain("host down suppresses its services");
         }

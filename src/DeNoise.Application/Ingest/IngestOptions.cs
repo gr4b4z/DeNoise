@@ -13,5 +13,7 @@ public sealed class IngestOptions
     [
         "Content-Type", "Content-Encoding", "User-Agent", "X-Request-Id", "Traceparent",
         "X-MMS-Signature", "X-MMS-Event", "X-DeNoise-Source-Time",
+        // GitHub webhooks (milestone 16): delivery id is the idempotency key, event name selects the mapping, the signature is the credential (ADR-16).
+        "X-GitHub-Delivery", "X-GitHub-Event", "X-Hub-Signature-256",
     ];
 }

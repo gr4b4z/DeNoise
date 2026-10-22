@@ -1,0 +1,18 @@
+{ "action": "completed",
+  "workflow_run": {
+    "id": 30433642, "name": "orders-ci", "node_id": "MDExOldvcmtmbG93IFJ1bjI2OTI4OQ==",
+    "head_branch": "main", "head_sha": "acb5820ced9479c074f688cc328bf03f341a511d", "path": ".github/workflows/ci.yml",
+    "display_title": "Fix order totals", "run_number": 562, "event": "push", "status": "completed", "conclusion": "success",
+    "workflow_id": 159038, "check_suite_id": 414944374, "run_attempt": 2,
+    "url": "https://api.github.com/repos/octo-org/orders/actions/runs/30433642",
+    "html_url": "https://github.com/octo-org/orders/actions/runs/30433642",
+    "created_at": "2026-10-21T10:00:00Z", "updated_at": "2026-10-21T10:10:00Z", "run_started_at": "2026-10-21T10:00:05Z",
+    "actor": { "login": "octocat", "id": 1 }, "triggering_actor": { "login": "octocat", "id": 1 },
+    "head_commit": { "id": "acb5820ced9479c074f688cc328bf03f341a511d", "message": "Fix order totals", "author": { "name": "Octo Cat", "email": "octocat@example.com" } },
+    "repository": { "id": 1296269, "name": "orders", "full_name": "octo-org/orders" },
+    "head_repository": { "id": 1296269, "name": "orders", "full_name": "octo-org/orders" } },
+  "workflow": { "id": 159038, "node_id": "MDg6V29ya2Zsb3cxNTkwMzg=", "name": "orders-ci", "path": ".github/workflows/ci.yml", "state": "active",
+    "html_url": "https://github.com/octo-org/orders/blob/main/.github/workflows/ci.yml" },
+  "repository": { "id": 1296269, "name": "orders", "full_name": "octo-org/orders", "private": true, "html_url": "https://github.com/octo-org/orders", "default_branch": "main" },
+  "organization": { "login": "octo-org", "id": 6811672 },
+  "sender": { "login": "octocat", "id": 1 } }

@@ -123,6 +123,23 @@ mapping:
 
 Integration-level: `hmac.algorithm` configurable (`sha1` | `sha256`), header name configurable — Atlas' documented webhook signature has historically been HMAC-SHA1 in `X-MMS-Signature`; **verify against a captured request before enabling `hmac.required`**. Use `$headers['X-MMS-Event']` if present as a secondary `event_type` source. Severity map must be filled from the project's alert configurations (owner input, C5).
 
+## 3a. Reference mappings — pipeline sources (milestone 16)
+
+`azure_devops` (Service Hooks `build.complete`, `ms.vss-pipelines.run-state-changed-event`, `ms.vss-pipelines.stage-state-changed-event`,
+`ms.vss-release.deployment-completed-event`) and `github` (`workflow_run`, `workflow_job`, `deployment_status`, `deployment`, `ping`)
+ship as ordered `applies_when` lists in `ReferenceMappings`. The pattern they share:
+
+- the pipeline **kind** (`build` / `deploy` / `promote`) is a `lookup.regex_map` on the pipeline name into `labels.kind`; `rule_id`,
+  `environment` and `severity` are lookups on that label (fields evaluate in document order, so `labels` comes first);
+- a failure is `firing`, a success `resolved`; a run that neither failed nor succeeded (start, cancellation, skip) is `informational`
+  **without** a `rule_id`, so its identity cannot resolve and it is recorded without an episode (04 §2.1) — no new event type, no
+  quarantine entry;
+- builds carry `environment: ci` and the branch in `dimensions`; deployments carry the target environment class and no branch;
+- `source_version` is left unset (run ids are not monotonic across re-runs); the run's finish time orders;
+- GitHub's `X-GitHub-Delivery` is `source_event_id` (`{ header: }` rule), Azure DevOps' notification `$.id` likewise.
+
+Per-source operator guides: `docs/integrations/azure-devops.md`, `docs/integrations/github.md`.
+
 ## 4. Generic webhook — recommended producer contract (documented, not required)
 
 Producers *may* send the canonical shape directly; the default generic mapping is identity:

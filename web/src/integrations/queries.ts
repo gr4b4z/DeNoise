@@ -24,6 +24,8 @@ export const INTEGRATION_TYPES = [
   { value: 'azure_monitor', label: 'Azure Monitor (Common Alert Schema)', profile: 'explicit_recovery' },
   { value: 'atlas', label: 'MongoDB Atlas', profile: 'queryable_state' },
   { value: 'generic_webhook', label: 'Generic JSON webhook', profile: 'unknown' },
+  { value: 'azure_devops', label: 'Azure DevOps (Service Hooks: builds, pipeline runs, releases)', profile: 'explicit_recovery' },
+  { value: 'github', label: 'GitHub (workflow runs, jobs, deployments)', profile: 'explicit_recovery' },
 ] as const;
 
 export type IntegrationType = (typeof INTEGRATION_TYPES)[number]['value'];
