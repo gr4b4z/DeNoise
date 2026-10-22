@@ -1,6 +1,6 @@
 namespace DeNoise.Application.Ingest;
 
-/// <summary>Limits from 06 §2 (initial values; Helm <c>limits.*</c>).</summary>
+/// <summary>Limits from 06 §2 (initial values; <c>Limits__*</c>, 03 §4).</summary>
 public sealed class IngestOptions
 {
     public const string Section = "Limits";

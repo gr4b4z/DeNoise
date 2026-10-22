@@ -1,6 +1,6 @@
 namespace DeNoise.Application.Retention;
 
-/// <summary>Spec §18.2 / 05 §7 retention values; bound from <c>Retention:*</c> (Helm <c>retention.*</c>).</summary>
+/// <summary>Spec §18.2 / 05 §7 retention values; bound from <c>Retention:*</c> (<c>Retention__*</c>, 03 §4).</summary>
 public sealed class RetentionOptions
 {
     public const string Section = "Retention";

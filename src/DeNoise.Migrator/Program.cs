@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-// Runs as a Helm pre-upgrade Job (ADR-10). App containers never migrate.
+// Runs once before every rollout, started by the deploy tooling (ADR-10). App containers never migrate.
 // Commands:  (none) → migrate;  seed-dev → migrate and create a development generic-webhook integration;
 //            generate-dataprotection-key → print a new Data Protection key for Key Vault (ADR-18), no database needed.
 if (DeNoise.Migrator.DataProtectionKeyCommand.Matches(args))

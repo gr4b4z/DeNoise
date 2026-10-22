@@ -5,7 +5,7 @@ episodes, assigns ownership, auto-resolves on Hub-configured policies, verifies 
 heartbeats and canaries, and delivers notifications through templated, signed outbound webhooks and SMTP.
 
 Single deployable modular application: .NET 10 backend (three hosts: `ingest`, `api`, `workers`),
-React 19 frontend, PostgreSQL only, runs on AKS.
+React 19 frontend, PostgreSQL only. This repository builds and publishes the container images; it holds no deployment manifests.
 
 ## Where to start
 
@@ -38,10 +38,10 @@ connection string to run them against an existing server instead (used in enviro
 
 ## Operations
 
-- Releases: pushing a tag `vX.Y.Z` runs `.github/workflows/release-images.yml`. It publishes `ghcr.io/gr4b4z/denoise-{api,ingest,workers,migrator}:vX.Y.Z` with `GITHUB_TOKEN` and creates the GitHub release. Deploying a version is done in the separate release repository (`softwareone-platform/ops-alertsstore-release`) by bumping `envs/<env>.version`.
+- Releases: pushing a tag `vX.Y.Z` runs `.github/workflows/release-images.yml`. It publishes `ghcr.io/gr4b4z/denoise-{api,ingest,workers,migrator}:vX.Y.Z` with `GITHUB_TOKEN` and creates the GitHub release. Deploying a version is done in the separate release repository (`softwareone-platform/ops-alertsstore-release`) by bumping `envs/<env>.version`: it runs the migrator image as a one-shot job, then rolls api, ingest and workers to the same tag (ADR-10). The environment variables the images read are listed in [`docs/03-architecture-and-adrs.md` §4](docs/03-architecture-and-adrs.md#4-deployment-shape-environment-variable-contract).
 
 - Hub health screen: `/hub` (component heartbeats, queues, outbox lag, failure queue, retention). The hub must never be the only monitor of itself — see `docs/runbooks/hub-failure.md` for the independent signals and the response.
-- Retention runs daily at 02:00 UTC on the scheduler role (`Retention:*`, Helm `retention.*`); `POST /api/v1/hub/retention/run` runs it on demand.
+- Retention runs daily at 02:00 UTC on the scheduler role (`Retention__*`); `POST /api/v1/hub/retention/run` runs it on demand.
 - Load test: `k6 run -e INGEST_URL=… -e TOKEN=… -e BASELINE_RPS=<C9> build/loadtest/ingest-k6.js`.
 - Backup/restore drill: `build/backup-restore-drill.sh <database>` (quarterly; keep the output).
 

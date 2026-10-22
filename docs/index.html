@@ -30,7 +30,7 @@
       "name": "DeNoise",
       "applicationCategory": "DeveloperApplication",
       "applicationSubCategory": "Alert management / incident deduplication",
-      "operatingSystem": "Linux containers (Docker, Kubernetes/AKS)",
+      "operatingSystem": "Linux containers (Docker, Azure Container Apps)",
       "description": "DeNoise ingests alerts from Azure Monitor, MongoDB Atlas and generic webhooks, deduplicates them into episodes by fingerprint, assigns ownership by routing policy, auto-resolves on configured lifecycle policies with recorded evidence, verifies monitoring coverage with registered heartbeats and canaries, and delivers notifications through templated, HMAC-signed outbound webhooks and SMTP email. Single deployable modular application: three .NET 10 hosts (ingest, api, workers), a React 19 SPA and PostgreSQL as the only infrastructure dependency.",
       "url": "https://gr4b4z.github.io/DeNoise/",
       "softwareVersion": "Unreleased (milestones 0–12 complete)",
@@ -596,7 +596,7 @@ curl -X POST https://hub.example/api/v1/episodes/$ID/ack \
       <div class="tablist" role="tablist" aria-label="Deployment method">
         <button role="tab" id="tab-compose" aria-selected="true" aria-controls="panel-compose">Docker Compose</button>
         <button role="tab" id="tab-dev" aria-selected="false" aria-controls="panel-dev" tabindex="-1">Local development</button>
-        <button role="tab" id="tab-helm" aria-selected="false" aria-controls="panel-helm" tabindex="-1">Kubernetes (Helm)</button>
+        <button role="tab" id="tab-images" aria-selected="false" aria-controls="panel-images" tabindex="-1">Release images</button>
       </div>
       <div class="tabpanel" role="tabpanel" id="panel-compose" aria-labelledby="tab-compose">
         <p class="small">The <code>app</code> profile builds and runs the full hub; the migrator runs first and the hosts wait for it.</p>
@@ -611,7 +611,7 @@ docker compose --profile app up --build -d
 
 <span class="c"># web UI (dev server proxies /api and /auth to :8080)</span>
 cd web &amp;&amp; pnpm install &amp;&amp; pnpm dev        <span class="c"># http://localhost:5173</span></code></pre>
-        <p class="small muted">Sign in with the bootstrap <code>admin</code> account (password from <code>DeNoise:Auth:Local:BootstrapPassword</code> / the Helm secret; <code>must_change_password</code> is forced on first login). <code>dotnet run --project src/DeNoise.Migrator -- seed-dev</code> additionally creates a <em>triage</em> team and a generic-webhook integration and prints its ingest token.</p>
+        <p class="small muted">Sign in with the bootstrap <code>admin</code> account (password from <code>Auth__Local__BootstrapPassword</code>, or generated and printed once in the api log; <code>must_change_password</code> is forced on first login). <code>dotnet run --project src/DeNoise.Migrator -- seed-dev</code> additionally creates a <em>triage</em> team and a generic-webhook integration and prints its ingest token.</p>
       </div>
       <div class="tabpanel" role="tabpanel" id="panel-dev" aria-labelledby="tab-dev" hidden>
         <p class="small">Prerequisites: .NET 10 SDK, Node.js 22 + pnpm, Docker (for PostgreSQL and Testcontainers).</p>
@@ -631,21 +631,23 @@ dotnet test                                 <span class="c"># + integration via 
 cd web &amp;&amp; pnpm test &amp;&amp; pnpm e2e             <span class="c"># Vitest, Playwright + axe</span>
 pnpm generate:api                           <span class="c"># regenerate the typed client from docs/openapi/v1.json</span></code></pre>
       </div>
-      <div class="tabpanel" role="tabpanel" id="panel-helm" aria-labelledby="tab-helm" hidden>
-        <p class="small">Chart at <code>deploy/helm/denoise</code>: deployments for <code>ingest</code>, <code>api</code>, <code>workers</code>, a pre-upgrade migration Job, Services, Ingress, PodDisruptionBudgets. Image <code>ghcr.io/softwareone/denoise</code>. Two secrets are required.</p>
-<pre><code>kubectl create ns denoise
-kubectl -n denoise create secret generic denoise-db \
-  --from-literal=connectionString=<span class="s">"Host=…;Database=denoise;Username=…;Password=…"</span>
-kubectl -n denoise create secret generic denoise-admin --from-literal=password=<span class="s">"…"</span>
+      <div class="tabpanel" role="tabpanel" id="panel-images" aria-labelledby="tab-images" hidden>
+        <p class="small">A tag <code>vX.Y.Z</code> publishes <code>ghcr.io/gr4b4z/denoise-{api,ingest,workers,migrator}:vX.Y.Z</code> (<code>.github/workflows/release-images.yml</code>). This repository ships no deployment manifests. The platform runs the images and passes the configuration as environment variables; the full contract is in <a href="https://github.com/gr4b4z/DeNoise/blob/main/docs/03-architecture-and-adrs.md#4-deployment-shape-environment-variable-contract">03 §4</a>. Production runs on Azure Container Apps, deployed from <code>softwareone-platform/ops-alertsstore-release</code>. Every release runs the migrator once and then rolls the three hosts to the same tag (ADR-10).</p>
+<pre><code>TAG=v0.2.0
+DB=<span class="s">"Host=…;Database=denoise;Username=…;Password=…"</span>
+KEY=<span class="s">"$(cat key.xml)"</span>   <span class="c"># migrator generate-dataprotection-key, kept in Key Vault (ADR-18)</span>
 
-helm upgrade --install denoise ./deploy/helm/denoise -n denoise \
-  --set postgres.connectionSecret=denoise-db \
-  --set auth.local.bootstrapPasswordSecret=denoise-admin \
-  --set ingest.replicas=2 --set api.replicas=2 --set workers.replicas=2 \
-  --set workers.roles=<span class="s">"processing,scheduler,dispatcher"</span> \
-  --set smtp.host=smtp.example --set smtp.from=denoise@example.com \
-  --set externalDeadmanUrl=<span class="s">"https://deadman.example/ping/…"</span></code></pre>
-        <p class="small muted">Notable values: <code>retention.*</code> (raw 30 d, closed normalised 90 d, closed episodes 12 mo, audit 12 mo, run 02:00 UTC), <code>limits.*</code> (payload 256 KiB, ingest 10 rps/integration, API 600/min/user), <code>auth.oidc.*</code> (provider slot, disabled by default). <code>helm lint</code> and <code>helm template</code> run in CI.</p>
+<span class="c"># 1. migrate: one-shot, must exit 0 before the hosts roll</span>
+docker run --rm -e ConnectionStrings__DeNoise=<span class="s">"$DB"</span> ghcr.io/gr4b4z/denoise-migrator:$TAG
+
+<span class="c"># 2. the three hosts, same tag and configuration (denoise.env: see below)</span>
+docker run -d -p 8080:8080 --env-file denoise.env -e DataProtection__Keys__0=<span class="s">"$KEY"</span> ghcr.io/gr4b4z/denoise-api:$TAG
+docker run -d -p 8081:8080 --env-file denoise.env -e DataProtection__Keys__0=<span class="s">"$KEY"</span> ghcr.io/gr4b4z/denoise-ingest:$TAG
+docker run -d -p 8082:8080 --env-file denoise.env -e DataProtection__Keys__0=<span class="s">"$KEY"</span> ghcr.io/gr4b4z/denoise-workers:$TAG \
+  --roles=processing,scheduler,dispatcher
+
+curl -sf http://localhost:8080/healthz/ready</code></pre>
+        <p class="small muted"><code>denoise.env</code> holds <code>ConnectionStrings__DeNoise</code>, <code>Auth__Local__BootstrapPassword</code>, <code>DeNoise__PublicBaseUrl</code>, <code>DeNoise__IngestPublicBaseUrl</code> and <code>DeNoise__ExternalDeadmanUrl</code>, plus optional <code>Smtp__*</code>, <code>Retention__*</code> (raw 30 d, closed normalised 90 d, closed episodes 12 mo, audit 12 mo, run 02:00 UTC), <code>Limits__*</code> (payload 256 KiB, ingest 600/min/integration, API 600/min/user) and <code>Otel__Endpoint</code>. CI builds all four images on every push.</p>
       </div>
     </div>
 
@@ -718,7 +720,7 @@ helm upgrade --install denoise ./deploy/helm/denoise -n denoise \
             <tr><th>Tests</th><td>xUnit, FluentAssertions, FsCheck, Verify snapshots, Testcontainers (PostgreSQL), WebApplicationFactory contract tests</td></tr>
             <tr><th>Frontend</th><td>React 19, TypeScript 5 strict, Vite, TanStack Router + Query + Virtual, Tailwind v4, Radix primitives, CodeMirror (YAML, Liquid), openapi-fetch client generated from the OpenAPI document, i18next</td></tr>
             <tr><th>Frontend tests</th><td>Vitest + Testing Library + MSW; Playwright with axe-core</td></tr>
-            <tr><th>Packaging</th><td>Multi-stage Dockerfile, Helm chart, GitHub Actions CI (build, format, unit, integration, OpenAPI drift, web typecheck/lint/test/build, e2e, image builds, helm lint)</td></tr>
+            <tr><th>Packaging</th><td>Multi-stage Dockerfile (four images, published to GHCR on tags), GitHub Actions CI (build, format, unit, integration, OpenAPI drift, web typecheck/lint/test/build, e2e, image builds)</td></tr>
           </tbody>
         </table></div>
       </div>
@@ -764,7 +766,7 @@ heartbeat pings ─► /hb        job queue   scheduler
     <p class="muted">The handoff pack in <code>docs/</code> is the authoritative reference; this page summarises it. Machine-readable entry points: <a href="llms.txt">llms.txt</a> and <a href="openapi/v1.json">openapi/v1.json</a>.</p>
     <div class="doclist">
       <a href="https://github.com/gr4b4z/DeNoise/blob/main/docs/spec/denoise-spec-v0.4.md"><b>Product specification v0.4</b><span>Behavioural source of truth: goals, scope, personas, lifecycle, coverage, routing, retention, acceptance criteria</span></a>
-      <a href="https://github.com/gr4b4z/DeNoise/blob/main/docs/03-architecture-and-adrs.md"><b>03 · Architecture and ADRs</b><span>Components, request paths, 13+ decision records, Helm values, metric names</span></a>
+      <a href="https://github.com/gr4b4z/DeNoise/blob/main/docs/03-architecture-and-adrs.md"><b>03 · Architecture and ADRs</b><span>Components, request paths, 13+ decision records, deployment environment variables, metric names</span></a>
       <a href="https://github.com/gr4b4z/DeNoise/blob/main/docs/04-domain-model-and-state-machines.md"><b>04 · Domain model and state machines</b><span>Episode, coverage and heartbeat state machines, fingerprint, ordering, auto-resolve guards, policies, RBAC, timer catalogue</span></a>
       <a href="https://github.com/gr4b4z/DeNoise/blob/main/docs/05-data-schema.md"><b>05 · Data schema</b><span>PostgreSQL schema with the invariants that are constraints, partitioning, retention jobs</span></a>
       <a href="https://github.com/gr4b4z/DeNoise/blob/main/docs/06-api-contract.md"><b>06 · API contract</b><span>Ingestion, heartbeat ping, application API, SSE, auth, error model, notification payloads</span></a>
@@ -788,7 +790,7 @@ heartbeat pings ─► /hb        job queue   scheduler
     <div class="cols">
       <div><h4>DeNoise</h4><ul><li><a href="#how">How it works</a></li><li><a href="#features">Features</a></li><li><a href="#concepts">Concepts</a></li><li><a href="#stack">Architecture</a></li></ul></div>
       <div><h4>Integrate</h4><ul><li><a href="#ingest">Ingestion contract</a></li><li><a href="#outbound">Outbound webhooks</a></li><li><a href="#api">Application API</a></li><li><a href="openapi/v1.json">OpenAPI 3.1 (JSON)</a></li></ul></div>
-      <div><h4>Run</h4><ul><li><a href="#deploy">Deploy</a></li><li><a href="#operate">Operate</a></li><li><a href="https://github.com/gr4b4z/DeNoise/blob/main/docker-compose.yml">docker-compose.yml</a></li><li><a href="https://github.com/gr4b4z/DeNoise/tree/main/deploy/helm/denoise">Helm chart</a></li></ul></div>
+      <div><h4>Run</h4><ul><li><a href="#deploy">Deploy</a></li><li><a href="#operate">Operate</a></li><li><a href="https://github.com/gr4b4z/DeNoise/blob/main/docker-compose.yml">docker-compose.yml</a></li><li><a href="https://github.com/gr4b4z/DeNoise/blob/main/docs/03-architecture-and-adrs.md#4-deployment-shape-environment-variable-contract">Environment variables</a></li></ul></div>
       <div><h4>Project</h4><ul><li><a href="https://github.com/gr4b4z/DeNoise">Repository</a></li><li><a href="https://github.com/gr4b4z/DeNoise/issues">Issues</a></li><li><a href="https://github.com/gr4b4z/DeNoise/blob/main/CHANGELOG.md">Changelog</a></li><li><a href="llms.txt">llms.txt</a></li></ul></div>
     </div>
     <p>DeNoise · Shared Services, SoftwareOne · pre-release. This page is generated from the repository's documentation and OpenAPI document; where they disagree, the repository wins.</p>

@@ -13,7 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddDeNoiseCore("ingest");
 builder.Services.AddDeNoiseInfrastructure(builder.Configuration);
 
-// Runs behind the AKS ingress: trust X-Forwarded-For/Proto for source_ip and rate-limit keys.
+// Runs behind the platform's ingress: trust X-Forwarded-For/Proto for source_ip and rate-limit keys.
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
 {
     o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;

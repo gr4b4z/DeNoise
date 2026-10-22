@@ -60,7 +60,7 @@ auth:
     enabled: true                    # keep for break-glass; see below
 ```
 
-Helm already reserves `auth.oidc.*` (03 §4). `auth.local.enabled: false` disables password sign-in for everyone except
+On the platform these become `Auth__Oidc__*` environment variables, to be added to the contract in 03 §4. `auth.local.enabled: false` disables password sign-in for everyone except
 accounts flagged `local_only`.
 
 ## Data model — migration `ExternalIdentity`
@@ -135,7 +135,8 @@ is configured and the break-glass link when local login is disabled.
 ## Definition of done
 
 Scenarios above green against the mock provider; a real sign-in verified against the tenant from C2; OpenAPI regenerated
-(`/auth/providers` response shape, two new endpoints) and contract tests pass; `CHANGELOG.md` entry; Helm values
+(`/auth/providers` response shape, two new endpoints) and contract tests pass; 
+
 documented; offboarding runbook updated; ADR-15 referenced from the PR.
 
 ## Effort

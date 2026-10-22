@@ -1,8 +1,8 @@
 # ADR-18: The Data Protection key ring is generated once and supplied from Key Vault
 
 **Status:** Accepted, revised 2026-10-22. Implements the "data-protection key from Key Vault" half of
-[ADR-11](../03-architecture-and-adrs.md). The first version of this ADR chose a shared ReadWriteMany volume. That
-remains an option in the Helm chart but is no longer the recommended set-up (see *Revision*).
+[ADR-11](../03-architecture-and-adrs.md). The first version of this ADR chose a shared ReadWriteMany volume. The hosts
+still support a shared directory (`DataProtection:KeysPath`), but it is no longer the recommended set-up (see *Revision*).
 
 ## Context
 
@@ -17,8 +17,8 @@ ASP.NET Core Data Protection protects two kinds of data in DeNoise:
 All hosts use the application name `DeNoise`, so they can read one another's payloads only if they also share the key
 ring. Without configuration each process keeps its own ring in memory. Encrypted rows are then unreadable after a
 restart, Ingest cannot verify HMAC secrets written by the Api, and a second Api replica rejects the first one's CSRF
-tokens. The hosts run as three separate deployables (Helm Deployments on AKS, or three container apps on Azure
-Container Apps), so any platform feature that shares keys among the replicas of *one* app is not enough.
+tokens. The hosts run as three separate deployables (three container apps on Azure Container Apps, or three
+Deployments on Kubernetes), so any platform feature that shares keys among the replicas of *one* app is not enough.
 
 Options considered:
 
@@ -41,8 +41,9 @@ Option 5.
   key with the Data Protection key manager itself and writes it as XML. The default lifetime is 3650 days. The command
   needs no database and prints status lines to stderr only.
 - The document is stored as a Key Vault secret and reaches every host as `DataProtection__Keys__0` (and `__1`, … during
-  a rotation). In Helm this is `dataProtection.keysSecret` / `keysSecretKeys` (`secretKeyRef`). In Azure Container Apps
-  it is a secret with a Key Vault reference, bound to the same environment variable.
+  a rotation). In Azure Container Apps it is a secret with a Key Vault reference, bound to that environment variable
+  (`ops-alertsstore-release`, `var.dataprotection_key_secret_names`). Any other platform does the same with its own
+  secret mechanism; the contract is the variable (03 §4).
 - `DataProtection:Keys` makes the ring **read-only**: a repository over the configured documents, with automatic key
   generation disabled. An invalid document fails host start-up with its index, never its content. Configuring both
   `Keys` and `KeysPath` fails start-up too.
@@ -84,15 +85,16 @@ backup or on a file share, and the release process already syncs Key Vault secre
   unreadable.
 - **Losing the Key Vault secret loses every encrypted row.** Key Vault soft delete and purge protection cover
   accidental deletion.
-- `api.replicas` can go above 1. All hosts read one another's secrets, restarts and rollouts keep encrypted rows readable.
+- The api can run more than one replica. All hosts read one another's secrets, restarts and rollouts keep encrypted rows readable.
 - The master key is unencrypted inside the secret. That is acceptable because Key Vault is the protection: access is
   RBAC-scoped and audited, and the document never leaves Key Vault except into the hosts' environment.
 - `dotnet run` and the tests are unchanged: without configuration the ring stays in memory.
 
 ## Revision
 
-The first version (same day) chose option 1 and added the chart's `dataProtection.persistentVolumeClaim` /
-`createPvc`. Mapping the release to the target platform showed a volume to be the heavier option. Azure Container
-Apps, the intended target, would need an Azure Files storage mount in each of the three apps. On AKS it brings a
-storage class and a second backup. Option 5 needs neither. The PVC values remain in the chart for clusters that prefer
-a writable shared ring.
+The first version (same day) chose option 1 and added a shared volume to the Helm chart. Mapping the release to the
+target platform showed a volume to be the heavier option. Azure Container Apps, the intended target, would need an
+Azure Files storage mount in each of the three apps. On Kubernetes it brings a storage class and a second backup.
+Option 5 needs neither. The Helm chart has since been removed: this repository publishes images only, and the
+release repository supplies the configuration (ADR-10, 03 §4). `DataProtection:KeysPath` stays supported for a
+platform that prefers a writable shared ring.

@@ -1,7 +1,7 @@
 # DeNoise — Coding Agent Handoff Pack
 
 **Prepared:** 11 September 2026 · **Owner:** Sylwester Grabowski, Shared Services, SoftwareOne
-**Target stack:** .NET 10 backend, React 19 frontend, PostgreSQL, AKS
+**Target stack:** .NET 10 backend, React 19 frontend, PostgreSQL, container images (Azure Container Apps)
 
 ## Contents
 
@@ -10,7 +10,7 @@
 | `spec/denoise-spec-v0.4.md` | Product and architecture specification — the behavioural source of truth | Always available; consult per milestone |
 | `01-requirements-completeness-review.md` | Gap analysis of the spec against implementability; decisions taken; **10 open owner questions (C1–C10)** | First — owner and agent both |
 | `02-AGENTS.md` | Agent operating brief: stack, repo layout, rules, definition of done. **Copy to repo root.** | Before any code |
-| `03-architecture-and-adrs.md` | Component design, request paths, 13 ADRs, Helm values, metric names | Milestone 0 |
+| `03-architecture-and-adrs.md` | Component design, request paths, ADRs, deployment environment-variable contract, metric names | Milestone 0 |
 | `04-domain-model-and-state-machines.md` | Aggregates, episode/coverage/heartbeat state machines, dedup and fingerprint algorithms, ordering, auto-resolve guards, policies, RBAC matrix, timer catalogue | Milestones 2, 5, 6 |
 | `05-data-schema.md` | PostgreSQL schema with the invariants that must be constraints (★), retention jobs | Milestone 0–2 |
 | `06-api-contract.md` | Ingestion, heartbeat ping, application API, SSE, auth, error model, notification payloads | Milestone 1, 4, 6, 7 |
