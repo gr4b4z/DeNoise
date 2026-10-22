@@ -18,6 +18,9 @@ public sealed class EfMappingRepository(DeNoiseDbContext db) : IMappingRepositor
     public Task<MappingVersion?> GetActiveAsync(Guid mappingId, CancellationToken ct = default)
         => db.MappingVersions.SingleOrDefaultAsync(m => m.MappingId == mappingId && m.ActivatedAt != null && m.DeactivatedAt == null, ct);
 
+    public async Task<IReadOnlyList<MappingVersion>> ListActiveAsync(CancellationToken ct = default)
+        => await db.MappingVersions.AsNoTracking().Where(m => m.ActivatedAt != null && m.DeactivatedAt == null).ToListAsync(ct);
+
     public async Task<int> NextVersionAsync(Guid mappingId, CancellationToken ct = default)
         => (await db.MappingVersions.Where(m => m.MappingId == mappingId).MaxAsync(m => (int?)m.Version, ct) ?? 0) + 1;
 

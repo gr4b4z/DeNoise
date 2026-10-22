@@ -54,6 +54,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IMappingRepository, EfMappingRepository>();
         services.AddScoped<IMappingResolver, CachedMappingResolver>();
         services.AddScoped<MappingService>();
+        // Environment dictionary (ADR-17): mappings are validated against it on save and activation.
+        services.AddScoped<DeNoise.Application.Environments.IEnvironmentRepository, Environments.EfEnvironmentRepository>();
+        services.AddScoped<DeNoise.Application.Environments.EnvironmentService>();
         services.AddScoped<IRawEventReader, EfRawEventReader>();
         services.AddSingleton<IProcessingUnitOfWork, EfProcessingUnitOfWork>();
         services.TryAddScoped<IEpisodeChangePublisher, NoOpEpisodeChangePublisher>();

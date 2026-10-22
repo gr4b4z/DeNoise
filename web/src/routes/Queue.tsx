@@ -15,7 +15,8 @@ import { primaryAction, useEpisodeAction } from '@/episodes/actions';
 import { useRealtime } from '@/realtime/RealtimeProvider';
 import { useSaveFilter } from '@/suppressions/queries';
 import { EpisodeView } from './Episode';
-import { DEFAULT_ENVIRONMENTS, ENVIRONMENTS, type QueueSearch } from './queueSearch';
+import { useEnvironments } from '@/environments/queries';
+import { DEFAULT_ENVIRONMENTS, environmentChips as buildEnvironmentChips, type QueueSearch } from './queueSearch';
 
 /** Work queue (08 §3.1): filter bar, virtualised table, right-side drawer; state lives in the URL so links are shareable. */
 export function QueuePage() {
@@ -110,8 +111,9 @@ export function QueuePage() {
     else current.add(env);
     update({ environment: current.size ? [...current] : undefined });
   };
-  // Chips: the known values plus anything a shared URL or saved filter carries that is not in the list.
-  const environmentChips = useMemo(() => [...ENVIRONMENTS, ...(search.environment ?? []).filter((e) => !(ENVIRONMENTS as readonly string[]).includes(e))], [search.environment]);
+  // Chips: the server-side dictionary plus anything a shared URL or saved filter carries that it does not know (ADR-17).
+  const environments = useEnvironments();
+  const environmentChips = useMemo(() => buildEnvironmentChips(environments.data, search.environment), [environments.data, search.environment]);
   // The default environment set is the normal way in, so an empty default queue is "healthy", not "filtered".
   const environmentNarrowed = useMemo(() => {
     const env = search.environment;
@@ -151,11 +153,20 @@ export function QueuePage() {
             >
               {t('queue.allEnvironments')}
             </button>
-            {environmentChips.map((env) => {
-              const active = search.environment?.includes(env) ?? false;
+            {environmentChips.map((chip) => {
+              const active = search.environment?.includes(chip.key) ?? false;
               return (
-                <button key={env} type="button" aria-pressed={active} onClick={() => toggleEnvironment(env)} className={`btn btn-sm ${active ? 'bg-surface-2 font-semibold' : ''}`} data-environment={env}>
-                  {t(`environments.${env}`, { defaultValue: env })}
+                <button
+                  key={chip.key}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => toggleEnvironment(chip.key)}
+                  className={`btn btn-sm ${active ? 'bg-surface-2 font-semibold' : ''} ${chip.configured ? '' : 'border-dashed italic'}`}
+                  data-environment={chip.key}
+                  data-configured={chip.configured}
+                  title={chip.configured ? undefined : t('queue.environmentNotConfigured', { key: chip.key })}
+                >
+                  {chip.label ?? t(`environments.${chip.key}`, { defaultValue: chip.key })}
                 </button>
               );
             })}

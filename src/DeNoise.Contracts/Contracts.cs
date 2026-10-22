@@ -67,6 +67,11 @@ public sealed record SessionSummary(string Id, DateTimeOffset CreatedAt, DateTim
 
 public sealed record TeamSummary(Guid Id, string Name, IReadOnlyList<string> AccessScopes, bool IsTriage, Guid? FallbackTeamId, Guid? DefaultEscalationPolicyId, int MemberCount, int Version);
 public sealed record CreateTeamRequest(string Name, string[] AccessScopes, bool IsTriage = false, Guid? FallbackTeamId = null, Guid? DefaultEscalationPolicyId = null);
+
+/// <summary>One configured environment class (ADR-17). <c>inDefaultView</c> marks the classes the queue opens on (spec §15.5: production and unknown).</summary>
+public sealed record EnvironmentDto(string Key, string Label, int SortOrder, bool BuiltIn, bool InDefaultView, int Version);
+public sealed record CreateEnvironmentRequest(string Key, string Label, int? SortOrder = null);
+public sealed record UpdateEnvironmentRequest(string? Label = null, int? SortOrder = null);
 public sealed record TeamOverview(TeamSummary Team, int Unassigned, int AckOverdue, int AcknowledgedActive, int Stale, int OpenTotal, IReadOnlyList<EpisodeListItem> UnassignedItems, IReadOnlyList<EpisodeListItem> OverdueItems);
 
 public sealed record SavedFilterDto(Guid Id, string Name, string Query);

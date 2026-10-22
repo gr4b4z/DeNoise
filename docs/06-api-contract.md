@@ -104,6 +104,16 @@ POST /api/v1/teams  PUT /api/v1/teams/{id}  (integration_admin+)
 GET  /api/v1/users?q=                           directory lookup for assign
 ```
 
+### Environment dictionary (ADR-17)
+```
+GET    /api/v1/environments            every signed-in user; [{ key, label, sortOrder, builtIn, inDefaultView, version }] in sort order
+POST   /api/v1/environments            policy.manage; { key, label, sortOrder? }  201 · 400 invalid key · 409 exists
+PUT    /api/v1/environments/{key}      policy.manage, If-Match; { label?, sortOrder? }  409 stale version
+DELETE /api/v1/environments/{key}      policy.manage, If-Match; 204 · 409 built in (unknown) or produced by an active mapping
+```
+Keys are immutable lower-case identifiers (`^[a-z][a-z0-9_-]{0,31}$`). `inDefaultView` is true for `production` and `unknown`
+(spec §15.5 rule 4); it is reported, not configured.
+
 ### Heartbeats
 ```
 GET    /api/v1/heartbeats                        filters: state, team, scope, integration

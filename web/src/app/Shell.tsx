@@ -95,6 +95,11 @@ export function Shell() {
                     {t('nav.policies')}
                   </Link>
                 </li>
+                <li>
+                  <Link to="/environments" className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }} data-testid="nav-environments">
+                    {t('nav.environments')}
+                  </Link>
+                </li>
                 {can(me.data, P.policyManage) && (
                   <li>
                     <Link to="/config" className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }}>

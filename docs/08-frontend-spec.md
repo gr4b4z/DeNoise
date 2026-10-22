@@ -72,6 +72,7 @@ Coverage and freshness use `--sev-high` (degraded) and `--sev-critical` (unavail
 /episodes/:id                       detail (tabs: overview, timeline, related, delivery, raw*)
 /history                            closed episodes
 /teams  /teams/:id                  team overview
+/environments                       environment dictionary (ADR-17): list for everyone; add, relabel, reorder, delete with policy.manage
 /heartbeats  /heartbeats/new  /heartbeats/:id
 /integrations  /integrations/new (wizard)  /integrations/:id (tabs: health, mappings, failures, coverage)
 /policies/:kind  /policies/:kind/:id (versions, diff, impact, activate)
@@ -90,7 +91,7 @@ Every filterable screen serialises its state to the URL (shareable links, spec �
 
 ### 3.1 Work queue (`/queue`)
 - Left rail: views (Needs attention, My alerts, My teams, Unassigned, Acknowledged & active, Stale/unverified, Suppressed, Closed). Counts from `/episodes?view=…&limit=0&includeTotal=true` refreshed on SSE.
-- Filter bar: severity (multi), environment (multi chips: All · Production · Staging · Development · Unknown, plus any value carried by the URL), team, scope, service, integration, text search. Sort: default server order (`-severityRank,ackOverdue,-lastSeen`); user may override.
+- Filter bar: severity (multi), environment (multi chips: All, then the environment dictionary from `GET /api/v1/environments` in its sort order with its labels (ADR-17), then any value carried by the URL that the dictionary lacks, shown dashed and italic with a "not configured" hint; while the dictionary loads, the default view's classes stand in), team, scope, service, integration, text search. Sort: default server order (`-severityRank,ackOverdue,-lastSeen`); user may override.
 - Default environment (spec §15.5, §14.3): every entry point — rail views, login redirect, "back to queue" — links to `?environment=production&environment=unknown`. A URL without `environment` means all environments; the default is applied by the links, never injected by the route, so shared URLs and saved filters mean exactly what they say.
 - Table (virtualised, `@tanstack/react-virtual`): severity, summary, resource/service, env, condition badge, handling badge, owner/assignee, age, last evidence, indicators column (ack overdue ⏱, next escalation, auto-close at, suppression ⏸, delivery failure ⚠, stale, coverage).
 - Row actions: primary (Acknowledge / Assign to me / Open), overflow (Assign…, Silence…, Close…).
