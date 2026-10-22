@@ -114,6 +114,7 @@ app.UseExceptionHandler(handler => handler.Run(async ctx =>
         ForbiddenException => (403, "forbidden", "Forbidden"),
         OutOfScopeException => (404, "not-found", "Not found"),
         VersionConflictException => (409, "version-conflict", "Version conflict"),
+        DeNoise.Application.Environments.EnvironmentVersionConflictException => (409, "version-conflict", "Version conflict"),
         DeNoise.Domain.Episodes.InvalidEpisodeTransitionException => (409, "invalid-transition", "Invalid transition"),
         MappingValidationException => (400, "validation", "Validation failed"),
         KeyNotFoundException => (404, "not-found", "Not found"),
@@ -138,6 +139,7 @@ app.MapAuth();
 app.MapMeAndUsers();
 app.MapEpisodes();
 app.MapConfig();
+app.MapEnvironments();
 app.MapHub();
 app.MapHeartbeats();
 app.MapTemplates();

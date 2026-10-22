@@ -30,6 +30,8 @@ public interface IMappingRepository
     Task<MappingVersion?> GetAsync(Guid mappingId, int version, CancellationToken ct = default);
     Task<MappingVersion?> GetActiveAsync(Guid mappingId, CancellationToken ct = default);
     Task<int> NextVersionAsync(Guid mappingId, CancellationToken ct = default);
+    /// <summary>The active version of every mapping of every integration.</summary>
+    Task<IReadOnlyList<MappingVersion>> ListActiveAsync(CancellationToken ct = default);
     void Add(MappingVersion version);
 }
 

@@ -515,6 +515,50 @@ namespace DeNoise.Infrastructure.Persistence.Migrations
                     b.ToTable("entry", "audit");
                 });
 
+            modelBuilder.Entity("DeNoise.Domain.Environments.EnvironmentClass", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasColumnType("text")
+                        .HasColumnName("key");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsBuiltIn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_built_in");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("label");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("environment", "cfg", t =>
+                        {
+                            t.HasCheckConstraint("environment_key_chk", "key ~ '^[a-z][a-z0-9_-]{0,31}$'");
+
+                            t.HasCheckConstraint("environment_label_chk", "length(btrim(label)) between 1 and 64");
+                        });
+                });
+
             modelBuilder.Entity("DeNoise.Domain.Episodes.AlertGroup", b =>
                 {
                     b.Property<Guid>("GroupId")

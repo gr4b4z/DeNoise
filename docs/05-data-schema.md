@@ -261,6 +261,11 @@ All tables versioned: `(id, version)` PK, `activated_at`, `deactivated_at`, `cre
 `cfg.password_reset` (id, user_id, token_hash, expires_at, used_at) — only when SMTP self-service reset is enabled
 `cfg.scope` (scope text PK, product text, entra_group_ids text[]) — seeded from config (C6)
 
+`cfg.environment` (key text PK ★ check `^[a-z][a-z0-9_-]{0,31}$`, label text ★ check 1–64 chars, sort_order int, is_built_in bool,
+version int, created_at, updated_at) — the environment dictionary (ADR-17). Seeded by migration `EnvironmentDictionary` with
+`production`, `staging`, `development`, `ci`, `ephemeral` and the built-in `unknown`. `alert.episode.environment` is not a foreign key:
+ingest never refuses a value (spec §15.5), and a value outside the dictionary counts as unclassified at query time.
+
 ★ `cfg.destination.fallback_destination_id` NOT NULL and ≠ self (check constraint).
 ★ Exactly one active version per `(table, id)`: unique partial index `WHERE deactivated_at IS NULL`.
 

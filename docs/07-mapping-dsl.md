@@ -73,6 +73,12 @@ mapping:
 - `identity` non-empty; each entry resolves to a rule or field.
 - Sample payloads (`samples[]`) each produce the recorded `expected` output — stored with the version; **activation is refused if any sample fails**.
 - Unknown target names, unknown rule kinds, invalid JSONPath ⇒ 400 with path to the error.
+- Every `environment` value the mapping can produce statically must be in the environment dictionary (ADR-17,
+  `GET /api/v1/environments`). Statically known values are `const`, `lookup.map` / `regex_map` targets, defaults, and lookup tables
+  an `enrich` step writes into `environment`. Otherwise ⇒ 400 with the path, for example
+  `$.mapping.fields.environment.lookup.regex_map[0]`. The check runs on save, on activation and on draft preview. Values copied
+  from the payload with `path` are not checked. At query time the `unknown` filter also matches them when they fall outside the
+  dictionary.
 
 ## 2. Reference mapping — Azure Monitor Common Alert Schema
 

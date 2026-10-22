@@ -24,6 +24,7 @@ import { IntegrationDetailPage } from '@/routes/IntegrationDetail';
 import { SuppressionsPage } from '@/routes/Suppressions';
 import { TeamOverviewPage } from '@/routes/TeamOverview';
 import { TeamsPage } from '@/routes/Teams';
+import { EnvironmentsPage } from '@/routes/Environments';
 import { HistoryPage, type HistorySearch } from '@/routes/History';
 import { PoliciesRoute, PolicyRoute } from '@/routes/PolicyRoutes';
 import { ConfigPage } from '@/routes/ConfigPage';
@@ -112,6 +113,7 @@ const historyRoute = createRoute({
 
 const suppressionsRoute = createRoute({ getParentRoute: () => shellRoute, path: '/suppressions', component: SuppressionsPage });
 const teamsRoute = createRoute({ getParentRoute: () => shellRoute, path: '/teams', component: TeamsPage });
+const environmentsRoute = createRoute({ getParentRoute: () => shellRoute, path: '/environments', component: EnvironmentsPage });
 const teamRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/teams/$id',
@@ -222,7 +224,7 @@ const logoutRoute = createRoute({
   },
 });
 
-const routeTree = rootRoute.addChildren([loginRoute, changePasswordRoute, forbiddenRoute, notFoundRoute, logoutRoute, shellRoute.addChildren([indexRoute, queueRoute, historyRoute, episodeRoute, heartbeatsRoute, heartbeatNewRoute, heartbeatRoute, heartbeatEditRoute, destinationsRoute, destinationNewRoute, destinationRoute, templatesRoute, templateNewRoute, templateRoute, integrationsRoute, integrationNewRoute, integrationRoute, suppressionsRoute, teamsRoute, teamRoute, policiesRoute, policyRoute, configRoute, auditRoute, hubRoute])]);
+const routeTree = rootRoute.addChildren([loginRoute, changePasswordRoute, forbiddenRoute, notFoundRoute, logoutRoute, shellRoute.addChildren([indexRoute, queueRoute, historyRoute, episodeRoute, heartbeatsRoute, heartbeatNewRoute, heartbeatRoute, heartbeatEditRoute, destinationsRoute, destinationNewRoute, destinationRoute, templatesRoute, templateNewRoute, templateRoute, integrationsRoute, integrationNewRoute, integrationRoute, suppressionsRoute, teamsRoute, teamRoute, environmentsRoute, policiesRoute, policyRoute, configRoute, auditRoute, hubRoute])]);
 
 export const router = createRouter({ routeTree, context: { queryClient }, defaultPreload: 'intent', scrollRestoration: true });
 

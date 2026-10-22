@@ -351,7 +351,12 @@ public sealed class EpisodeQueries(DeNoiseDbContext db, NpgsqlDataSource dataSou
         var clean = values.Select(v => v.Trim()).Where(v => v.Length > 0).Distinct(StringComparer.Ordinal).ToArray();
         if (clean.Length == 0) return;
         var clause = "e.environment = ANY(@env)";
-        if (clean.Contains("unknown", StringComparer.OrdinalIgnoreCase)) clause = "(" + clause + " OR e.environment IS NULL)";
+        // Spec §15.5 rule 4 + ADR-17: `unknown` also matches episodes without an environment and those whose value is not a
+        // configured class (payload-copied typo, class deleted since) — an unclassified alert must be more visible, not hidden.
+        if (clean.Contains("unknown", StringComparer.OrdinalIgnoreCase))
+        {
+            clause = "(" + clause + " OR e.environment IS NULL OR NOT EXISTS (SELECT 1 FROM cfg.environment d WHERE d.key = e.environment))";
+        }
         where.Add(clause);
         parameters.Add(new NpgsqlParameter("env", clean));
     }

@@ -22,7 +22,8 @@
     "config": "Config as code",
     "audit": "Audit log",
     "hub": "Hub health",
-    "teamsAdmin": "Manage teams"
+    "teamsAdmin": "Manage teams",
+    "environments": "Environments"
   },
   "views": {
     "needsAttention": "Needs attention",
@@ -61,6 +62,7 @@
     "flappingHint": "Only episodes the source keeps reopening inside the reopen window (spec §11.4)",
     "environment": "Environment",
     "allEnvironments": "All environments",
+    "environmentNotConfigured": "'{{key}}' is not a configured environment class; episodes with it also appear under Unknown",
     "severity": "Severity",
     "columns": {
       "summary": "Summary",
@@ -845,6 +847,44 @@
       "afterCreate": "Members are added from the team's own page once the team exists.",
       "create": "Create team",
       "creating": "Creating…"
+    }
+  },
+  "environmentsAdmin": {
+    "title": "Environments",
+    "subtitle": "Environment classes that mappings may produce",
+    "new": "New environment",
+    "edit": "Edit",
+    "editTitle": "Edit {{key}}",
+    "delete": "Delete",
+    "deleteTitle": "Delete environment '{{key}}'?",
+    "deleteWhy": "Mappings can no longer produce this class. Episodes that already carry it keep the value and show under Unknown. The change is audited.",
+    "builtIn": "Built in",
+    "builtInHint": "Built in: a mapping that cannot derive an environment yields it, so it cannot be deleted.",
+    "configured": "Configured",
+    "inDefaultView": "Default view",
+    "help": "A class names a kind of environment (production, staging…), not one product's instance of it: the product is the integration's access scope. Keys cannot be renamed because episodes and policies store them. The queue always opens on Production and Unknown.",
+    "columns": {
+      "key": "Key",
+      "label": "Label",
+      "order": "Order",
+      "defaultView": "Queue",
+      "type": "Type"
+    },
+    "form": {
+      "key": "Key",
+      "keyHelp": "Lower-case letters, digits, '-' or '_', starting with a letter, at most 32 characters. Mappings must produce exactly this value. It cannot be changed later.",
+      "label": "Label",
+      "order": "Order",
+      "orderHelp": "Position of the chip in the queue filter; lower comes first. Leave empty to place it after the configured classes.",
+      "afterCreate": "After creating it, point a mapping at the new key (for example in a lookup.regex_map).",
+      "create": "Create environment",
+      "save": "Save",
+      "saving": "Saving…",
+      "invalid": {
+        "key": "The key does not match the allowed format.",
+        "label": "The label must be 1–64 characters.",
+        "sortOrder": "The order must be a whole number."
+      }
     }
   }
 }

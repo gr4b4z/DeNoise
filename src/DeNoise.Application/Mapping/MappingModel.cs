@@ -17,6 +17,8 @@ public sealed class MappingDocument
     public string? LifecycleProfileHint { get; init; }
     /// <summary>The document as JSON, for storage in <c>cfg.mapping.body</c>.</summary>
     public required JsonObject Source { get; init; }
+    /// <summary>Where the document sat in the parsed input (<c>$.mapping</c> with the wrapper, <c>$</c> without), for error paths.</summary>
+    public string BasePath { get; init; } = "$";
 }
 
 /// <summary>One identity component (04 §4): value from a JSONPath or from an already-mapped canonical field.</summary>

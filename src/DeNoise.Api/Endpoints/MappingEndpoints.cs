@@ -57,12 +57,14 @@ public static class MappingEndpoints
         }).RequirePermission(Permissions.IntegrationRead).WithName("GetMappingVersion").Produces<MappingVersionDto>().Produces(404);
 
         // Preview (spec §17.5 preview mode, 06 §4): a stored version or a draft against raw events and/or a pasted body — no state change.
-        integrations.MapPost("/{id:guid}/mappings/preview", async (Guid id, MappingPreviewRequest request, HttpContext http, IIntegrationRepository repo, MappingPreviewService preview) =>
+        integrations.MapPost("/{id:guid}/mappings/preview", async (Guid id, MappingPreviewRequest request, HttpContext http, IIntegrationRepository repo, MappingPreviewService preview, MappingService service) =>
         {
             var integration = await VisibleAsync(id, http, repo);
             if (integration is null) return Results.NotFound();
             if (string.IsNullOrWhiteSpace(request.Yaml)) throw new ArgumentException("yaml is required for a draft preview (use /mappings/{mappingId}/{version}/preview for a stored version)");
             var doc = MappingPreviewService.Draft(request.Yaml);
+            // ADR-17: the editor sees an environment outside the dictionary while drafting, not only on save.
+            await service.EnsureEnvironmentsAsync(doc, http.RequestAborted);
             return Results.Ok(await RunPreviewAsync(integration, doc, request, preview, http.RequestAborted));
         }).RequirePermission(Permissions.ReplayPreview).AddEndpointFilter<CsrfFilter>().WithName("PreviewMappingDraft").Produces<MappingPreviewResponse>().ProducesProblem(400).Produces(404);
 

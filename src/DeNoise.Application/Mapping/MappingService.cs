@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using DeNoise.Application.Abstractions;
 using DeNoise.Application.Audit;
+using DeNoise.Application.Environments;
 using DeNoise.Application.Integrations;
 using DeNoise.Application.Processing;
 using DeNoise.Domain.Audit;
@@ -15,7 +16,7 @@ namespace DeNoise.Application.Mapping;
 public sealed record CreateMappingVersion(Guid IntegrationId, string Yaml, Guid? MappingId = null, string? Name = null, int Order = 100, IReadOnlyList<MappingSample>? Samples = null);
 
 /// <summary>Mapping versions: create (not active), verify samples, activate (ADR-6: DB is truth, YAML is import/export).</summary>
-public sealed class MappingService(IMappingRepository repository, IIntegrationRepository integrations, IMappingResolver resolver, IAuditWriter audit, IUnitOfWork uow, TimeProvider time)
+public sealed class MappingService(IMappingRepository repository, IIntegrationRepository integrations, IMappingResolver resolver, IEnvironmentRepository environments, IAuditWriter audit, IUnitOfWork uow, TimeProvider time)
 {
     public async Task<MappingVersion> CreateVersionAsync(CreateMappingVersion request, Actor actor, CancellationToken ct = default)
     {
@@ -25,7 +26,7 @@ public sealed class MappingService(IMappingRepository repository, IIntegrationRe
         var version = await repository.NextVersionAsync(mappingId, ct);
         var doc = MappingParser.ParseYaml(request.Yaml, version);
         var samples = request.Samples ?? [];
-        var failures = VerifySamples(doc, samples, integration.IntegrationId);
+        var failures = (await EnvironmentErrorsAsync(doc, ct)).Concat(VerifySamples(doc, samples, integration.IntegrationId)).ToList();
         if (failures.Count > 0)
         {
             throw new MappingValidationException(failures);
@@ -91,7 +92,8 @@ public sealed class MappingService(IMappingRepository repository, IIntegrationRe
         var target = await repository.GetAsync(mappingId, version, ct) ?? throw new KeyNotFoundException($"Mapping {mappingId} v{version} not found.");
         if (target.IsActive) return;
         var doc = MappingParser.Parse(JsonNode.Parse(target.Body)!, target.Version);
-        var failures = VerifySamples(doc, ParseSamples(target.Samples), target.IntegrationId);
+        // Re-checked here as well: the dictionary may have lost a class since the version was saved.
+        var failures = (await EnvironmentErrorsAsync(doc, ct)).Concat(VerifySamples(doc, ParseSamples(target.Samples), target.IntegrationId)).ToList();
         if (failures.Count > 0)
         {
             throw new MappingValidationException(failures);
@@ -119,6 +121,21 @@ public sealed class MappingService(IMappingRepository repository, IIntegrationRe
         });
         await uow.CommitAsync(ct);
         resolver.Invalidate(target.IntegrationId);
+    }
+
+    /// <summary>Throws <see cref="MappingValidationException"/> when the document produces an environment outside the dictionary (draft preview).</summary>
+    public async Task EnsureEnvironmentsAsync(MappingDocument doc, CancellationToken ct = default)
+    {
+        var errors = await EnvironmentErrorsAsync(doc, ct);
+        if (errors.Count > 0) throw new MappingValidationException(errors);
+    }
+
+    /// <summary>ADR-17: every environment value the mapping can produce statically must be a configured environment class.</summary>
+    private async Task<IReadOnlyList<MappingValidationError>> EnvironmentErrorsAsync(MappingDocument doc, CancellationToken ct)
+    {
+        if (MappingEnvironments.Literals(doc).Count == 0) return [];
+        var dictionary = (await environments.ListAsync(ct)).Select(e => e.Key).ToHashSet(StringComparer.Ordinal);
+        return MappingEnvironments.Validate(doc, dictionary);
     }
 
     /// <summary>Runs each sample through the document and compares the expected canonical fields (07 §1: activation is refused if any sample fails).</summary>

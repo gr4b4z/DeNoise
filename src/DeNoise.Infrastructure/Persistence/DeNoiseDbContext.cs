@@ -42,6 +42,7 @@ public sealed class DeNoiseDbContext(DbContextOptions<DeNoiseDbContext> options)
     public DbSet<MappingVersion> MappingVersions => Set<MappingVersion>();
     public DbSet<Team> Teams => Set<Team>();
     public DbSet<AccessScope> Scopes => Set<AccessScope>();
+    public DbSet<Domain.Environments.EnvironmentClass> Environments => Set<Domain.Environments.EnvironmentClass>();
     public DbSet<Destination> Destinations => Set<Destination>();
     public DbSet<DeliveryAttempt> DeliveryAttempts => Set<DeliveryAttempt>();
     public DbSet<PolicyVersion> Policies => Set<PolicyVersion>();

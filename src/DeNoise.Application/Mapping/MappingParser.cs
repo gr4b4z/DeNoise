@@ -160,6 +160,7 @@ public static class MappingParser
             LookupTables = lookupTables,
             LifecycleProfileHint = hint,
             Source = (JsonObject)doc.DeepClone(),
+            BasePath = basePath,
         };
     }
 
