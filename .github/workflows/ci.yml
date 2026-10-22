@@ -162,12 +162,3 @@ jobs:
           build-args: HOST=${{ matrix.host }}
           push: false
           tags: ${{ steps.tag.outputs.value }}
-
-  helm:
-    name: Helm lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: azure/setup-helm@v4
-      - run: helm lint deploy/helm/denoise
-      - run: helm template denoise deploy/helm/denoise --set postgres.connectionSecret=denoise-db --set auth.local.bootstrapPasswordSecret=denoise-admin >/dev/null

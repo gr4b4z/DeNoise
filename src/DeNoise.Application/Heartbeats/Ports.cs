@@ -42,7 +42,7 @@ public interface IHeartbeatPingAuthenticator
 public sealed class HeartbeatOptions
 {
     public const string Section = "Heartbeats";
-    /// <summary>Public base URL of the ingest host, used to build ping URLs (Helm <c>ingestPublicBaseUrl</c>).</summary>
+    /// <summary>Public base URL of the ingest host, used to build ping URLs (or the <c>DeNoise:IngestPublicBaseUrl</c> alias, 03 §4).</summary>
     public string IngestPublicBaseUrl { get; set; } = "http://localhost:8081";
     /// <summary>Ring size of stored runs per heartbeat (spec §13.3.3 proposes 100).</summary>
     public int RunRingSize { get; set; } = 100;

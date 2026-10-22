@@ -7,7 +7,7 @@ namespace DeNoise.Workers.Scheduling;
 public sealed class DeadmanOptions
 {
     public const string Section = "DeNoise";
-    /// <summary>External dead-man's switch URL (Helm <c>externalDeadmanUrl</c>, spec §13.7). Empty disables the job.</summary>
+    /// <summary>External dead-man's switch URL (<c>DeNoise__ExternalDeadmanUrl</c>, spec §13.7). Empty disables the job.</summary>
     public string? ExternalDeadmanUrl { get; set; }
     public TimeSpan DeadmanInterval { get; set; } = TimeSpan.FromMinutes(1);
     public TimeSpan DeadmanTimeout { get; set; } = TimeSpan.FromSeconds(10);

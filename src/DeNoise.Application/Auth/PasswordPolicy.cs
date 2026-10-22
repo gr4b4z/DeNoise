@@ -3,7 +3,7 @@ namespace DeNoise.Application.Auth;
 public sealed class LocalAuthOptions
 {
     public const string Section = "Auth:Local";
-    /// <summary>Bootstrap <c>admin</c> password (Helm secret). Consumed on first start when no user exists; never logged.</summary>
+    /// <summary>Bootstrap <c>admin</c> password (secret <c>Auth__Local__BootstrapPassword</c>). Consumed on first start when no user exists; never logged.</summary>
     public string? BootstrapPassword { get; set; }
     public int PasswordMinLength { get; set; } = 12;
     public int LockoutFailures { get; set; } = 10;

@@ -3,7 +3,8 @@ name: Release images
 # Publishes the four DeNoise images (api, ingest, workers, migrator) for a version tag and creates the matching
 # GitHub release. This repository owns building and publishing; the release repository
 # (softwareone-platform/ops-alertsstore-release) only deploys pinned tags: it mirrors them from GHCR into the
-# shared ACR and runs the Helm upgrade with the chart from this repository at the same tag.
+# shared ACR, runs the migrator image as a one-shot job and then rolls the three apps to the same tag. The
+# configuration the images expect is the environment-variable contract in docs/03-architecture-and-adrs.md §4.
 #
 #   git tag v0.2.0 && git push origin v0.2.0      → images <namespace>/denoise-<host>:v0.2.0 (+ sha-<commit>)
 #                                                    and a GitHub release v0.2.0

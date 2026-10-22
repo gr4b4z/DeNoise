@@ -72,11 +72,11 @@ Three container images: `ingest`, `api`, `workers` (workers host runs processing
 **Status:** Accepted. OpenTelemetry SDK; OTLP exporter configured via env. Required metrics (names are the contract):
 `denoise_ingest_accepted_total{integration}`, `denoise_ingest_rejected_total{reason}`, `denoise_job_queue_depth{kind}`, `denoise_job_oldest_age_seconds{kind}`, `denoise_episode_transitions_total{from,to,reason}`, `denoise_episode_open{severity,team}`, `denoise_closure_total{reason,evidence}`, `denoise_notification_latency_seconds`, `denoise_delivery_attempts_total{channel,outcome}`, `denoise_coverage_state{integration,state}`, `denoise_heartbeat_state{state}`, `denoise_scheduler_lag_seconds`, `denoise_mapping_failures_total{integration,mapping_version}`, `denoise_unassigned_open`. Serilog enrichers: `TraceId`, `IntegrationId`, `EpisodeId`, `ActorId`.
 
-### ADR-10: Migrations as pre-upgrade Job
-**Status:** Accepted. `DeNoise.Migrator` console project; Helm `pre-upgrade` hook; app containers never run migrations. Expand/contract for breaking changes.
+### ADR-10: Migrations as a one-shot run before the rollout
+**Status:** Accepted; revised 2026-10-22 (was: a Helm `pre-upgrade` hook). **Decision:** `DeNoise.Migrator` is a console project with its own image, `denoise-migrator`. It applies pending EF migrations, ensures the `raw_event` partitions and exits 0, or 1 on failure. It needs only `ConnectionStrings__DeNoise` (§4). App containers never run migrations. Running it is the deploy tooling's job, not this repository's. Before every rollout the tooling runs the migrator image at the release tag, waits for it to succeed, and only then rolls api, ingest and workers to the same tag. A failed migration stops the release while the previous revision keeps serving. Today the tooling is the Container Apps Job `<prefix>-caj-migrate` in `softwareone-platform/ops-alertsstore-release`, which its deploy workflow starts before applying the apps. Locally it is the `migrator` service in `docker-compose.yml`, which the three hosts wait for (`service_completed_successfully`), or `dotnet run --project src/DeNoise.Migrator`. **Expand/contract** for breaking changes: the previous revision runs against the migrated schema until the rollout finishes, and again after a rollback, so every migration must work with the previous release's code. Add first, switch the code in a release, and remove in a later release. **Alternatives:** migrating on app start (rejected: replicas race each other, and a slow migration holds every host out of readiness); a Helm hook (the first version of this ADR, dropped together with the chart because no release uses Helm). **Consequences:** a release is two steps in a fixed order, and the deploy tooling must keep that order. Migrations stay forward-only (AGENTS.md rule 13): rolling back means running the previous image tag against the newer schema, never reverting the schema.
 
 ### ADR-11: Secrets
-**Status:** Accepted. Platform secrets (DB connection, cookie data-protection keys, SMTP, later OIDC client secret); destination URLs, headers and signing secrets are per-row data encrypted with a data-protection key from Key Vault via Azure Key Vault + CSI driver → env/file. Integration ingest tokens and heartbeat tokens: 32 random bytes, base64url, stored as Argon2id hash with per-row salt; lookup by a non-secret `key_id` prefix in the URL/header so verification is a single-row hash compare. Destination endpoint URLs (Workflows) encrypted at rest with a data-protection key from Key Vault.
+**Status:** Accepted. Platform secrets (DB connection, cookie data-protection keys, SMTP, later OIDC client secret); destination URLs, headers and signing secrets are per-row data encrypted with a data-protection key from Key Vault, which the platform passes to the hosts as secret environment variables (§4, [ADR-18](adr/ADR-018-data-protection-key-ring.md)). Integration ingest tokens and heartbeat tokens: 32 random bytes, base64url, stored as Argon2id hash with per-row salt; lookup by a non-secret `key_id` prefix in the URL/header so verification is a single-row hash compare. Destination endpoint URLs (Workflows) encrypted at rest with a data-protection key from Key Vault.
 
 ### ADR-14: Local identity provider first, OIDC later
 **Status:** Accepted; **revised by [ADR-15](adr/ADR-015-entra-app-roles-and-local-enforcement.md)** on the source of roles. **Context:** Entra ID app registration and group mapping (C2) are not available at project start; the owner wants username/password for v1. **Decision:** Authentication sits behind `IIdentityProvider` with two implementations planned: `LocalPasswordProvider` (v1) and `OidcProvider` (later). Authorization (roles, scopes, team membership) is **always enforced locally** — read from `cfg.user` regardless of provider — so switching providers changes how a user proves identity, not how a request is authorised. *(ADR-15: "locally enforced" is not "locally decided". Once OIDC is in place, roles come from Entra **app roles** and `access_scope` from Entra **groups**, projected onto `cfg.user` at sign-in; team membership, service accounts and the break-glass administrator stay local-only. Enforcement still reads the local row, which is what keeps PATs, sessions, CSRF and SSE unchanged.)* Users carry `auth_provider ∈ {local, oidc}` and `external_id`; the login page shows an SSO button when an OIDC provider is configured. **Local provider rules:** Argon2id (m=64 MiB, t=3, p=1); min 12 chars checked against a bundled breached-password list; lockout 10 failures / 15 min per user and per IP; forced change on first login; admin-initiated reset (temporary password, one-time display) plus optional self-service reset by email when SMTP is configured; server-side sessions (revocable) with cookie `HttpOnly Secure SameSite=Lax`, sliding 8 h / absolute 24 h; CSRF token on mutations. **Personal access tokens** (scoped to the user's permissions, optional expiry, hashed, prefix lookup as ADR-11) for API clients and config-as-code. **Consequences:** DeNoise becomes a credential store — offboarding is manual until OIDC lands; TOTP for `platform_admin` is recommended before pilot and is a small addition on this design. **Migration to OIDC:** add provider, match existing users on email, set `auth_provider=oidc`, disable password; permissions untouched for those accounts, and from then on projected from Entra per ADR-15. Keep one `local_only` break-glass `platform_admin`: DeNoise is the system that reports that Entra is unreachable, so it must not require Entra to sign in while diagnosing that.
@@ -87,17 +87,117 @@ Three container images: `ingest`, `api`, `workers` (workers host runs processing
 ### ADR-13: Frontend architecture
 **Status:** Accepted pending C1. SPA; routes in 08; TanStack Query for all server state with `staleTime` tuned per screen; SSE invalidates queries by key; URL is the source of truth for filters (shareable links). No global client store beyond auth and SSE connection state.
 
-## 4. Deployment shape (Helm values that must exist)
+## 4. Deployment shape (environment-variable contract)
 
-`ingest.replicas`, `api.replicas`, `workers.replicas`, `workers.roles`, `postgres.connectionSecret`, `auth.local.*` (bootstrap admin password, password policy, lockout), `auth.oidc.*` (optional, later), `smtp.*`, `externalDeadmanUrl`, `retention.*`, `limits.payloadBytes`, `limits.ingestRps`, `otel.endpoint`, `publicBaseUrl` (for links in notifications), `ingestPublicBaseUrl` (for heartbeat URLs shown in UI).
+This repository builds and publishes container images only. `build/Dockerfile` builds four images, one per host, and `.github/workflows/release-images.yml` publishes them as `ghcr.io/<owner>/denoise-{api,ingest,workers,migrator}` with one shared tag. There are no deployment manifests here. Whatever runs the images supplies the configuration below as environment variables. Today that is `softwareone-platform/ops-alertsstore-release`, which runs them on Azure Container Apps (`container_app.tf`: `local.env_plain`, `local.env_secret_app`). Locally it is `docker compose --profile app up --build`.
 
-How the chart turns them into configuration (`templates/_helpers.tpl → denoise.env`, rendered into every host and the migrator):
+ASP.NET Core maps `__` to `:`, so `Auth__Local__LockoutWindow` is `Auth:Local:LockoutWindow` in `appsettings.json`. An absent variable means the default from the options class. Prefer leaving a variable out over setting it empty: an empty string is a value, and it disables the `DeNoise__*` URL aliases below. Durations use `hh:mm:ss` and booleans use `true`/`false`.
 
-- `auth.local.bootstrapPasswordSecret` → `Auth__Local__BootstrapPassword` from that Secret's key `password` (only when set; otherwise the Api generates one and prints it once to stdout). `auth.local.passwordMinLength`, `lockoutFailures`, `lockoutWindow`, `selfServiceResetEnabled` → `Auth__Local__*`.
-- `smtp.host` non-empty → `Smtp__Host`, `Smtp__Port`, `Smtp__From`, `Smtp__Security` (`Auto` | `None` | `StartTls` | `SslOnConnect`), `Smtp__MessageIdDomain`; `Smtp__Username` from `smtp.username` or, when that is empty, key `username` of `smtp.credentialsSecret`; `Smtp__Password` from key `password` of `smtp.credentialsSecret`. Both secret keys are `optional`. An empty `smtp.host` renders no `Smtp__*` at all and the e-mail channel reports *SMTP host not configured* as a retryable failure.
-- `dataProtection.keysSecret` (recommended, [ADR-18](adr/ADR-018-data-protection-key-ring.md)) → `DataProtection__Keys__<n>` in api, ingest and workers from the keys listed in `dataProtection.keysSecretKeys` (default `[key-1]`). Each holds one key document from `DeNoise.Migrator generate-dataprotection-key`, kept in Key Vault. The ring is then read-only, no volume is mounted, and `keysPath` is not rendered. Setting it together with a PVC fails rendering.
-- Otherwise `dataProtection.keysPath` (default `/var/denoise/keys`) → `DataProtection__KeysPath` in api, ingest and workers, with a volume mounted there. The volume is the ReadWriteMany claim `dataProtection.persistentVolumeClaim`, or one the chart creates when `dataProtection.createPvc: true` (`storageClassName`, default `azurefile-csi`; `size`, default `1Gi`; kept on uninstall). Without either it is a per-pod `emptyDir`, fit for single-replica development only. The migrator Job gets neither. More than one `api` replica needs a shared claim.
+### 4.1 Runtime shape
 
-The `api` image also serves the web UI: `build/Dockerfile` builds `web/` (`pnpm build`) into `wwwroot` for `HOST=Api` only, and the Api falls back to `index.html` for every non-file path outside `/api`, `/auth`, `/healthz` and `/openapi`. The SPA therefore needs no Helm value, Service or ingress path of its own: the ingress host for `publicBaseUrl` routes everything to `api`, which keeps the session cookie, CSRF and SSE same-origin.
+| Image | Runs as | Ports, health | Notes |
+|---|---|---|---|
+| `denoise-api` | long-running, ≥ 1 replica (several need a shared key ring, ADR-18) | HTTP `8080`; `/healthz/startup`, `/healthz/ready`, `/healthz/live` | Application API, SSE and the web UI (see below). Public ingress on the host of `DeNoise__PublicBaseUrl`. |
+| `denoise-ingest` | long-running, ≥ 1 replica | HTTP `8080`; same three probes | Alert ingestion and heartbeat pings. Public ingress on the host of `DeNoise__IngestPublicBaseUrl`. |
+| `denoise-workers` | long-running, ≥ 1 replica, no ingress | HTTP `8080` for the three probes only | Roles from the `--roles=processing,scheduler,dispatcher` argument or `Workers__Roles` (the argument wins; default: all three). At least one replica must run the scheduler role, which drives timers, retention and the dead-man ping. |
+| `denoise-migrator` | one-shot, before every rollout (ADR-10) | none | Exit 0 = migrated, 1 = failed. Extra commands: `seed-dev` (development data) and `generate-dataprotection-key` (ADR-18, no database). |
 
-Pod disruption budgets for all three; anti-affinity across zones; `workers` uses a startup probe that waits for DB.
+- The image sets `ASPNETCORE_URLS=http://+:8080` and `DOTNET_gcServer=0`. Override them only to change the port or the GC mode.
+- The images run as the non-root user `denoise`. The root filesystem can be read-only; only `/tmp` must be writable.
+- `api` and `ingest` trust `X-Forwarded-For` / `X-Forwarded-Proto` from any proxy. Put them behind one that sets these headers, and never expose them directly. Source IPs for rate limits and audit come from these headers.
+- `/healthz/startup` and `/healthz/ready` check the database; `/healthz/live` checks only the process. Probe start-up rather than liveness while a host waits for PostgreSQL, and allow it a few minutes.
+- Run api and ingest with two or more replicas spread across zones where the platform allows.
+
+### 4.2 Variables
+
+*Hosts* lists the hosts in which a variable has an effect. Passing the whole set to every host is harmless; ops-alertsstore-release does that for the plain variables. *Secret* variables come from a secret store (Key Vault references in Container Apps) and must never appear in plain configuration or logs.
+
+**Required in production**
+
+| Variable | Meaning | Default | Hosts | Secret |
+|---|---|---|---|---|
+| `ConnectionStrings__DeNoise` | Npgsql connection string of the single PostgreSQL database. | none: host start-up fails | api, ingest, workers, migrator | secret |
+| `Auth__Local__BootstrapPassword` | Password of the `admin` user created on the first Api start when no user exists, with `must_change_password=true`. Ignored once a user exists. Never logged. | unset: the Api generates one and prints it once to stdout | api | secret |
+| `DataProtection__Keys__<n>` | Key ring documents from `DeNoise.Migrator generate-dataprotection-key`, kept in Key Vault; `__0`, then `__1`, … during a rotation. The ring is read-only (ADR-18). Must be identical in api, ingest and workers. | unset: in-memory ring per process (tests and single-run development only) | api, ingest, workers | secret |
+| `DeNoise__PublicBaseUrl` | Base URL of the UI (the api host), used for links in notifications. Alias of `Notifications__PublicBaseUrl`, which wins when set. | `http://localhost:5173` | api, workers | plain |
+| `DeNoise__IngestPublicBaseUrl` | Base URL of the ingest host, used to build the heartbeat ping URLs shown in the UI. Alias of `Heartbeats__IngestPublicBaseUrl`, which wins when set. | `http://localhost:8081` | api, workers | plain |
+| `DeNoise__ExternalDeadmanUrl` | External dead-man's switch (spec §13.7), pinged every minute by the scheduler after a database check. Unset disables the ping, logs a launch-blocker warning, and the hub health screen shows it unconfigured. | unset | workers, api (health screen) | plain |
+
+**Data Protection alternatives** (instead of `DataProtection__Keys__<n>`, ADR-18)
+
+| Variable | Meaning | Default | Hosts | Secret |
+|---|---|---|---|---|
+| `DataProtection__KeysPath` | Directory of key files shared by all hosts, for example a writable shared volume. Setting it together with `DataProtection__Keys__<n>` fails start-up. | unset | api, ingest, workers | plain |
+| `DataProtection__ReadOnly` | With `KeysPath`: never create keys, for example for a mounted secret directory. | `false` | api, ingest, workers | plain |
+
+**Observability and health**
+
+| Variable | Meaning | Default | Hosts | Secret |
+|---|---|---|---|---|
+| `Otel__Endpoint` | OTLP endpoint for traces and metrics (ADR-9). Falls back to `OTEL_EXPORTER_OTLP_ENDPOINT`; neither set disables the exporter. Logs always go to stdout as JSON. | unset | api, ingest, workers | plain |
+| `Health__OutboxLagThreshold` | The Api reports not-ready when the oldest pending outbox row is older than this (06 §8). | `00:05:00` | api | plain |
+
+**Limits** (06 §2, §6)
+
+| Variable | Meaning | Default | Hosts | Secret |
+|---|---|---|---|---|
+| `Limits__PayloadBytes` | Maximum ingest request body; larger bodies get 413. | `262144` (256 KiB) | ingest | plain |
+| `Limits__IngestPerMinute` | Ingest requests per minute per integration key; above it 429 with `Retry-After`. | `600` | ingest | plain |
+| `Limits__ApiPerMinutePerUser` | Application API requests per minute per credential (else per IP). | `600` | api | plain |
+| `Limits__LoginPerMinutePerIp` | `POST /auth/login` attempts per minute per source IP. | `10` | api | plain |
+
+No host reads `Limits__IngestRps`, which the Helm chart rendered from `limits.ingestRps`. The ingest rate is `Limits__IngestPerMinute`.
+
+**Retention** (spec §18.2, 05 §7; run by the scheduler, shown on the hub health screen)
+
+| Variable | Meaning | Default | Hosts | Secret |
+|---|---|---|---|---|
+| `Retention__RawDays` | Raw payload partitions older than this are dropped. | `30` | workers, api | plain |
+| `Retention__NormalisedClosedDays` | Normalised events of closed (or no) episodes older than this are deleted. | `90` | workers, api | plain |
+| `Retention__EpisodeClosedMonths` | Closed episodes and their timeline older than this are deleted; open episodes never are. | `12` | workers, api | plain |
+| `Retention__DeliveryAttemptDays` | Delivery attempts, terminal outbox rows and done jobs. | `30` | workers, api | plain |
+| `Retention__AuditMonths` | Audit entries. | `12` | workers, api | plain |
+| `Retention__SessionExpiredDays` | Sessions, counted from their expiry. | `7` | workers, api | plain |
+| `Retention__LoginAttemptDays` | Login attempts. | `30` | workers, api | plain |
+| `Retention__BatchSize` | Rows deleted per statement. | `5000` | workers | plain |
+| `Retention__RunAtUtcHour` | Daily run time, UTC hour. | `2` | workers, api | plain |
+
+**Local sign-in** (ADR-14; OIDC, milestone 11b, will add its own `Auth__Oidc__*` variables)
+
+| Variable | Meaning | Default | Hosts | Secret |
+|---|---|---|---|---|
+| `Auth__Local__PasswordMinLength` | Minimum password length. | `12` | api | plain |
+| `Auth__Local__LockoutFailures` | Failed logins per user and per IP before lockout. | `10` | api | plain |
+| `Auth__Local__LockoutWindow` | Lockout window. | `00:15:00` | api | plain |
+| `Auth__Local__SelfServiceResetEnabled` | Offer password reset by e-mail; only effective when `Smtp__Host` is set too. | `false` | api | plain |
+| `Auth__Local__SessionSliding` | Sliding session lifetime. | `08:00:00` | api | plain |
+| `Auth__Local__SessionAbsolute` | Absolute session lifetime. | `1.00:00:00` | api | plain |
+
+**Notifications and SMTP** (ADR-7; the `Smtp__*` variables only matter when `Smtp__Host` is set)
+
+| Variable | Meaning | Default | Hosts | Secret |
+|---|---|---|---|---|
+| `Notifications__AllowInsecureDestinations` | Allow `http://` destination URLs. Development only. | `false` | api, workers | plain |
+| `Smtp__Host` | SMTP relay. Unset turns the e-mail channel off: e-mail deliveries fail as retryable with *SMTP host not configured*. | unset | workers, api | plain |
+| `Smtp__Port` | Relay port. | `587` | workers, api | plain |
+| `Smtp__From` | Sender address. | `denoise@example.invalid` | workers, api | plain |
+| `Smtp__Security` | `Auto`, `None` (Mailpit/dev), `StartTls` or `SslOnConnect`. | `Auto` | workers, api | plain |
+| `Smtp__MessageIdDomain` | Domain of generated `Message-ID`s. | `denoise.local` | workers, api | plain |
+| `Smtp__Username` | Relay login; unset = no authentication. | unset | workers, api | plain |
+| `Smtp__Password` | Relay password. | unset | workers, api | secret |
+
+**Tuning** (the defaults are the intended values; change them only after measuring)
+
+| Variable | Meaning | Default | Hosts | Secret |
+|---|---|---|---|---|
+| `Workers__Roles` | Worker roles when no `--roles=` argument is given. | all three | workers | plain |
+| `JobQueue__Lease`, `JobQueue__BatchSize`, `JobQueue__IdlePoll`, `JobQueue__ReapInterval` | Job claim lease, jobs per claim, idle poll interval, reaper cadence (05 §3, §7). | `00:02:00`, `20`, `00:00:01`, `00:00:30` | workers | plain |
+| `Lifecycle__ProcessingDelayThreshold`, `Lifecycle__MappingFailureThreshold`, `Lifecycle__MappingFailureWindow`, `Lifecycle__PostponeBy` | Auto-resolve guards 4 and 5 and their retry delay (04 §5.3). | `00:05:00`, `5`, `00:15:00`, `00:05:00` | workers | plain |
+| `Heartbeats__RunRingSize`, `Heartbeats__BodyBytes`, `Heartbeats__PingsPerMinutePerKey` | Stored runs per heartbeat, stored ping body size, ping rate per key (06 §3). | `100`, `16384`, `60` | ingest, workers | plain |
+| `Notifications__MaxAttempts` | Delivery attempts when a destination has no retry policy of its own. | `10` | workers | plain |
+| `DeNoise__DeadmanInterval`, `DeNoise__DeadmanTimeout` | Dead-man ping interval and request timeout. | `00:01:00`, `00:00:10` | workers | plain |
+| `Pilot__DivergenceThreshold`, `Pilot__SampleSize` | Shadow-mode divergence gate and listed sample size (spec §21). | `0.05`, `20` | api | plain |
+
+The migrator needs only `ConnectionStrings__DeNoise`. It accepts the plain set without effect and must not get the Data Protection keys or the bootstrap or SMTP passwords.
+
+The `api` image also serves the web UI: `build/Dockerfile` builds `web/` (`pnpm build`) into `wwwroot` for `HOST=Api` only, and the Api falls back to `index.html` for every non-file path outside `/api`, `/auth`, `/healthz` and `/openapi`. The SPA therefore needs no variable or ingress route of its own: the public host of `DeNoise__PublicBaseUrl` routes everything to `api`, which keeps the session cookie, CSRF and SSE same-origin.

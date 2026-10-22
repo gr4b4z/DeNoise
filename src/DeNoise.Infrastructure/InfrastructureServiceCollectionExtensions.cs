@@ -139,7 +139,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<DeNoise.Application.Heartbeats.HeartbeatPingService>();
         services.AddScoped<DeNoise.Application.Heartbeats.HeartbeatMonitor>();
         services.AddScoped<DeNoise.Application.Heartbeats.HeartbeatService>();
-        // The Helm chart exposes the public URLs under DeNoise:* (03 §"Helm values"); honour them when the section-specific keys are absent.
+        // The deployment contract sets the public URLs as DeNoise:* (03 §4); honour them when the section-specific keys are absent.
         services.PostConfigure<DeNoise.Application.Heartbeats.HeartbeatOptions>(o =>
         {
             if (configuration["Heartbeats:IngestPublicBaseUrl"] is null && configuration["DeNoise:IngestPublicBaseUrl"] is { Length: > 0 } ingest) o.IngestPublicBaseUrl = ingest;

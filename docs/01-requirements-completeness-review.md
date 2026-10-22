@@ -60,7 +60,7 @@ Legend — **D** = decided in this pack (overridable by the owner), **O** = open
 | C7 | Out-of-hours escalation target system (§7.3 of spec) | Escalation policies need a real terminal target | Email to a configured address; **must** be replaced before pilot |
 | C8 | Whether Atlas integration needs email ingestion at all | Scope | Not built |
 | C9 | The measured baseline (spec §3.3) — event rates and payload sizes | Sizing, partition granularity, load-test targets | Daily partitions; load test at 500 ev/min sustained, 3,000 burst |
-| C10 | Helm/GitOps conventions of the existing AKS platform | Deployment manifests | Plain Helm chart in-repo; align with existing GitOps onboarding model |
+| C10 | Helm/GitOps conventions of the existing AKS platform | Deployment manifests | **Answered (2026-10-22):** no manifests in this repo. DeNoise publishes images only; `softwareone-platform/ops-alertsstore-release` deploys them to Azure Container Apps with the environment variables in 03 §4 |
 
 ## D. Requirements verified as complete enough to implement
 

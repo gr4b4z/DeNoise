@@ -86,4 +86,4 @@ Profiles derived from the baseline (C9); until then: 500 ev/min sustained 60 min
 
 ## 7. Release checklist (automated where possible)
 
-All §22 scenarios green · no `PROVISIONAL-` fixtures for active integrations · axe zero serious · load profile passed within 30 days · migration dry-run against a staging snapshot · Helm upgrade + rollback rehearsed · dead-man URL configured and firing · fallback destination present for every active destination.
+All §22 scenarios green · no `PROVISIONAL-` fixtures for active integrations · axe zero serious · load profile passed within 30 days · migration dry-run against a staging snapshot · release (migrator run, then app rollout) and rollback to the previous image tag rehearsed · dead-man URL configured and firing · fallback destination present for every active destination.

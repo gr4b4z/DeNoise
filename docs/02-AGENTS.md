@@ -4,7 +4,7 @@ Operating brief for the coding agent. Read this first, then `09-implementation-p
 
 ## 1. What you are building
 
-DeNoise: a .NET backend and React frontend that ingests alerts from Azure Monitor, MongoDB Atlas and generic webhooks, deduplicates them into episodes, assigns ownership, auto-resolves on Hub-configured policies, verifies monitoring coverage with heartbeats and canaries, and delivers notifications through templated, signed outbound webhooks (Teams via Workflows, Slack, ticketing, automation platforms) and SMTP email. Single deployable modular application, PostgreSQL only, runs on AKS.
+DeNoise: a .NET backend and React frontend that ingests alerts from Azure Monitor, MongoDB Atlas and generic webhooks, deduplicates them into episodes, assigns ownership, auto-resolves on Hub-configured policies, verifies monitoring coverage with heartbeats and canaries, and delivers notifications through templated, signed outbound webhooks (Teams via Workflows, Slack, ticketing, automation platforms) and SMTP email. Single deployable modular application, PostgreSQL only, shipped as container images (run on Azure Container Apps).
 
 ## 2. Stack (decided)
 
@@ -23,7 +23,7 @@ DeNoise: a .NET backend and React frontend that ingests alerts from Azure Monito
 | Testing | xUnit, FluentAssertions, Testcontainers (Postgres), Verify for snapshots | See 10 |
 | Frontend | React 19, TypeScript 5 strict, Vite | TanStack Query + Router, Tailwind v4, Radix primitives, design direction in 08 §0. Build the UI to that direction; do not wait for a company design system |
 | Frontend testing | Vitest, Testing Library, Playwright | axe-core in Playwright for a11y |
-| Packaging | Multi-stage Dockerfiles, Helm chart | Migrations run as a Helm pre-upgrade Job |
+| Packaging | Multi-stage Dockerfile, four images (`api`, `ingest`, `workers`, `migrator`) | This repo has no deployment manifests; the release repo runs the images with the environment variables in 03 §4. Migrations run as a one-shot migrator run before the rollout (ADR-10) |
 
 ## 3. Repository layout
 
@@ -46,7 +46,6 @@ denoise/
 │   ├── DeNoise.Integration.Tests/   ← Testcontainers; every acceptance scenario lives here
 │   ├── DeNoise.Contract.Tests/      ← OpenAPI ↔ implementation drift
 │   └── fixtures/                     ← real captured payloads only (see §6)
-├── deploy/helm/denoise/
 └── build/                         ← Dockerfiles, CI scripts
 ```
 
@@ -94,13 +93,13 @@ docker compose up -d postgres mailpit   # seeds an admin user; password printed 
 - `dotnet test` and `pnpm test && pnpm e2e` green in CI.
 - OpenAPI regenerated and contract tests pass.
 - No `TODO` without an issue reference.
-- Helm chart deploys to a local kind cluster and `/healthz/ready` returns 200.
+- The images run with `docker compose --profile app up --build` (or `docker run` with the variables from 03 §4) and `/healthz/ready` returns 200 on api, ingest and workers.
 - README for the milestone's feature updated in `docs/`.
 
 ## 7. Things that look optional but are not
 
 - SSE reconnect with `Last-Event-ID` — the "UI loses live connection" acceptance case depends on it.
-- The external dead-man's switch for the Hub's own scheduler (spec §13.7) — a Helm value for the URL and a job that pings it every minute. Ship it in Milestone 5, not "later".
+- The external dead-man's switch for the Hub's own scheduler (spec §13.7) — a configuration value for the URL (`DeNoise__ExternalDeadmanUrl`) and a job that pings it every minute. Ship it in Milestone 5, not "later".
 - Partitioned raw-event table from the first migration. Retrofitting partitioning is a data migration.
 - `Idempotency-Key` on every mutating operator endpoint.
 

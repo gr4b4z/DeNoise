@@ -195,7 +195,7 @@ GET /api/v1/events/stream?scope=…                         text/event-stream
 
 - UI: `POST /auth/login` → server-side session (`cfg.session`) → cookie `HttpOnly; Secure; SameSite=Lax`, sliding 8 h, absolute 24 h. CSRF double-submit token on mutations. `mustChangePassword` in `/me` forces the change screen before any route.
 - API clients / CI: personal access token as bearer; same permission checks; `last_used_at` updated.
-- Bootstrap: first start with no users seeds `admin` from `auth.local.bootstrapPassword` (Helm secret) with `must_change_password=true`; the value is never logged.
+- Bootstrap: first start with no users seeds `admin` from the secret `Auth__Local__BootstrapPassword` (03 §4) with `must_change_password=true`; the value is never logged.
 - OIDC (later): `GET /auth/providers` advertises it; `/auth/oidc/login` and `/auth/oidc/callback` are reserved; users matched on email; permissions untouched (ADR-14).
 
 ## 7. Notification payloads
