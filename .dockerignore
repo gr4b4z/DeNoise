@@ -1,0 +1,13 @@
+# Keep local build output out of the image build context (build/Dockerfile).
+**/bin/
+**/obj/
+**/node_modules/
+web/dist/
+web/coverage/
+web/playwright-report/
+web/test-results/
+.git/
+.vs/
+.idea/
+TestResults/
+artifacts/
