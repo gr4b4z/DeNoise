@@ -57,6 +57,54 @@ app.kubernetes.io/instance: {{ .Release.Name }}
   value: {{ .Values.retention.runAtUtcHour | quote }}
 - name: Notifications__AllowInsecureDestinations
   value: {{ .Values.allowInsecureDestinations | quote }}
+{{- /* Auth:Local (LocalAuthOptions, src/DeNoise.Application/Auth/PasswordPolicy.cs) */}}
+- name: Auth__Local__PasswordMinLength
+  value: {{ .Values.auth.local.passwordMinLength | quote }}
+- name: Auth__Local__LockoutFailures
+  value: {{ .Values.auth.local.lockoutFailures | quote }}
+- name: Auth__Local__LockoutWindow
+  value: {{ .Values.auth.local.lockoutWindow | quote }}
+- name: Auth__Local__SelfServiceResetEnabled
+  value: {{ .Values.auth.local.selfServiceResetEnabled | quote }}
+{{- with .Values.auth.local.bootstrapPasswordSecret }}
+- name: Auth__Local__BootstrapPassword
+  valueFrom:
+    secretKeyRef:
+      name: {{ . }}
+      key: password
+{{- end }}
+{{- /* Smtp (SmtpOptions, src/DeNoise.Infrastructure/Notifications/SmtpEmailChannel.cs); without a host the e-mail channel stays off */}}
+{{- if .Values.smtp.host }}
+- name: Smtp__Host
+  value: {{ .Values.smtp.host | quote }}
+- name: Smtp__Port
+  value: {{ .Values.smtp.port | quote }}
+- name: Smtp__From
+  value: {{ .Values.smtp.from | quote }}
+- name: Smtp__Security
+  value: {{ .Values.smtp.security | quote }}
+- name: Smtp__MessageIdDomain
+  value: {{ .Values.smtp.messageIdDomain | quote }}
+{{- if .Values.smtp.username }}
+- name: Smtp__Username
+  value: {{ .Values.smtp.username | quote }}
+{{- else if .Values.smtp.credentialsSecret }}
+- name: Smtp__Username
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.smtp.credentialsSecret }}
+      key: username
+      optional: true
+{{- end }}
+{{- with .Values.smtp.credentialsSecret }}
+- name: Smtp__Password
+  valueFrom:
+    secretKeyRef:
+      name: {{ . }}
+      key: password
+      optional: true
+{{- end }}
+{{- end }}
 {{- end -}}
 {{/* Deployment body shared by the three hosts. Context: dict "root" . "host" "api" "spec" .Values.api */}}
 {{- define "denoise.deployment" -}}

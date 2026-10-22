@@ -29,6 +29,7 @@ auth:
     passwordMinLength: 12
     lockoutFailures: 10
     lockoutWindow: "00:15:00"
+    selfServiceResetEnabled: false   # e-mail reset; only offered when smtp.host is set as well
   oidc:
     enabled: false          # milestone 11b
     authority: ""
@@ -36,9 +37,14 @@ auth:
     clientSecretSecret: ""
 
 smtp:
-  host: ""
+  host: ""                  # empty = e-mail channel off; no Smtp__* variables are rendered
   port: 587
   from: "denoise@example.invalid"
+  security: Auto            # Auto | None | StartTls | SslOnConnect
+  messageIdDomain: denoise.local
+  # Relay login. Plain value wins; otherwise key `username` of credentialsSecret (optional).
+  username: ""
+  # Secret with key `password` (and optionally `username`); both keys are optional, so a missing secret key never blocks a pod.
   credentialsSecret: ""
 
 externalDeadmanUrl: ""      # spec §13.7; pinged every minute by the scheduler (milestone 5)
