@@ -47,6 +47,16 @@ smtp:
   # Secret with key `password` (and optionally `username`); both keys are optional, so a missing secret key never blocks a pod.
   credentialsSecret: ""
 
+# ASP.NET Data Protection key ring (ADR-11, ADR-18): per-row secrets and CSRF tokens, shared by api, ingest and workers.
+dataProtection:
+  keysPath: /var/denoise/keys     # DataProtection__KeysPath; empty = in-memory keys and no mount
+  # Existing ReadWriteMany claim mounted at keysPath in api, ingest and workers. With neither this nor createPvc the
+  # chart mounts a per-pod emptyDir: keys die with the pod, encrypted rows become unreadable, single replica only.
+  persistentVolumeClaim: ""
+  createPvc: false                # create the claim (named persistentVolumeClaim, or <release>-dataprotection-keys); kept on uninstall
+  storageClassName: azurefile-csi # AKS built-in Azure Files class (RWX)
+  size: 1Gi
+
 externalDeadmanUrl: ""      # spec §13.7; pinged every minute by the scheduler (milestone 5)
 
 retention:

@@ -1,0 +1,21 @@
+{{- if .Values.dataProtection.createPvc }}
+# Data Protection key ring shared by api, ingest and workers (ADR-18). Kept on uninstall: losing it makes every
+# encrypted destination and integration secret unreadable.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "denoise.dataProtection.claimName" . }}
+  labels:
+    {{- include "denoise.labels" . | nindent 4 }}
+    app.kubernetes.io/component: dataprotection
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [ReadWriteMany]
+  {{- with .Values.dataProtection.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.dataProtection.size }}
+{{- end }}

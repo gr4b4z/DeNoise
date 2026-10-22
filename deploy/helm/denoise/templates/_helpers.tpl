@@ -106,9 +106,22 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 {{- end }}
 {{- end -}}
+{{/* Data Protection key ring claim (ADR-18): the configured name, the chart-created default, or empty (emptyDir fallback) */}}
+{{- define "denoise.dataProtection.claimName" -}}
+{{- if .Values.dataProtection.persistentVolumeClaim -}}
+{{ .Values.dataProtection.persistentVolumeClaim }}
+{{- else if .Values.dataProtection.createPvc -}}
+{{ include "denoise.fullname" . }}-dataprotection-keys
+{{- end -}}
+{{- end -}}
 {{/* Deployment body shared by the three hosts. Context: dict "root" . "host" "api" "spec" .Values.api */}}
 {{- define "denoise.deployment" -}}
 {{- $root := .root -}}{{- $host := .host -}}{{- $spec := .spec -}}
+{{- $keysPath := $root.Values.dataProtection.keysPath -}}
+{{- $keysClaim := include "denoise.dataProtection.claimName" $root -}}
+{{- if and $keysClaim (not $keysPath) -}}
+{{- fail "dataProtection.keysPath is required when dataProtection.persistentVolumeClaim or dataProtection.createPvc is set" -}}
+{{- end -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -156,6 +169,10 @@ spec:
               containerPort: 8080
           env:
             {{- include "denoise.env" $root | nindent 12 }}
+            {{- with $keysPath }}
+            - name: DataProtection__KeysPath
+              value: {{ . | quote }}
+            {{- end }}
           startupProbe:
             httpGet: { path: /healthz/startup, port: http }
             periodSeconds: 5
@@ -173,7 +190,19 @@ spec:
             capabilities: { drop: ["ALL"] }
           volumeMounts:
             - { name: tmp, mountPath: /tmp }
+            {{- with $keysPath }}
+            - { name: dataprotection-keys, mountPath: {{ . | quote }} }
+            {{- end }}
       volumes:
         - name: tmp
           emptyDir: {}
+        {{- if $keysPath }}
+        - name: dataprotection-keys
+          {{- if $keysClaim }}
+          persistentVolumeClaim:
+            claimName: {{ $keysClaim }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- end }}
 {{- end -}}
