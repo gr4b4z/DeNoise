@@ -38,7 +38,7 @@ connection string to run them against an existing server instead (used in enviro
 
 ## Operations
 
-- Releases: pushing a tag `vX.Y.Z` runs `.github/workflows/release-images.yml`. It publishes `denoise-{api,ingest,workers,migrator}:vX.Y.Z` to GHCR and creates the GitHub release. Deploying a version is done in the separate release repository (`softwareone-platform/ops-alertsstore-release`) by bumping `envs/<env>.version`. Publishing to the org namespace needs the `GHCR_PUSH_TOKEN` secret; see the workflow header.
+- Releases: pushing a tag `vX.Y.Z` runs `.github/workflows/release-images.yml`. It publishes `ghcr.io/gr4b4z/denoise-{api,ingest,workers,migrator}:vX.Y.Z` with `GITHUB_TOKEN` and creates the GitHub release. Deploying a version is done in the separate release repository (`softwareone-platform/ops-alertsstore-release`) by bumping `envs/<env>.version`.
 
 - Hub health screen: `/hub` (component heartbeats, queues, outbox lag, failure queue, retention). The hub must never be the only monitor of itself — see `docs/runbooks/hub-failure.md` for the independent signals and the response.
 - Retention runs daily at 02:00 UTC on the scheduler role (`Retention:*`, Helm `retention.*`); `POST /api/v1/hub/retention/run` runs it on demand.

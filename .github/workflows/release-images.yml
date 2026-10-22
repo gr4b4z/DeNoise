@@ -8,11 +8,13 @@ name: Release images
 #   git tag v0.2.0 && git push origin v0.2.0      → images <namespace>/denoise-<host>:v0.2.0 (+ sha-<commit>)
 #                                                    and a GitHub release v0.2.0
 #
-# Settings (repository variables / secrets):
-#   vars.IMAGE_NAMESPACE   GHCR namespace, default ghcr.io/softwareone-platform (org-scoped packages, governance
-#                          PENDING-004). Set it to ghcr.io/<this repo's owner> to publish with GITHUB_TOKEN alone.
-#   secrets.GHCR_PUSH_TOKEN  Needed when the namespace belongs to another owner than this repository: a token with
-#                          write:packages on that owner. GITHUB_TOKEN can only push to this repository's owner.
+# Images are published under this repository's owner (ghcr.io/gr4b4z/denoise-<host>), so GITHUB_TOKEN is the
+# only credential needed — the same arrangement as ghcr.io/gr4b4z/infrapilot, recorded as an exception to the
+# org-scoped package rule (governance PENDING-004).
+#
+# Optional settings, only for publishing somewhere else:
+#   vars.IMAGE_NAMESPACE     GHCR namespace, default ghcr.io/<this repository's owner>.
+#   secrets.GHCR_PUSH_TOKEN  Needed when that namespace belongs to another owner: a token with write:packages there.
 #
 # Tags are immutable: a version that already exists in the registry is refused unless the manual run sets `force`.
 
@@ -73,7 +75,7 @@ jobs:
       - name: Resolve registry
         id: registry
         env:
-          NAMESPACE: ${{ vars.IMAGE_NAMESPACE || 'ghcr.io/softwareone-platform' }}
+          NAMESPACE: ${{ vars.IMAGE_NAMESPACE || format('ghcr.io/{0}', github.repository_owner) }}
           HAS_PUSH_TOKEN: ${{ secrets.GHCR_PUSH_TOKEN != '' }}
           OWNER: ${{ github.repository_owner }}
         run: |
@@ -81,13 +83,13 @@ jobs:
           namespace="${NAMESPACE,,}"
           namespace="${namespace%/}"
           if [[ "$namespace" != ghcr.io/* ]]; then
-            echo "::error::IMAGE_NAMESPACE must be a GHCR namespace such as ghcr.io/softwareone-platform (got '$namespace')"
+            echo "::error::IMAGE_NAMESPACE must be a GHCR namespace such as ghcr.io/${OWNER,,} (got '$namespace')"
             exit 1
           fi
           target_owner="${namespace#ghcr.io/}"
           target_owner="${target_owner%%/*}"
           if [ "$target_owner" != "${OWNER,,}" ] && [ "$HAS_PUSH_TOKEN" != "true" ]; then
-            echo "::error::Publishing to $namespace needs the GHCR_PUSH_TOKEN secret (write:packages on $target_owner); GITHUB_TOKEN can only push to ghcr.io/${OWNER,,}. Set vars.IMAGE_NAMESPACE to ghcr.io/${OWNER,,} to use it."
+            echo "::error::Publishing to $namespace needs the GHCR_PUSH_TOKEN secret (write:packages on $target_owner); GITHUB_TOKEN can only push to ghcr.io/${OWNER,,}. Unset vars.IMAGE_NAMESPACE to use the default."
             exit 1
           fi
           echo "image_repo=${namespace}/denoise" >> "$GITHUB_OUTPUT"
