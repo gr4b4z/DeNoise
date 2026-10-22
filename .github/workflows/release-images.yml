@@ -1,0 +1,231 @@
+name: Release images
+
+# Publishes the four DeNoise images (api, ingest, workers, migrator) for a version tag and creates the matching
+# GitHub release. This repository owns building and publishing; the release repository
+# The separate release repository only deploys pinned tags: it mirrors them from GHCR into the
+# shared ACR, runs the migrator image as a one-shot job and then rolls the three apps to the same tag. The
+# configuration the images expect is the environment-variable contract in docs/03-architecture-and-adrs.md §4.
+#
+#   git tag v0.2.0 && git push origin v0.2.0      → images <namespace>/denoise-<host>:v0.2.0 (+ sha-<commit>)
+#                                                    and a GitHub release v0.2.0
+#
+# Images are published under this repository's owner (ghcr.io/gr4b4z/denoise-<host>), so GITHUB_TOKEN is the
+# only credential needed — the same arrangement as ghcr.io/gr4b4z/infrapilot, recorded as an exception to the
+# org-scoped package rule (governance PENDING-004).
+#
+# Optional settings, only for publishing somewhere else:
+#   vars.IMAGE_NAMESPACE     GHCR namespace, default ghcr.io/<this repository's owner>.
+#   secrets.GHCR_PUSH_TOKEN  Needed when that namespace belongs to another owner: a token with write:packages there.
+#
+# Tags are immutable: a version that already exists in the registry is refused unless the manual run sets `force`.
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing git tag to (re)publish, vMAJOR.MINOR.PATCH.'
+        required: true
+        type: string
+      force:
+        description: 'Overwrite images that already exist for this tag.'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: release-images-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  resolve:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+      sha: ${{ steps.sha.outputs.value }}
+      image_repo: ${{ steps.registry.outputs.image_repo }}
+    steps:
+      - name: Validate version
+        id: version
+        env:
+          VERSION: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::the tag must look like v1.2.3 (got '$VERSION')"
+            exit 1
+          fi
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ steps.version.outputs.value }}
+
+      - name: Resolve commit
+        id: sha
+        run: echo "value=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve registry
+        id: registry
+        env:
+          NAMESPACE: ${{ vars.IMAGE_NAMESPACE || format('ghcr.io/{0}', github.repository_owner) }}
+          HAS_PUSH_TOKEN: ${{ secrets.GHCR_PUSH_TOKEN != '' }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          namespace="${NAMESPACE,,}"
+          namespace="${namespace%/}"
+          if [[ "$namespace" != ghcr.io/* ]]; then
+            echo "::error::IMAGE_NAMESPACE must be a GHCR namespace such as ghcr.io/${OWNER,,} (got '$namespace')"
+            exit 1
+          fi
+          target_owner="${namespace#ghcr.io/}"
+          target_owner="${target_owner%%/*}"
+          if [ "$target_owner" != "${OWNER,,}" ] && [ "$HAS_PUSH_TOKEN" != "true" ]; then
+            echo "::error::Publishing to $namespace needs the GHCR_PUSH_TOKEN secret (write:packages on $target_owner); GITHUB_TOKEN can only push to ghcr.io/${OWNER,,}. Unset vars.IMAGE_NAMESPACE to use the default."
+            exit 1
+          fi
+          echo "image_repo=${namespace}/denoise" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+        if: ${{ github.event.inputs.force != 'true' }}
+
+      - name: Log in to GHCR
+        if: ${{ github.event.inputs.force != 'true' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PUSH_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Refuse to overwrite a published version
+        if: ${{ github.event.inputs.force != 'true' }}
+        env:
+          IMAGE_REPO: ${{ steps.registry.outputs.image_repo }}
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          set -euo pipefail
+          for host in api ingest workers migrator; do
+            if docker buildx imagetools inspect "${IMAGE_REPO}-${host}:${VERSION}" >/dev/null 2>&1; then
+              echo "::error::${IMAGE_REPO}-${host}:${VERSION} already exists. Tags are immutable: tag a new version, or re-run by hand with force."
+              exit 1
+            fi
+          done
+
+  build:
+    name: Build and push ${{ matrix.host }}
+    needs: resolve
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      # One host failing must not cancel the others: the healthy builds show the failure is host-specific.
+      fail-fast: false
+      matrix:
+        host: [Api, Ingest, Workers, Migrator]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+
+      - name: Image name
+        id: image
+        # Image repository names must be lowercase; the HOST build argument keeps the project-name casing.
+        env:
+          HOST: ${{ matrix.host }}
+          IMAGE_REPO: ${{ needs.resolve.outputs.image_repo }}
+        run: echo "name=${IMAGE_REPO}-${HOST,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PUSH_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: build/Dockerfile
+          build-args: HOST=${{ matrix.host }}
+          platforms: linux/amd64
+          push: true
+          # Plain image manifests (no attestation index) keep `az acr import` and digest pinning simple.
+          provenance: false
+          tags: |
+            ${{ steps.image.outputs.name }}:${{ needs.resolve.outputs.version }}
+            ${{ steps.image.outputs.name }}:sha-${{ needs.resolve.outputs.sha }}
+          labels: |
+            org.opencontainers.image.title=denoise-${{ matrix.host }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ needs.resolve.outputs.sha }}
+            org.opencontainers.image.version=${{ needs.resolve.outputs.version }}
+            org.opencontainers.image.description=DeNoise ${{ matrix.host }} host
+          # Layer cache per host: the four hosts share the restore and build layers of the common projects.
+          cache-from: type=gha,scope=image-${{ matrix.host }}
+          cache-to: type=gha,mode=max,scope=image-${{ matrix.host }}
+
+  release:
+    name: GitHub release
+    needs: [resolve, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
+    steps:
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PUSH_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Image digests
+        id: digests
+        env:
+          IMAGE_REPO: ${{ needs.resolve.outputs.image_repo }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+          SHA: ${{ needs.resolve.outputs.sha }}
+        run: |
+          set -euo pipefail
+          {
+            echo "Images for \`${VERSION}\` (commit ${SHA}):"
+            echo
+            echo "| Host | Image | Digest |"
+            echo "|---|---|---|"
+            for host in api ingest workers migrator; do
+              ref="${IMAGE_REPO}-${host}:${VERSION}"
+              digest="$(docker buildx imagetools inspect "$ref" --format '{{ .Manifest.Digest }}')"
+              echo "| ${host} | \`${ref}\` | \`${digest}\` |"
+            done
+            echo
+            echo "Deploy: bump \`envs/<env>.version\` to \`${VERSION}\` in the separate release repository."
+          } > notes.md
+          cat notes.md >> "$GITHUB_STEP_SUMMARY"
+
+      # The release repository's bump-dev-version.yml resolves "latest" from these releases.
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$VERSION" --repo "$GITHUB_REPOSITORY" --notes-file notes.md
+          else
+            gh release create "$VERSION" --repo "$GITHUB_REPOSITORY" --title "$VERSION" --notes-file notes.md --verify-tag
+          fi

@@ -1,0 +1,18 @@
+{ "subscriptionId": "00000000-0000-0000-0000-0000000000a1", "notificationId": 7, "id": "PROVISIONAL-ado-build-2",
+  "eventType": "build.complete", "publisherId": "tfs",
+  "message": { "text": "Build orders-ci 20261021.4 succeeded" },
+  "detailedMessage": { "text": "Build orders-ci 20261021.4 succeeded" },
+  "resource": {
+    "_links": { "web": { "href": "https://dev.azure.com/fabrikam/Orders/_build/results?buildId=4124" } },
+    "id": 4124, "buildNumber": "20261021.4", "status": "completed", "result": "succeeded", "reason": "individualCI",
+    "queueTime": "2026-10-21T10:08:00Z", "startTime": "2026-10-21T10:08:30Z", "finishTime": "2026-10-21T10:14:12Z",
+    "url": "https://dev.azure.com/fabrikam/11111111-2222-3333-4444-555555555555/_apis/build/Builds/4124",
+    "definition": { "id": 42, "name": "orders-ci", "path": "\\", "type": "build" },
+    "project": { "id": "11111111-2222-3333-4444-555555555555", "name": "Orders" },
+    "sourceBranch": "refs/heads/main", "sourceVersion": "9fceb02d0ae598e95dc970b74767f19372d61af8",
+    "requestedFor": { "displayName": "Dev One", "uniqueName": "dev.one@example.com" },
+    "lastChangedDate": "2026-10-21T10:14:12Z",
+    "repository": { "id": "66666666-7777-8888-9999-000000000000", "name": "orders", "type": "TfsGit" } },
+  "resourceVersion": "2.0",
+  "resourceContainers": { "collection": { "id": "c0000000-0000-0000-0000-000000000001" }, "account": { "id": "a0000000-0000-0000-0000-000000000001" }, "project": { "id": "11111111-2222-3333-4444-555555555555" } },
+  "createdDate": "2026-10-21T10:14:13Z" }

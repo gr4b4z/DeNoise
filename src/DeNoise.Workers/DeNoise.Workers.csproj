@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!-- Web SDK so the workers host can expose /healthz on a side port. -->
+  <ItemGroup>
+    <ProjectReference Include="../DeNoise.Infrastructure/DeNoise.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

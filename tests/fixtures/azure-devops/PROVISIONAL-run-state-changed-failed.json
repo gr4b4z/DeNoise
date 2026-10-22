@@ -1,0 +1,15 @@
+{ "id": "PROVISIONAL-ado-run-1", "eventType": "ms.vss-pipelines.run-state-changed-event", "publisherId": "pipelines",
+  "message": { "text": "Run 20261021.2 failed" }, "detailedMessage": { "text": "Run 20261021.2 failed" },
+  "resource": {
+    "run": {
+      "_links": { "self": { "href": "https://dev.azure.com/fabrikam/Orders/_apis/pipelines/7/runs/9001" }, "web": { "href": "https://dev.azure.com/fabrikam/Orders/_build/results?buildId=9001" } },
+      "pipeline": { "url": "https://dev.azure.com/fabrikam/Orders/_apis/pipelines/7?revision=3", "id": 7, "revision": 3, "name": "orders-cd-prod", "folder": "\\" },
+      "state": "completed", "result": "failed",
+      "createdDate": "2026-10-21T11:00:00Z", "finishedDate": "2026-10-21T11:07:40Z",
+      "url": "https://dev.azure.com/fabrikam/Orders/_apis/pipelines/7/runs/9001", "id": 9001, "name": "20261021.2",
+      "resources": { "repositories": { "self": { "repository": { "id": "66666666-7777-8888-9999-000000000000", "type": "azureReposGit" }, "refName": "refs/heads/main", "version": "9fceb02d0ae598e95dc970b74767f19372d61af8" } } } },
+    "pipeline": { "url": "https://dev.azure.com/fabrikam/Orders/_apis/pipelines/7?revision=3", "id": 7, "revision": 3, "name": "orders-cd-prod", "folder": "\\" },
+    "runUrl": "https://dev.azure.com/fabrikam/Orders/_build/results?buildId=9001" },
+  "resourceVersion": "5.1-preview.1",
+  "resourceContainers": { "collection": { "id": "c0000000-0000-0000-0000-000000000001" }, "account": { "id": "a0000000-0000-0000-0000-000000000001" }, "project": { "id": "11111111-2222-3333-4444-555555555555" } },
+  "createdDate": "2026-10-21T11:07:41Z" }

@@ -1,0 +1,224 @@
+import { Link, Outlet, useNavigate } from '@tanstack/react-router';
+import { savedFiltersQuery, useDeleteFilter } from '@/suppressions/queries';
+import { DEFAULT_ENVIRONMENTS } from '@/routes/queueSearch';
+import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { authEvents } from '@/api/client';
+import { meQuery, useLogout } from '@/auth/queries';
+import { can, P } from '@/auth/permissions';
+import { countsQuery, teamsQuery } from '@/episodes/queries';
+import { FreshnessBar } from '@/components/FreshnessBar';
+import { RealtimeProvider } from '@/realtime/RealtimeProvider';
+import { QUEUE_VIEWS } from '@/api/types';
+import { getDensity, getTheme, setDensity, setTheme, type Density, type Theme } from './preferences';
+
+/** Fixed 240 px rail, work surface, FreshnessBar at the bottom (08 §0 Layout). */
+export function Shell() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const me = useQuery(meQuery());
+  const counts = useQuery(countsQuery());
+  const teams = useQuery({ ...teamsQuery(), enabled: !!me.data });
+  const logout = useLogout();
+
+  useEffect(() => {
+    const onUnauthorized = () => {
+      void navigate({ to: '/login', search: { returnTo: `${location.pathname}${location.search}` } });
+    };
+    authEvents.addEventListener('unauthorized', onUnauthorized);
+    return () => authEvents.removeEventListener('unauthorized', onUnauthorized);
+  }, [navigate]);
+
+  return (
+    <RealtimeProvider enabled={!!me.data}>
+      <div className="grid h-dvh grid-rows-[1fr_auto]">
+        <div className="grid min-h-0 grid-cols-[var(--rail-width)_1fr] max-md:grid-cols-1">
+          <nav aria-label="Primary" className="flex min-h-0 flex-col border-r border-line bg-surface-2 max-md:hidden">
+            <div className="flex h-11 items-center px-3 text-base font-semibold">{t('app.name')}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+              <RailHeading>{t('nav.views')}</RailHeading>
+              <ul className="m-0 list-none p-0">
+                {QUEUE_VIEWS.filter((v) => v !== 'closed' || can(me.data, P.historyRead)).map((view) => (
+                  <li key={view}>
+                    <Link
+                      to="/queue"
+                      search={{ view, environment: DEFAULT_ENVIRONMENTS }}
+                      className="flex h-7 items-center justify-between rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline"
+                      activeProps={{ className: 'bg-surface font-semibold' }}
+                      activeOptions={{ includeSearch: true, exact: false }}
+                    >
+                      <span>{t(`views.${view}`)}</span>
+                      <span className="text-xs text-ink-2">{counts.data?.[view] ?? ''}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <SavedFiltersRail />
+              <RailHeading>{t('nav.heartbeats')}</RailHeading>
+              <ul className="m-0 list-none p-0">
+                <li>
+                  <Link to="/heartbeats" search={{}} className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }}>
+                    {t('nav.heartbeats')}
+                  </Link>
+                </li>
+              </ul>
+              <RailHeading>{t('nav.configuration')}</RailHeading>
+              <ul className="m-0 list-none p-0">
+                <li>
+                  <Link to="/integrations" className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }}>
+                    {t('nav.integrations')}
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/suppressions" className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }}>
+                    {t('nav.suppressions')}
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/history" search={{}} className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }}>
+                    {t('nav.history')}
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/destinations" className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }}>
+                    {t('nav.destinations')}
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/templates" className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }}>
+                    {t('nav.templates')}
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/policies/$kind" params={{ kind: 'routing' }} className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }} data-testid="nav-policies">
+                    {t('nav.policies')}
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/environments" className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }} data-testid="nav-environments">
+                    {t('nav.environments')}
+                  </Link>
+                </li>
+                {can(me.data, P.policyManage) && (
+                  <li>
+                    <Link to="/config" className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }}>
+                      {t('nav.config')}
+                    </Link>
+                  </li>
+                )}
+                {can(me.data, P.hubHealthRead) && (
+                  <li>
+                    <Link to="/hub" className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }} data-testid="nav-hub">
+                      {t('nav.hub')}
+                    </Link>
+                  </li>
+                )}
+                {can(me.data, P.auditRead) && (
+                  <li>
+                    <Link to="/audit" search={{}} className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }} data-testid="nav-audit">
+                      {t('nav.audit')}
+                    </Link>
+                  </li>
+                )}
+              </ul>
+              {((teams.data && teams.data.length > 0) || can(me.data, P.teamManage)) && (
+                <>
+                  <RailHeading>{t('nav.teams')}</RailHeading>
+                  <ul className="m-0 list-none p-0">
+                    {teams.data?.map((team) => (
+                      <li key={team.id}>
+                        <Link to="/teams/$id" params={{ id: team.id }} className="flex h-7 items-center rounded-sm px-2 text-sm text-ink hover:bg-surface hover:no-underline" activeProps={{ className: 'bg-surface font-semibold' }}>
+                          {team.name}
+                        </Link>
+                      </li>
+                    ))}
+                    {can(me.data, P.teamManage) && (
+                      <li>
+                        <Link
+                          to="/teams"
+                          className="flex h-7 items-center rounded-sm px-2 text-sm text-ink-2 hover:bg-surface hover:no-underline"
+                          activeProps={{ className: 'bg-surface font-semibold text-ink' }}
+                          activeOptions={{ exact: true }}
+                          data-testid="nav-teams-admin"
+                        >
+                          {t('nav.teamsAdmin')}
+                        </Link>
+                      </li>
+                    )}
+                  </ul>
+                </>
+              )}
+            </div>
+            <div className="border-t border-line p-2 text-xs text-ink-2">
+              <div className="truncate px-1" title={me.data?.username}>
+                {me.data?.displayName}
+              </div>
+              <div className="mt-1 flex flex-wrap gap-1 px-1">
+                <PrefSelect label={t('nav.theme')} value={getTheme()} options={['system', 'light', 'dark']} onChange={(v) => setTheme(v as Theme)} />
+                <PrefSelect label={t('nav.density')} value={getDensity()} options={['compact', 'comfortable']} onChange={(v) => setDensity(v as Density)} />
+              </div>
+              <button
+                type="button"
+                className="btn btn-sm mt-2 w-full"
+                onClick={() => {
+                  logout.mutate(undefined, { onSettled: () => void navigate({ to: '/login', search: { returnTo: undefined } }) });
+                }}
+              >
+                {t('nav.signOut')}
+              </button>
+            </div>
+          </nav>
+          <main className="min-h-0 min-w-0 overflow-hidden bg-bg">
+            <Outlet />
+          </main>
+        </div>
+        <FreshnessBar />
+      </div>
+    </RealtimeProvider>
+  );
+}
+
+function RailHeading({ children }: { children: string }) {
+  return <div className="mt-3 mb-1 px-2 text-xs text-ink-2">{children}</div>;
+}
+
+function PrefSelect({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
+  return (
+    <label className="flex items-center gap-1">
+      <span>{label}</span>
+      <select className="h-6 rounded-sm border border-line bg-surface px-1 text-xs" defaultValue={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+/** Saved queue filters (06 §4 `/me/filters`): each entry stores the queue URL query; applying navigates, the × deletes. */
+function SavedFiltersRail() {
+  const { t } = useTranslation();
+  const filters = useQuery(savedFiltersQuery());
+  const remove = useDeleteFilter();
+  if (!filters.data || filters.data.length === 0) return null;
+  return (
+    <>
+      <RailHeading>{t('nav.savedFilters')}</RailHeading>
+      <ul className="m-0 list-none p-0" data-testid="saved-filters">
+        {filters.data.map((f) => (
+          <li key={f.id} className="flex h-7 items-center gap-1 rounded-sm px-2 text-sm hover:bg-surface">
+            <a href={`/queue?${f.query}`} className="min-w-0 flex-1 truncate text-ink hover:no-underline">
+              {f.name}
+            </a>
+            <button type="button" className="text-xs text-ink-2 hover:text-ink" aria-label={t('queue.deleteFilter', { name: f.name })} onClick={() => remove.mutate(f.id)}>
+              ×
+            </button>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}

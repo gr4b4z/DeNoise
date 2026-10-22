@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Domain has zero package references beyond the BCL (AGENTS.md §3). -->
+  <PropertyGroup>
+    <RootNamespace>DeNoise.Domain</RootNamespace>
+  </PropertyGroup>
+</Project>

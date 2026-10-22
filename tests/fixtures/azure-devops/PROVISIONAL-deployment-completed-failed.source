@@ -1,0 +1,1 @@
+https://learn.microsoft.com/en-us/azure/devops/service-hooks/events?view=azure-devops#release-deployment-completed — shape of the documented "Release deployment completed" (ms.vss-release.deployment-completed-event) sample, trimmed (approvals, variables, conditions removed); values invented, not a capture. PROVISIONAL until a real delivery replaces it.

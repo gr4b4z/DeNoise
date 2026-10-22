@@ -1,0 +1,71 @@
+/* 08 §0 — design tokens. Severity is the only saturated colour; everything else is tonal.
+   Theme follows the OS and can be overridden with data-theme="light|dark" on <html>. */
+:root {
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --surface-2: #eef0f3;
+  --ink: #161a20;
+  --ink-2: #5b6472;
+  --line: #dde1e6;
+  --accent: #2f6feb;
+  --sev-critical: #c8102e;
+  --sev-high: #d9660d;
+  --sev-medium: #b58900;
+  --sev-low: #2e7d32;
+  --sev-info: #4a5568;
+  --sev-unknown: repeating-linear-gradient(135deg, var(--sev-high) 0 4px, var(--surface) 4px 8px);
+
+  --font-sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --row-height: 36px;
+  --rail-width: 240px;
+  --drawer-width: 560px;
+  --radius: 6px;
+  --radius-sm: 4px;
+  --shadow-drawer: 0 0 0 1px var(--line), -8px 0 24px rgba(0, 0, 0, 0.08);
+  --shadow-menu: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #12151a;
+    --surface: #1a1e25;
+    --surface-2: #232830;
+    --ink: #e8eaee;
+    --ink-2: #9aa3b0;
+    --line: #2e343e;
+    --accent: #6ea0ff;
+    --sev-critical: #ff5a6e;
+    --sev-high: #ff9a3c;
+    --sev-medium: #e6c04a;
+    --sev-low: #6bcb77;
+    --sev-info: #8b96a5;
+    --shadow-drawer: 0 0 0 1px var(--line), -8px 0 24px rgba(0, 0, 0, 0.4);
+    --shadow-menu: 0 4px 16px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #12151a;
+  --surface: #1a1e25;
+  --surface-2: #232830;
+  --ink: #e8eaee;
+  --ink-2: #9aa3b0;
+  --line: #2e343e;
+  --accent: #6ea0ff;
+  --sev-critical: #ff5a6e;
+  --sev-high: #ff9a3c;
+  --sev-medium: #e6c04a;
+  --sev-low: #6bcb77;
+  --sev-info: #8b96a5;
+  --shadow-drawer: 0 0 0 1px var(--line), -8px 0 24px rgba(0, 0, 0, 0.4);
+  --shadow-menu: 0 4px 16px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+
+:root[data-density='comfortable'] {
+  --row-height: 44px;
+}

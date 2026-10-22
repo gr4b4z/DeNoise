@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- DTOs shared with the frontend generator (OpenAPI source). No dependencies on other projects. -->
+</Project>
