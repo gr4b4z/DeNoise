@@ -57,10 +57,71 @@ app.kubernetes.io/instance: {{ .Release.Name }}
   value: {{ .Values.retention.runAtUtcHour | quote }}
 - name: Notifications__AllowInsecureDestinations
   value: {{ .Values.allowInsecureDestinations | quote }}
+{{- /* Auth:Local (LocalAuthOptions, src/DeNoise.Application/Auth/PasswordPolicy.cs) */}}
+- name: Auth__Local__PasswordMinLength
+  value: {{ .Values.auth.local.passwordMinLength | quote }}
+- name: Auth__Local__LockoutFailures
+  value: {{ .Values.auth.local.lockoutFailures | quote }}
+- name: Auth__Local__LockoutWindow
+  value: {{ .Values.auth.local.lockoutWindow | quote }}
+- name: Auth__Local__SelfServiceResetEnabled
+  value: {{ .Values.auth.local.selfServiceResetEnabled | quote }}
+{{- with .Values.auth.local.bootstrapPasswordSecret }}
+- name: Auth__Local__BootstrapPassword
+  valueFrom:
+    secretKeyRef:
+      name: {{ . }}
+      key: password
+{{- end }}
+{{- /* Smtp (SmtpOptions, src/DeNoise.Infrastructure/Notifications/SmtpEmailChannel.cs); without a host the e-mail channel stays off */}}
+{{- if .Values.smtp.host }}
+- name: Smtp__Host
+  value: {{ .Values.smtp.host | quote }}
+- name: Smtp__Port
+  value: {{ .Values.smtp.port | quote }}
+- name: Smtp__From
+  value: {{ .Values.smtp.from | quote }}
+- name: Smtp__Security
+  value: {{ .Values.smtp.security | quote }}
+- name: Smtp__MessageIdDomain
+  value: {{ .Values.smtp.messageIdDomain | quote }}
+{{- if .Values.smtp.username }}
+- name: Smtp__Username
+  value: {{ .Values.smtp.username | quote }}
+{{- else if .Values.smtp.credentialsSecret }}
+- name: Smtp__Username
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.smtp.credentialsSecret }}
+      key: username
+      optional: true
+{{- end }}
+{{- with .Values.smtp.credentialsSecret }}
+- name: Smtp__Password
+  valueFrom:
+    secretKeyRef:
+      name: {{ . }}
+      key: password
+      optional: true
+{{- end }}
+{{- end }}
+{{- end -}}
+{{/* Data Protection key ring claim (ADR-18): the configured name, the chart-created default, or empty (emptyDir fallback) */}}
+{{- define "denoise.dataProtection.claimName" -}}
+{{- if .Values.dataProtection.persistentVolumeClaim -}}
+{{ .Values.dataProtection.persistentVolumeClaim }}
+{{- else if .Values.dataProtection.createPvc -}}
+{{ include "denoise.fullname" . }}-dataprotection-keys
+{{- end -}}
 {{- end -}}
 {{/* Deployment body shared by the three hosts. Context: dict "root" . "host" "api" "spec" .Values.api */}}
 {{- define "denoise.deployment" -}}
 {{- $root := .root -}}{{- $host := .host -}}{{- $spec := .spec -}}
+{{- $keysPath := $root.Values.dataProtection.keysPath -}}
+{{- $keysClaim := include "denoise.dataProtection.claimName" $root -}}
+{{- if and $keysClaim (not $keysPath) -}}
+{{- fail "dataProtection.keysPath is required when dataProtection.persistentVolumeClaim or dataProtection.createPvc is set" -}}
+{{- end -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -108,6 +169,10 @@ spec:
               containerPort: 8080
           env:
             {{- include "denoise.env" $root | nindent 12 }}
+            {{- with $keysPath }}
+            - name: DataProtection__KeysPath
+              value: {{ . | quote }}
+            {{- end }}
           startupProbe:
             httpGet: { path: /healthz/startup, port: http }
             periodSeconds: 5
@@ -125,7 +190,19 @@ spec:
             capabilities: { drop: ["ALL"] }
           volumeMounts:
             - { name: tmp, mountPath: /tmp }
+            {{- with $keysPath }}
+            - { name: dataprotection-keys, mountPath: {{ . | quote }} }
+            {{- end }}
       volumes:
         - name: tmp
           emptyDir: {}
+        {{- if $keysPath }}
+        - name: dataprotection-keys
+          {{- if $keysClaim }}
+          persistentVolumeClaim:
+            claimName: {{ $keysClaim }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- end }}
 {{- end -}}

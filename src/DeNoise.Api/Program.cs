@@ -1,4 +1,5 @@
 using System.Threading.RateLimiting;
+using DeNoise.Api;
 using DeNoise.Api.Auth;
 using DeNoise.Api.Endpoints;
 using DeNoise.Application.Abstractions;
@@ -21,6 +22,7 @@ builder.Services.AddDeNoiseInfrastructure(builder.Configuration);
 builder.Services.AddHealthChecks().AddCheck<OutboxLagHealthCheck>("outbox-lag", tags: [HealthEndpoints.ReadyTag]);
 builder.Services.AddHostedService<PgChangeListener>();
 builder.Services.AddSingleton<CsrfTokens>();
+builder.Services.AddSpaHosting();
 builder.Services.ConfigureHttpJsonOptions(o =>
 {
     o.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
@@ -129,6 +131,8 @@ app.UseExceptionHandler(handler => handler.Run(async ctx =>
     if (status == 500) app.Logger.LogError(ex, "Unhandled exception (trace {TraceId})", ctx.CorrelationId());
     await Problems.WriteAsync(ctx, status, code, title, detail, extra);
 }));
+// The SPA built into wwwroot (Api image only); assets are served before rate limiting and authentication.
+var spaPresent = app.UseSpaStaticFiles();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -147,6 +151,7 @@ app.MapMappings();
 app.MapSuppressions();
 app.MapEvents();
 app.MapConfigBundle();
+if (spaPresent) app.MapSpaFallback();
 
 // Bootstrap admin on first start (06 §6): a generated password is printed once to stdout, never logged.
 await using (var scope = app.Services.CreateAsyncScope())
