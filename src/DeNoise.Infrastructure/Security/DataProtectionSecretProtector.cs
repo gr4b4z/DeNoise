@@ -5,9 +5,9 @@ namespace DeNoise.Infrastructure.Security;
 
 /// <summary>
 /// Per-row secret encryption via ASP.NET Data Protection (ADR-11). The key ring location comes from
-/// <c>DataProtection:KeysPath</c>: in AKS a ReadWriteMany volume shared by Api, Ingest and Workers (Helm
-/// <c>dataProtection.*</c>, ADR-18). Without it keys are ephemeral, which is acceptable only for tests and single-run
-/// development.
+/// <see cref="DataProtectionSetup"/>: in deployments a read-only ring from Key Vault (<c>DataProtection:Keys</c>, ADR-18)
+/// shared by Api, Ingest and Workers. Without configuration keys are ephemeral, which is acceptable only for tests and
+/// single-run development.
 /// </summary>
 public sealed class DataProtectionSecretProtector(IDataProtectionProvider provider) : ISecretProtector
 {

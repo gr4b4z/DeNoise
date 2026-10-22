@@ -25,7 +25,6 @@ using DeNoise.Infrastructure.Processing;
 using DeNoise.Infrastructure.ReadModels;
 using DeNoise.Infrastructure.Realtime;
 using DeNoise.Infrastructure.Security;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -66,9 +65,7 @@ public static class InfrastructureServiceCollectionExtensions
         // Ownership, routing, notifications (milestone 3)
         services.AddOptions<NotificationOptions>().Bind(configuration.GetSection(NotificationOptions.Section));
         services.AddOptions<SmtpOptions>().Bind(configuration.GetSection(SmtpOptions.Section));
-        var keysPath = configuration["DataProtection:KeysPath"];
-        var dataProtection = services.AddDataProtection().SetApplicationName("DeNoise");
-        if (!string.IsNullOrWhiteSpace(keysPath)) dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+        services.AddDeNoiseDataProtection(configuration);
         services.AddSingleton<ISecretProtector, DataProtectionSecretProtector>();
         services.AddScoped<ITeamRepository, EfTeamRepository>();
         services.AddScoped<TeamService>();

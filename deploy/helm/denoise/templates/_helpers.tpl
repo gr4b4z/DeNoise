@@ -117,8 +117,16 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{/* Deployment body shared by the three hosts. Context: dict "root" . "host" "api" "spec" .Values.api */}}
 {{- define "denoise.deployment" -}}
 {{- $root := .root -}}{{- $host := .host -}}{{- $spec := .spec -}}
-{{- $keysPath := $root.Values.dataProtection.keysPath -}}
+{{- $keysSecret := $root.Values.dataProtection.keysSecret -}}
 {{- $keysClaim := include "denoise.dataProtection.claimName" $root -}}
+{{- if and $keysSecret $keysClaim -}}
+{{- fail "dataProtection.keysSecret and dataProtection.persistentVolumeClaim / createPvc are alternatives; set one" -}}
+{{- end -}}
+{{- if and $keysSecret (not $root.Values.dataProtection.keysSecretKeys) -}}
+{{- fail "dataProtection.keysSecretKeys must list at least one key of dataProtection.keysSecret" -}}
+{{- end -}}
+{{- /* A key ring from the Secret is read-only and needs no directory: keysPath (and its volume) only apply without it */}}
+{{- $keysPath := ternary "" $root.Values.dataProtection.keysPath (not (empty $keysSecret)) -}}
 {{- if and $keysClaim (not $keysPath) -}}
 {{- fail "dataProtection.keysPath is required when dataProtection.persistentVolumeClaim or dataProtection.createPvc is set" -}}
 {{- end -}}
@@ -169,6 +177,13 @@ spec:
               containerPort: 8080
           env:
             {{- include "denoise.env" $root | nindent 12 }}
+            {{- range $i, $key := ternary $root.Values.dataProtection.keysSecretKeys (list) (not (empty $keysSecret)) }}
+            - name: DataProtection__Keys__{{ $i }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $keysSecret }}
+                  key: {{ $key }}
+            {{- end }}
             {{- with $keysPath }}
             - name: DataProtection__KeysPath
               value: {{ . | quote }}

@@ -49,9 +49,15 @@ smtp:
 
 # ASP.NET Data Protection key ring (ADR-11, ADR-18): per-row secrets and CSRF tokens, shared by api, ingest and workers.
 dataProtection:
+  # Preferred: Secret with key documents from `DeNoise.Migrator generate-dataprotection-key` (kept in Key Vault), one per
+  # entry of keysSecretKeys, rendered as DataProtection__Keys__<n> in api, ingest and workers. The ring is read-only and
+  # needs no volume; keysPath and the PVC settings below are then ignored / refused.
+  keysSecret: ""
+  keysSecretKeys: [key-1]         # rotation: add key-2 next to key-1; keep old keys so existing rows stay readable
+  # Alternative: a directory shared by the hosts.
   keysPath: /var/denoise/keys     # DataProtection__KeysPath; empty = in-memory keys and no mount
-  # Existing ReadWriteMany claim mounted at keysPath in api, ingest and workers. With neither this nor createPvc the
-  # chart mounts a per-pod emptyDir: keys die with the pod, encrypted rows become unreadable, single replica only.
+  # Existing ReadWriteMany claim mounted at keysPath in api, ingest and workers. With no keysSecret, claim or createPvc
+  # the chart mounts a per-pod emptyDir: keys die with the pod, encrypted rows become unreadable, single replica only.
   persistentVolumeClaim: ""
   createPvc: false                # create the claim (named persistentVolumeClaim, or <release>-dataprotection-keys); kept on uninstall
   storageClassName: azurefile-csi # AKS built-in Azure Files class (RWX)
