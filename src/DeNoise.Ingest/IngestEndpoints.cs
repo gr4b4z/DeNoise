@@ -9,8 +9,10 @@ using Microsoft.Net.Http.Headers;
 namespace DeNoise.Ingest;
 
 /// <summary>
-/// <c>POST /ingest/{integrationKeyId}</c> (06 §2). Status codes are exactly 202 / 401 / 413 / 429 / 503 and the
-/// response body is fixed-size: no echo of input. The rate limiter answers 429 before this handler runs.
+/// <c>POST /ingest/{integrationKeyId}</c> (06 §2) and, for producers that cannot set headers,
+/// <c>POST /ingest/{integrationKeyId}/{credential}</c>. Status codes are exactly 202 / 401 / 413 / 429 / 503 and the
+/// response body is fixed-size: no echo of input. The rate limiter answers 429 before this handler runs; both routes
+/// carry <c>integrationKeyId</c>, so they share one partition.
 /// </summary>
 public static class IngestEndpoints
 {
@@ -21,6 +23,11 @@ public static class IngestEndpoints
         endpoints.MapPost("/ingest/{integrationKeyId}", HandleAsync)
             .RequireRateLimiting(RateLimitPolicy)
             .WithName("Ingest")
+            .DisableAntiforgery();
+        // The token in the URL is accepted only for an integration that carries the path_credential capability.
+        endpoints.MapPost("/ingest/{integrationKeyId}/{credential}", HandleAsync)
+            .RequireRateLimiting(RateLimitPolicy)
+            .WithName("IngestWithPathCredential")
             .DisableAntiforgery();
         return endpoints;
     }
@@ -34,13 +41,19 @@ public static class IngestEndpoints
 
         // Bearer token per integration (06 §2); without one, ADR-16: the webhook signature is the credential, but only for an
         // integration that requires a signature and has a secret — the verdict check below then refuses anything but Valid.
+        // A header-less producer may instead put the token in the path, which only a path_credential integration accepts.
         Domain.Integrations.Integration? integration;
         var bearer = BearerToken(http.Request);
+        // A header beats the URL: a bearer sent to the path route is the stronger credential, so it is used as such.
+        var pathCredential = bearer is null ? PathCredential(http) : null;
         try
         {
-            integration = bearer is null
-                ? await authenticator.ResolveSignedOnlyAsync(integrationKeyId, ct)
-                : await authenticator.AuthenticateAsync(integrationKeyId, bearer, ct);
+            integration = (bearer, pathCredential) switch
+            {
+                (not null, _) => await authenticator.AuthenticateAsync(integrationKeyId, bearer, ct),
+                (null, not null) => await ResolveFromPathAsync(authenticator, integrationKeyId, pathCredential, ct),
+                _ => await authenticator.ResolveSignedOnlyAsync(integrationKeyId, ct),
+            };
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -52,6 +65,15 @@ public static class IngestEndpoints
         if (integration is null)
         {
             metrics.IngestRejected.Add(1, new KeyValuePair<string, object?>("reason", "unauthorized"));
+            return TypedResults.Unauthorized();
+        }
+
+        // The URL carries the credential in this mode, so the configured allow list is applied here (and only here).
+        if (pathCredential is not null && !IngestCredentialPolicy.PermitsAddress(integration.IpAllowList, http.Connection.RemoteIpAddress))
+        {
+            metrics.IngestRejected.Add(1, new KeyValuePair<string, object?>("reason", "ip_not_allowed"));
+            logger.LogWarning("Source address refused by the allow list for integration {IntegrationId} (trace {TraceId})",
+                integration.IntegrationId, Activity.Current?.TraceId.ToString());
             return TypedResults.Unauthorized();
         }
 
@@ -87,7 +109,8 @@ public static class IngestEndpoints
             ? new Dictionary<string, string>(headers, StringComparer.OrdinalIgnoreCase) { [hmac.Header] = sig.ToString() }
             : headers;
         var verdict = signatures.Verify(integration, body, signatureHeaders);
-        if (verdict == SignatureVerdict.Invalid || (verdict == SignatureVerdict.Missing && hmac.Required) || (bearer is null && verdict != SignatureVerdict.Valid))
+        var credentialled = bearer is not null || pathCredential is not null;
+        if (verdict == SignatureVerdict.Invalid || (verdict == SignatureVerdict.Missing && hmac.Required) || (!credentialled && verdict != SignatureVerdict.Valid))
         {
             metrics.IngestRejected.Add(1, new KeyValuePair<string, object?>("reason", verdict == SignatureVerdict.Invalid ? "bad_signature" : "missing_signature"));
             logger.LogWarning("Signature {Verdict} for integration {IntegrationId} (trace {TraceId})", verdict, integration.IntegrationId, Activity.Current?.TraceId.ToString());
@@ -108,6 +131,24 @@ public static class IngestEndpoints
             http.Response.Headers.RetryAfter = "5";
             return TypedResults.StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
+    }
+
+    /// <summary>The credential segment of <c>/ingest/{integrationKeyId}/{credential}</c>; null on the header route.</summary>
+    private static string? PathCredential(HttpContext http)
+        => http.Request.RouteValues.TryGetValue("credential", out var value) && value?.ToString() is { Length: > 0 } credential
+            ? credential
+            : null;
+
+    /// <summary>
+    /// Verifies the token exactly as the header route does, then drops the integration when it has not opted in.
+    /// The order matters: an integration without the capability must cost the same verification as a wrong token,
+    /// so the response cannot be used to tell the two apart.
+    /// </summary>
+    private static async Task<Domain.Integrations.Integration?> ResolveFromPathAsync(
+        IIngestAuthenticator authenticator, string integrationKeyId, string credential, CancellationToken ct)
+    {
+        var integration = await authenticator.AuthenticateAsync(integrationKeyId, credential, ct);
+        return integration is not null && IngestCredentialPolicy.AllowsPathCredential(integration) ? integration : null;
     }
 
     private static string? BearerToken(HttpRequest request)

@@ -36,11 +36,11 @@ public sealed class IngestEndpointTests(PostgresFixture postgres) : IAsyncLifeti
 
     public async Task DisposeAsync() => await _factory.DisposeAsync();
 
-    private async Task<IntegrationCredentials> CreateIntegrationAsync(string name = "generic")
+    private async Task<IntegrationCredentials> CreateIntegrationAsync(string name = "generic", string? capabilities = null)
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var service = scope.ServiceProvider.GetRequiredService<IntegrationService>();
-        return await service.CreateAsync(new CreateIntegration(name, "generic_webhook", "scope-a"), Actor.System("test"));
+        return await service.CreateAsync(new CreateIntegration(name, "generic_webhook", "scope-a", Capabilities: capabilities), Actor.System("test"));
     }
 
     private static HttpRequestMessage Post(IntegrationCredentials creds, string? token, HttpContent content)
@@ -94,6 +94,80 @@ public sealed class IngestEndpointTests(PostgresFixture postgres) : IAsyncLifeti
 
         await using var db = PostgresFixture.CreateContext(_cs);
         (await db.RawEvents.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Path_credential_is_accepted_when_the_integration_opted_in()
+    {
+        var creds = await CreateIntegrationAsync("azure-monitor", """{"path_credential":true}""");
+        using var client = _factory.CreateClient();
+        var body = """{"schemaId":"azureMonitorCommonAlertSchema"}""";
+
+        using var response = await client.PostAsync(new Uri(creds.IngestPathWithCredential, UriKind.Relative),
+            new StringContent(body, Encoding.UTF8, "application/json"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        await using var db = PostgresFixture.CreateContext(_cs);
+        var raw = await db.RawEvents.SingleAsync(r => r.IntegrationId == creds.Integration.IntegrationId);
+        Encoding.UTF8.GetString(raw.Body).Should().Be(body);
+    }
+
+    [Fact]
+    public async Task Path_credential_is_refused_without_the_capability()
+    {
+        var creds = await CreateIntegrationAsync("no-capability");
+        using var client = _factory.CreateClient();
+
+        using var response = await client.PostAsync(new Uri(creds.IngestPathWithCredential, UriKind.Relative), new StringContent("{}"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        await using var db = PostgresFixture.CreateContext(_cs);
+        (await db.RawEvents.CountAsync(r => r.IntegrationId == creds.Integration.IntegrationId)).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Wrong_path_credential_returns_401_even_with_the_capability()
+    {
+        var creds = await CreateIntegrationAsync("wrong-path-token", """{"path_credential":true}""");
+        using var client = _factory.CreateClient();
+
+        using var response = await client.PostAsync(new Uri($"/ingest/{creds.IngestKeyId}/not-the-token", UriKind.Relative), new StringContent("{}"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Path_credential_is_refused_when_the_source_address_is_outside_the_allow_list()
+    {
+        var creds = await CreateIntegrationAsync("allow-listed", """{"path_credential":true}""");
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<IntegrationService>().UpdateAsync(
+                creds.Integration.IntegrationId, null,
+                new UpdateIntegration(IpAllowList: ["203.0.113.0/24"]), Actor.System("test"));
+        }
+
+        using var client = _factory.CreateClient();
+        using var response = await client.PostAsync(new Uri(creds.IngestPathWithCredential, UriKind.Relative), new StringContent("{}"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Bearer_route_ignores_the_allow_list()
+    {
+        var creds = await CreateIntegrationAsync("header-auth-allow-list");
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<IntegrationService>().UpdateAsync(
+                creds.Integration.IntegrationId, null,
+                new UpdateIntegration(IpAllowList: ["203.0.113.0/24"]), Actor.System("test"));
+        }
+
+        using var client = _factory.CreateClient();
+        using var response = await client.SendAsync(Post(creds, creds.IngestToken, new StringContent("{}")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Accepted);
     }
 
     [Fact]
