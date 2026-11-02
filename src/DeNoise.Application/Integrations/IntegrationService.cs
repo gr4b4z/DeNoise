@@ -24,6 +24,13 @@ public sealed record IntegrationCredentials(Integration Integration, string Inge
 {
     /// <summary>Path a producer posts to; the token goes in the <c>Authorization: Bearer</c> header (06 §2).</summary>
     public string IngestPath => $"/ingest/{IngestKeyId}";
+
+    /// <summary>
+    /// Path for a producer that cannot set headers, such as an Azure Monitor action group. Usable only once the
+    /// integration carries the <c>path_credential</c> capability, and it puts the token in the URL — show it in
+    /// place of <see cref="IngestPath"/>, never alongside it.
+    /// </summary>
+    public string IngestPathWithCredential => $"/ingest/{IngestKeyId}/{IngestToken}";
 }
 
 public sealed class IntegrationService(
