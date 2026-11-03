@@ -8,7 +8,8 @@ namespace DeNoise.Application.Auth;
 /// <summary>
 /// Username + password with Argon2id (ADR-14). Lockout: 10 failures / 15 min per user <b>and</b> per IP, counted from
 /// <c>cfg.login_attempt</c>. Unknown user and wrong password take the same path (a dummy hash is verified) so timing and
-/// the response are indistinguishable; a disabled user is treated as invalid credentials.
+/// the response are indistinguishable; a disabled user, an SSO user and (with <c>Auth:Local:Enabled=false</c>) a user who is
+/// not <c>local_only</c> are treated as invalid credentials.
 /// </summary>
 public sealed class LocalPasswordProvider(
     IUserRepository users, ILoginAttemptRepository attempts, ISecretHasher hasher, IUnitOfWork uow, TimeProvider time, IOptions<LocalAuthOptions> options) : IIdentityProvider
@@ -33,7 +34,10 @@ public sealed class LocalPasswordProvider(
         }
 
         var hash = user?.PasswordHash ?? DummyHashValue(hasher);
-        var ok = hasher.Verify(password, hash) && user is not null && !user.Disabled && user.AuthProvider == AuthProviders.Local && user.PasswordHash is not null;
+        // With Auth:Local:Enabled=false only local_only accounts (break-glass, service accounts) may use a password; everyone else
+        // gets the same "invalid credentials" answer as a wrong password, so the switch does not reveal which accounts are exempt.
+        var ok = hasher.Verify(password, hash) && user is not null && !user.Disabled && user.AuthProvider == AuthProviders.Local && user.PasswordHash is not null
+            && (options.Value.Enabled || user.LocalOnly);
 
         attempts.Add(new LoginAttempt { Id = Ids.New(time), At = now, Username = normalised, Ip = ip, Success = ok });
         if (!ok)

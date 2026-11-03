@@ -3,7 +3,6 @@ using System.Text;
 using System.Text.Json;
 using DeNoise.Application.Abstractions;
 using DeNoise.Application.Audit;
-using DeNoise.Application.Integrations;
 using DeNoise.Domain.Audit;
 using DeNoise.Domain.Common;
 using DeNoise.Domain.Users;
@@ -28,14 +27,13 @@ public sealed record LoginResult(LoginOutcome Outcome, string? SessionToken = nu
 /// </summary>
 public sealed class AuthService(
     IEnumerable<IIdentityProvider> providers, IUserRepository users, ISessionRepository sessions, ISecretHasher hasher,
-    IAuditWriter audit, IUnitOfWork uow, TimeProvider time, IOptions<LocalAuthOptions> options)
+    IAuditWriter audit, IUnitOfWork uow, TimeProvider time, IOptions<LocalAuthOptions> options, SessionIssuer issuer)
 {
     private readonly IIdentityProvider _local = providers.First(p => p.Name == AuthProviders.Local);
 
     public async Task<LoginResult> LoginAsync(string username, string password, System.Net.IPAddress? ip, string? userAgent, string correlationId, CancellationToken ct = default)
     {
         var result = await _local.AuthenticateAsync(username, password, ip, ct);
-        var now = time.GetUtcNow();
         switch (result.Status)
         {
             case AuthenticationStatus.Locked:
@@ -49,19 +47,7 @@ public sealed class AuthService(
         }
 
         var user = result.User!;
-        var token = TokenGenerator.NewSecret();
-        var session = new Session
-        {
-            SessionId = HashToken(token),
-            UserId = user.UserId,
-            CreatedAt = now,
-            LastSeenAt = now,
-            ExpiresAt = now + options.Value.SessionSliding,
-            AbsoluteExpiresAt = now + options.Value.SessionAbsolute,
-            Ip = ip,
-            UserAgent = Truncate(userAgent, 300),
-        };
-        sessions.Add(session);
+        var (token, session) = issuer.Issue(user, ip, userAgent);
         Audit("auth.login", user.Username, user.UserId, correlationId, ip, new { mustChangePassword = user.MustChangePassword });
         await uow.CommitAsync(ct);
         return new LoginResult(LoginOutcome.Success, token, user, ExpiresAt: session.ExpiresAt);
@@ -150,6 +136,8 @@ public sealed class AuthService(
             MustChangePassword = true,
             RoleNames = [Roles.PlatformAdmin],
             Scopes = [],
+            // The bootstrap admin is the break-glass account (ADR-14/15): never projected from Entra, password kept when local sign-in is off.
+            LocalOnly = true,
             CreatedBy = "bootstrap",
             CreatedAt = now,
             UpdatedAt = now,
@@ -177,6 +165,4 @@ public sealed class AuthService(
             CorrelationId = correlationId,
             RequestIp = ip,
         });
-
-    private static string? Truncate(string? s, int max) => s is null ? null : s.Length <= max ? s : s[..max];
 }

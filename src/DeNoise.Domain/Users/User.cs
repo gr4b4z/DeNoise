@@ -7,8 +7,9 @@ public static class AuthProviders
 }
 
 /// <summary>
-/// Hub user (<c>cfg.user</c>, 05 §6, ADR-14). Authorization (roles, scopes, team membership) is always local
-/// regardless of how the user proves identity.
+/// Hub user (<c>cfg.user</c>, 05 §6, ADR-14). Authorization (roles, scopes, team membership) is always <b>enforced</b> from
+/// this row regardless of how the user proves identity. For OIDC users roles and scopes are a projection of Entra app roles
+/// and groups written at sign-in (ADR-15); <see cref="LocalOnly"/> accounts are never projected.
 /// </summary>
 public sealed class User
 {
@@ -16,8 +17,16 @@ public sealed class User
     public required string Username { get; init; }
     public string? Email { get; set; }
     public required string DisplayName { get; set; }
-    public string AuthProvider { get; init; } = AuthProviders.Local;
+    /// <summary><c>local</c> or <c>oidc</c>; a pre-SSO account becomes <c>oidc</c> when its first SSO sign-in matches it (ADR-14).</summary>
+    public string AuthProvider { get; set; } = AuthProviders.Local;
+    /// <summary>Stable external subject: the Entra <c>oid</c> claim (not <c>sub</c>, which is pairwise per application).</summary>
     public string? ExternalId { get; set; }
+    /// <summary>Issuer of <see cref="ExternalId"/>; <c>(ExternalIssuer, ExternalId)</c> is unique.</summary>
+    public string? ExternalIssuer { get; set; }
+    /// <summary>Service accounts and break-glass: never projected from Entra, never matched by e-mail, and password sign-in stays available when <c>Auth:Local:Enabled</c> is false (ADR-15).</summary>
+    public bool LocalOnly { get; set; }
+    /// <summary>When the last SSO sign-in projected roles and scopes onto this row.</summary>
+    public DateTimeOffset? RolesProjectedAt { get; set; }
     public string? PasswordHash { get; set; }
     public DateTimeOffset? PasswordChangedAt { get; set; }
     public bool MustChangePassword { get; set; }

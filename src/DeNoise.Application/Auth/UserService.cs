@@ -8,7 +8,7 @@ using DeNoise.Domain.Users;
 namespace DeNoise.Application.Auth;
 
 public sealed record CreateUser(string Username, string DisplayName, string? Email, string[] Roles, string[] Scopes);
-public sealed record UpdateUser(string? DisplayName, string? Email, string[]? Roles, string[]? Scopes);
+public sealed record UpdateUser(string? DisplayName, string? Email, string[]? Roles, string[]? Scopes, bool? LocalOnly = null);
 
 /// <summary>Admin user management (<c>user.manage</c>): create with a one-time temporary password, roles/scopes, reset, disable/enable, unlock.</summary>
 public sealed class UserService(IUserRepository users, ISessionRepository sessions, ISecretHasher hasher, IAuditWriter audit, IUnitOfWork uow, TimeProvider time)
@@ -52,7 +52,14 @@ public sealed class UserService(IUserRepository users, ISessionRepository sessio
     {
         Require(actor, Permissions.UserManage);
         var user = await users.GetAsync(userId, ct) ?? throw new KeyNotFoundException("user not found");
-        var before = new { user.DisplayName, user.Email, user.RoleNames, user.Scopes };
+        var before = new { user.DisplayName, user.Email, user.RoleNames, user.Scopes, user.LocalOnly };
+        if (request.LocalOnly is { } localOnly && localOnly != user.LocalOnly)
+        {
+            // local_only exempts an account from Entra projection and keeps its password usable when local sign-in is off
+            // (break-glass, service accounts; ADR-15): a platform_admin decision even if user.manage is ever granted wider.
+            if (!actor.IsPlatformAdmin) throw new ForbiddenException(Permissions.UserManage, "only a platform_admin can change local_only");
+            user.LocalOnly = localOnly;
+        }
         if (request.Roles is not null)
         {
             ValidateRoles(request.Roles);
@@ -63,7 +70,7 @@ public sealed class UserService(IUserRepository users, ISessionRepository sessio
         if (request.DisplayName is not null) user.DisplayName = request.DisplayName.Trim();
         if (request.Email is not null) user.Email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
         Touch(user);
-        Audit(actor, "user.update", user, correlationId, new { user.DisplayName, user.Email, user.RoleNames, user.Scopes }, before);
+        Audit(actor, "user.update", user, correlationId, new { user.DisplayName, user.Email, user.RoleNames, user.Scopes, user.LocalOnly }, before);
         await uow.CommitAsync(ct);
         return user;
     }

@@ -47,7 +47,9 @@ public sealed record ProblemDto(string Type, int Status, string Title, string? D
 
 public sealed record LoginRequest(string Username, string Password, bool KeepSignedIn = false);
 public sealed record ChangePasswordRequest(string Current, string New);
+/// <summary><c>Local</c> is <c>Auth:Local:Enabled</c>: when false the login page shows a break-glass link instead of the password form. <c>Oidc</c> is null unless SSO is configured.</summary>
 public sealed record ProvidersResponse(bool Local, OidcProvider? Oidc, bool SelfServiceReset);
+/// <summary><c>LoginUrl</c> starts the server-side authorization code flow (<c>GET /auth/oidc/start</c>); append <c>?returnTo=</c> with a local path.</summary>
 public sealed record OidcProvider(string DisplayName, string LoginUrl);
 public sealed record CsrfResponse(string Token);
 
@@ -55,9 +57,11 @@ public sealed record MeResponse(Guid Id, string Username, string DisplayName, st
     IReadOnlyList<string> Permissions, IReadOnlyList<TeamRef> Teams, bool MustChangePassword, string Credential);
 
 public sealed record UserSummary(Guid Id, string Username, string DisplayName, string? Email, IReadOnlyList<string> Roles, IReadOnlyList<string> Scopes,
-    string AuthProvider, bool Disabled, bool Locked, bool MustChangePassword, DateTimeOffset? LastLoginAt, DateTimeOffset CreatedAt, int Version);
+    string AuthProvider, bool Disabled, bool Locked, bool MustChangePassword, DateTimeOffset? LastLoginAt, DateTimeOffset CreatedAt, int Version,
+    bool LocalOnly = false, DateTimeOffset? RolesProjectedAt = null);
 public sealed record CreateUserRequest(string Username, string DisplayName, string? Email, string[] Roles, string[] Scopes);
-public sealed record UpdateUserRequest(string? DisplayName, string? Email, string[]? Roles, string[]? Scopes);
+/// <summary><c>LocalOnly</c> (platform_admin only) exempts the account from Entra projection and keeps its password usable when local sign-in is disabled.</summary>
+public sealed record UpdateUserRequest(string? DisplayName, string? Email, string[]? Roles, string[]? Scopes, bool? LocalOnly = null);
 public sealed record TemporaryPasswordResponse(UserSummary User, string TemporaryPassword);
 
 public sealed record TokenSummary(Guid Id, string Name, string KeyId, IReadOnlyList<string> Scopes, DateTimeOffset? ExpiresAt, DateTimeOffset? LastUsedAt, DateTimeOffset CreatedAt);

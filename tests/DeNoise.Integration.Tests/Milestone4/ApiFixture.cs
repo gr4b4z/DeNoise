@@ -20,24 +20,29 @@ public sealed class ApiFixture : IAsyncDisposable
     public const string UserPassword = "Operator-Passw0rd-2026!";
 
     public HostFactory<DeNoise.Api.ApiHost> Factory { get; private set; } = null!;
-    public FakeTimeProvider Time { get; } = new(T0);
+    public FakeTimeProvider Time { get; private set; } = new(T0);
     public string ConnectionString { get; private set; } = string.Empty;
     public Guid TeamA { get; private set; }
     public Guid OperatorId { get; private set; }
     public IntegrationCredentials IntegrationA { get; private set; } = null!;
     public IntegrationCredentials IntegrationB { get; private set; } = null!;
 
-    public static async Task<ApiFixture> CreateAsync(PostgresFixture postgres, string name, IDictionary<string, string?>? settings = null)
+    /// <param name="start">Clock start; OIDC scenarios start at wall-clock time because the mock provider stamps tokens with it.</param>
+    /// <param name="configure">Extra service registrations (test doubles).</param>
+    public static async Task<ApiFixture> CreateAsync(PostgresFixture postgres, string name, IDictionary<string, string?>? settings = null,
+        DateTimeOffset? start = null, Action<IServiceCollection>? configure = null)
     {
         var f = new ApiFixture { ConnectionString = await postgres.CreateDatabaseAsync(name) };
+        if (start is { } s) f.Time = new FakeTimeProvider(s);
         var all = new Dictionary<string, string?>
         {
             ["Auth:Local:BootstrapPassword"] = AdminPassword,
             ["Notifications:AllowInsecureDestinations"] = "true",
             ["Limits:LoginPerMinutePerIp"] = "1000",
+            ["Limits:OidcPerMinutePerIp"] = "1000",
         };
         if (settings is not null) foreach (var (k, v) in settings) all[k] = v;
-        f.Factory = new HostFactory<DeNoise.Api.ApiHost>(f.ConnectionString, f.Time, settings: all);
+        f.Factory = new HostFactory<DeNoise.Api.ApiHost>(f.ConnectionString, f.Time, configure, all);
         _ = f.Factory.Server; // start the host (runs the bootstrap)
 
         await using var scope = f.Factory.Services.CreateAsyncScope();

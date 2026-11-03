@@ -14,6 +14,14 @@ public sealed class EfUserRepository(DeNoiseDbContext db) : IUserRepository
         return db.Users.SingleOrDefaultAsync(u => u.Username == normalised, ct);
     }
     public Task<User?> FindByEmailAsync(string email, CancellationToken ct = default) => db.Users.SingleOrDefaultAsync(u => u.Email == email, ct);
+    public async Task<IReadOnlyList<User>> ListByEmailIgnoreCaseAsync(string email, CancellationToken ct = default)
+    {
+        // ILIKE with every wildcard escaped is a case-insensitive equality.
+        var pattern = email.Trim().Replace("\\", "\\\\", StringComparison.Ordinal).Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal);
+        return await db.Users.Where(u => u.Email != null && EF.Functions.ILike(u.Email, pattern, "\\")).ToListAsync(ct);
+    }
+    public Task<User?> FindByExternalIdentityAsync(string issuer, string externalId, CancellationToken ct = default)
+        => db.Users.SingleOrDefaultAsync(u => u.ExternalIssuer == issuer && u.ExternalId == externalId, ct);
     public async Task<IReadOnlyList<User>> ListAsync(string? query, int limit, CancellationToken ct = default)
     {
         var q = db.Users.AsNoTracking();

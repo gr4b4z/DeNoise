@@ -145,6 +145,7 @@ ASP.NET Core maps `__` to `:`, so `Auth__Local__LockoutWindow` is `Auth:Local:Lo
 | `Limits__IngestPerMinute` | Ingest requests per minute per integration key; above it 429 with `Retry-After`. | `600` | ingest | plain |
 | `Limits__ApiPerMinutePerUser` | Application API requests per minute per credential (else per IP). | `600` | api | plain |
 | `Limits__LoginPerMinutePerIp` | `POST /auth/login` attempts per minute per source IP. | `10` | api | plain |
+| `Limits__OidcPerMinutePerIp` | `GET /auth/oidc/start` and `/auth/oidc/callback` requests per minute per source IP (one SSO sign-in is two). | `60` | api | plain |
 
 No host reads `Limits__IngestRps`, which the Helm chart rendered from `limits.ingestRps`. The ingest rate is `Limits__IngestPerMinute`.
 
@@ -162,16 +163,40 @@ No host reads `Limits__IngestRps`, which the Helm chart rendered from `limits.in
 | `Retention__BatchSize` | Rows deleted per statement. | `5000` | workers | plain |
 | `Retention__RunAtUtcHour` | Daily run time, UTC hour. | `2` | workers, api | plain |
 
-**Local sign-in** (ADR-14; OIDC, milestone 11b, will add its own `Auth__Oidc__*` variables)
+**Local sign-in** (ADR-14)
 
 | Variable | Meaning | Default | Hosts | Secret |
 |---|---|---|---|---|
+| `Auth__Local__Enabled` | Password sign-in for everyone. `false` keeps it only for `local_only` accounts (the bootstrap `admin` break-glass account, service accounts); the login page then shows a break-glass link instead of the form. Leave `true` until SSO is verified. | `true` | api | plain |
 | `Auth__Local__PasswordMinLength` | Minimum password length. | `12` | api | plain |
 | `Auth__Local__LockoutFailures` | Failed logins per user and per IP before lockout. | `10` | api | plain |
 | `Auth__Local__LockoutWindow` | Lockout window. | `00:15:00` | api | plain |
 | `Auth__Local__SelfServiceResetEnabled` | Offer password reset by e-mail; only effective when `Smtp__Host` is set too. | `false` | api | plain |
 | `Auth__Local__SessionSliding` | Sliding session lifetime. | `08:00:00` | api | plain |
 | `Auth__Local__SessionAbsolute` | Absolute session lifetime. | `1.00:00:00` | api | plain |
+
+**SSO with Entra ID** (milestone 11b, ADR-15; only the Api reads these, and nothing is contacted while `Auth__Oidc__Enabled` is unset). The redirect URI registered in Entra is `DeNoise__PublicBaseUrl` + `Auth__Oidc__CallbackPath`. Configuration errors fail Api start-up with the list of problems.
+
+| Variable | Meaning | Default | Hosts | Secret |
+|---|---|---|---|---|
+| `Auth__Oidc__Enabled` | Offer "Sign in with Microsoft" (authorization code + PKCE, server side; the browser never holds an Entra token). | `false` | api | plain |
+| `Auth__Oidc__Authority` | Single-tenant authority, `https://login.microsoftonline.com/<tenantId>/v2.0`. `common`, `organizations` and `consumers` are refused. | none (required when enabled) | api | plain |
+| `Auth__Oidc__ClientId` | Application (client) id of the app registration; also the expected id_token audience. | none (required when enabled) | api | plain |
+| `Auth__Oidc__Credential` | `federated` (client assertion = managed-identity token, nothing to rotate; production) or `secret`. | `federated` | api | plain |
+| `Auth__Oidc__ManagedIdentityClientId` | Client id of the user-assigned managed identity the federated credential trusts. Unset uses the system-assigned identity. | unset | api | plain |
+| `Auth__Oidc__FederatedTokenAudience` | Audience of the managed-identity token used as client assertion. | `api://AzureADTokenExchange` | api | plain |
+| `Auth__Oidc__ClientSecret` | Client secret, only with `Credential=secret`. | unset | api | secret |
+| `Auth__Oidc__CallbackPath` | Callback path. | `/auth/oidc/callback` | api | plain |
+| `Auth__Oidc__RoleMap__<appRoleValue>` | Entra app role value → DeNoise role (`viewer`, `operator`, `integration_admin`, `platform_admin`). Setting any entry replaces the whole default map. The names contain dots, e.g. `Auth__Oidc__RoleMap__DeNoise.Operator`. | `DeNoise.Viewer`, `DeNoise.Operator`, `DeNoise.IntegrationAdmin`, `DeNoise.PlatformAdmin` → the four roles | api | plain |
+| `Auth__Oidc__ScopeMap__<groupObjectId>` | Entra group object id → `access_scope` (spec §19.2), e.g. `Auth__Oidc__ScopeMap__6f1c…=mpt`. Unmapped groups grant nothing. | empty | api | plain |
+| `Auth__Oidc__RoleClaim`, `Auth__Oidc__GroupClaim`, `Auth__Oidc__EmailClaim` | Claims read for roles, groups and the pre-SSO e-mail match. | `roles`, `groups`, `email` | api | plain |
+| `Auth__Oidc__AutoProvision` | A first sign-in with at least one mapped app role creates the user (ADR-15). `false` refuses unknown users (`not_provisioned`). | `true` | api | plain |
+| `Auth__Oidc__MatchByEmail` | Link a first SSO sign-in to a pre-SSO local account with the same e-mail (case-insensitive). Never applies to `local_only` accounts or guest tokens (`acct=1`). | `true` | api | plain |
+| `Auth__Oidc__GraphGroupLookup` | Resolve groups through Microsoft Graph on overage. Not implemented: `true` fails start-up. Configure the app registration to emit only groups assigned to the application instead. | `false` | api | plain |
+| `Auth__Oidc__DisplayName` | Label of the SSO button ("Sign in with …"). | `Microsoft` | api | plain |
+| `Auth__Oidc__Scope` | Requested scopes. | `openid profile email` | api | plain |
+| `Auth__Oidc__ClockSkew`, `Auth__Oidc__StateLifetime` | id_token clock skew; how long a started sign-in may take. | `00:05:00`, `00:10:00` | api | plain |
+| `Auth__Oidc__RequireHttpsMetadata` | Require HTTPS for discovery and JWKS. Only the local mock provider turns it off. | `true` | api | plain |
 
 **Notifications and SMTP** (ADR-7; the `Smtp__*` variables only matter when `Smtp__Host` is set)
 
