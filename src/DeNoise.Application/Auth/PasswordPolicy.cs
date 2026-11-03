@@ -3,6 +3,11 @@ namespace DeNoise.Application.Auth;
 public sealed class LocalAuthOptions
 {
     public const string Section = "Auth:Local";
+    /// <summary>
+    /// Password sign-in for everyone. When false only accounts flagged <c>local_only</c> (service accounts, break-glass) may
+    /// use the password form; the login page then shows a break-glass link instead of the form (M11b, ADR-15).
+    /// </summary>
+    public bool Enabled { get; set; } = true;
     /// <summary>Bootstrap <c>admin</c> password (secret <c>Auth__Local__BootstrapPassword</c>). Consumed on first start when no user exists; never logged.</summary>
     public string? BootstrapPassword { get; set; }
     public int PasswordMinLength { get; set; } = 12;

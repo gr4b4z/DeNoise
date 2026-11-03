@@ -46,7 +46,7 @@ public sealed class OpenApiContractTests : IAsyncLifetime
         schemes.TryGetProperty("session", out _).Should().BeTrue();
         schemes.TryGetProperty("pat", out _).Should().BeTrue();
 
-        var anonymous = new HashSet<string> { "/auth/login", "/auth/providers", "/auth/reset/request" };
+        var anonymous = new HashSet<string> { "/auth/login", "/auth/providers", "/auth/reset/request", "/auth/oidc/start", "/auth/oidc/callback" };
         foreach (var path in _document.RootElement.GetProperty("paths").EnumerateObject())
         {
             if (path.Name.StartsWith("/healthz", StringComparison.Ordinal) || path.Name.StartsWith("/openapi", StringComparison.Ordinal)) continue;
@@ -63,7 +63,7 @@ public sealed class OpenApiContractTests : IAsyncLifetime
     public void Contract_covers_the_06_endpoint_families()
     {
         var paths = _document.RootElement.GetProperty("paths").EnumerateObject().Select(p => p.Name).ToList();
-        paths.Should().Contain(["/auth/login", "/auth/logout", "/auth/csrf", "/auth/change-password", "/api/v1/me", "/api/v1/me/tokens", "/api/v1/me/sessions",
+        paths.Should().Contain(["/auth/login", "/auth/logout", "/auth/oidc/start", "/auth/oidc/callback", "/auth/csrf", "/auth/change-password", "/api/v1/me", "/api/v1/me/tokens", "/api/v1/me/sessions",
             "/api/v1/episodes", "/api/v1/episodes/{id}", "/api/v1/episodes/{id}/timeline", "/api/v1/episodes/{id}/ack", "/api/v1/episodes/{id}/close", "/api/v1/episodes/bulk",
             "/api/v1/users", "/api/v1/teams", "/api/v1/teams/{id}/overview", "/api/v1/integrations", "/api/v1/policies/{kind}", "/api/v1/destinations"]);
     }

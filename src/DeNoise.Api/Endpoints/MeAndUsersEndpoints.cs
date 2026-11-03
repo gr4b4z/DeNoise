@@ -104,7 +104,7 @@ public static class MeAndUsersEndpoints
         }).RequirePermission(Permissions.UserManage).WithName("GetUser").Produces<UserSummary>().Produces(404);
 
         users.MapPut("/{id:guid}", async (Guid id, UpdateUserRequest request, HttpContext http, UserService service) =>
-            Results.Ok(ToSummary(await service.UpdateAsync(id, new UpdateUser(request.DisplayName, request.Email, request.Roles, request.Scopes), http.Principal(), http.CorrelationId(), http.RequestAborted), http)))
+            Results.Ok(ToSummary(await service.UpdateAsync(id, new UpdateUser(request.DisplayName, request.Email, request.Roles, request.Scopes, request.LocalOnly), http.Principal(), http.CorrelationId(), http.RequestAborted), http)))
             .RequirePermission(Permissions.UserManage).AddEndpointFilter<CsrfFilter>().WithName("UpdateUser").Produces<UserSummary>().ProducesProblem(400);
 
         users.MapPost("/{id:guid}/reset-password", async (Guid id, HttpContext http, UserService service) =>
@@ -129,6 +129,7 @@ public static class MeAndUsersEndpoints
     private static UserSummary ToSummary(User u, HttpContext http)
     {
         var now = http.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow();
-        return new UserSummary(u.UserId, u.Username, u.DisplayName, u.Email, u.RoleNames, u.Scopes, u.AuthProvider, u.Disabled, u.IsLocked(now), u.MustChangePassword, u.LastLoginAt, u.CreatedAt, u.Version);
+        return new UserSummary(u.UserId, u.Username, u.DisplayName, u.Email, u.RoleNames, u.Scopes, u.AuthProvider, u.Disabled, u.IsLocked(now), u.MustChangePassword, u.LastLoginAt, u.CreatedAt, u.Version,
+            u.LocalOnly, u.RolesProjectedAt);
     }
 }

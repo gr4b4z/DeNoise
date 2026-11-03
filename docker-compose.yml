@@ -21,6 +21,19 @@ services:
     image: axllent/mailpit:latest
     ports: ["8025:8025", "1025:1025"]
 
+  # Mock OpenID Connect provider for SSO development (M11b): `docker compose --profile oidc up -d mock-oidc`, then run the
+  # Api on the host with Auth__Oidc__Enabled=true, Auth__Oidc__Authority=http://localhost:8090/entra,
+  # Auth__Oidc__ClientId=denoise, Auth__Oidc__Credential=secret, Auth__Oidc__ClientSecret=dev, Auth__Oidc__RequireHttpsMetadata=false.
+  # Its login form takes the id_token claims as JSON, e.g. {"oid":"<guid>","roles":["DeNoise.Operator"],"groups":[]}.
+  # The issuer is derived from the Host header, so browser and Api must both reach it as localhost:8090 (host-run Api only).
+  # The integration tests start the same image through Testcontainers (or use DENOISE_TEST_OIDC_URL).
+  mock-oidc:
+    profiles: ["oidc"]
+    image: ghcr.io/navikt/mock-oauth2-server:2.1.10
+    environment:
+      SERVER_PORT: "8080"
+    ports: ["8090:8080"]
+
   migrator:
     profiles: ["app"]
     build: { context: ., dockerfile: build/Dockerfile, args: { HOST: Migrator } }

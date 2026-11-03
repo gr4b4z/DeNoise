@@ -11,6 +11,53 @@
     }
   ],
   "paths": {
+    "/auth/oidc/callback": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "description": "Identity-provider redirect target. Success sets the session cookie and redirects to the validated \u0060returnTo\u0060; every failure redirects to \u0060/login?error=sso\u0060 and is audited as \u0060auth.oidc_refused\u0060.",
+        "operationId": "CompleteOidcSignIn",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error_description",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Found"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/auth/providers": {
       "get": {
         "tags": [
@@ -184,6 +231,32 @@
         "responses": {
           "202": {
             "description": "Accepted"
+          }
+        }
+      }
+    },
+    "/auth/oidc/start": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "description": "Starts SSO: redirects (302) to the identity provider. \u0060returnTo\u0060 must be a local path; anything else returns to the queue. 404 when OIDC is not configured.",
+        "operationId": "StartOidcSignIn",
+        "parameters": [
+          {
+            "name": "returnTo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Found"
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -10640,6 +10713,12 @@
             "items": {
               "type": "string"
             }
+          },
+          "localOnly": {
+            "type": [
+              "null",
+              "boolean"
+            ]
           }
         }
       },
@@ -10735,6 +10814,17 @@
           "version": {
             "type": "integer",
             "format": "int32"
+          },
+          "localOnly": {
+            "type": "boolean",
+            "default": false
+          },
+          "rolesProjectedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },

@@ -82,15 +82,18 @@ POST /auth/logout                   → 204, session revoked
 POST /auth/change-password          { current, new }   also used for forced change
 POST /auth/reset/request            { email } → 202 always   (self-service; only when SMTP reset is enabled)
 POST /auth/reset/confirm            { token, new }
-GET  /auth/providers                → { local: true, oidc: null | { displayName, loginUrl } }   UI decides which buttons to show
+GET  /auth/providers                → { local, oidc: null | { displayName, loginUrl }, selfServiceReset }   UI decides which buttons to show; local=false → break-glass link
+GET  /auth/oidc/start?returnTo=     → 302 to Entra (state, nonce, PKCE S256; sealed state cookie) | 404 when OIDC is off      (M11b)
+GET  /auth/oidc/callback            → 302 to returnTo + session cookie | 302 /login?error=sso on any failure | 404 when off
 GET  /auth/csrf                     → token for mutating requests from the SPA
 ```
-Rate limit: 10 login attempts / min / IP. All auth events audited (`auth.login`, `auth.login_failed`, `auth.locked`, `auth.logout`, `auth.password_changed`, `auth.reset_*`).
+Rate limit: 10 login attempts / min / IP. All auth events audited (`auth.login`, `auth.login_failed`, `auth.locked`, `auth.logout`, `auth.password_changed`, `auth.reset_*`; SSO adds `auth.oidc_refused` with a `reason`, `user.provisioned` and `user.roles_projected`).
 
 ### Users and tokens (platform_admin unless noted)
 ```
 GET/POST /api/v1/users ; GET/PUT /api/v1/users/{id} ; POST /api/v1/users/{id}/disable | enable | unlock
 POST /api/v1/users/{id}/reset-password           → { temporaryPassword }  shown once; sets mustChangePassword
+                                                   UserSummary carries authProvider, localOnly, rolesProjectedAt; PUT { localOnly } is platform_admin only (M11b)
 GET/POST /api/v1/me/tokens ; DELETE /api/v1/me/tokens/{id}     personal access tokens (any user); POST returns the token once
 GET  /api/v1/me/sessions ; DELETE /api/v1/me/sessions/{id}
 ```
@@ -196,7 +199,7 @@ GET /api/v1/events/stream?scope=…                         text/event-stream
 - UI: `POST /auth/login` → server-side session (`cfg.session`) → cookie `HttpOnly; Secure; SameSite=Lax`, sliding 8 h, absolute 24 h. CSRF double-submit token on mutations. `mustChangePassword` in `/me` forces the change screen before any route.
 - API clients / CI: personal access token as bearer; same permission checks; `last_used_at` updated.
 - Bootstrap: first start with no users seeds `admin` from the secret `Auth__Local__BootstrapPassword` (03 §4) with `must_change_password=true`; the value is never logged.
-- OIDC (later): `GET /auth/providers` advertises it; `/auth/oidc/login` and `/auth/oidc/callback` are reserved; users matched on email; permissions untouched (ADR-14).
+- OIDC (M11b, ADR-15): `GET /auth/providers` advertises it; `GET /auth/oidc/start` → Entra (authorization code + PKCE, DeNoise as confidential client) → `GET /auth/oidc/callback`, which validates state, nonce, issuer, audience, signature and expiry, projects the `roles` claim (`roleMap`) and `groups` claim (`scopeMap`) onto `cfg.user`, and ends in the same session cookie as `POST /auth/login`. Users are matched on `(external_issuer, oid)`, then on e-mail for pre-SSO local accounts (never `local_only`). Every failure answers the same redirect and is audited distinctly. `Auth:Local:Enabled=false` limits password sign-in to `local_only` accounts. See `docs/milestones/M11b-oidc-entra-id.md`.
 
 ## 7. Notification payloads
 

@@ -173,6 +173,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ITeamMemberRepository, EfTeamMemberRepository>();
         services.AddScoped<ISavedFilterRepository, EfSavedFilterRepository>();
         services.AddScoped<IIdentityProvider, LocalPasswordProvider>();
+        services.AddScoped<SessionIssuer>();
         services.AddScoped<AuthService>();
         services.AddScoped<UserService>();
         services.AddScoped<PersonalAccessTokenService>();

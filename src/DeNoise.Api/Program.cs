@@ -7,6 +7,7 @@ using DeNoise.Application.Auth;
 using DeNoise.Application.Episodes;
 using DeNoise.Application.Mapping;
 using DeNoise.Infrastructure;
+using DeNoise.Infrastructure.Auth;
 using DeNoise.Infrastructure.Health;
 using DeNoise.Infrastructure.Hosting;
 using DeNoise.Infrastructure.Observability;
@@ -19,6 +20,7 @@ using Microsoft.OpenApi;
 var builder = WebApplication.CreateBuilder(args);
 builder.AddDeNoiseCore("api");
 builder.Services.AddDeNoiseInfrastructure(builder.Configuration);
+builder.Services.AddDeNoiseOidc(builder.Configuration);
 builder.Services.AddHealthChecks().AddCheck<OutboxLagHealthCheck>("outbox-lag", tags: [HealthEndpoints.ReadyTag]);
 builder.Services.AddHostedService<PgChangeListener>();
 builder.Services.AddSingleton<CsrfTokens>();
@@ -61,6 +63,15 @@ builder.Services.AddRateLimiter(o =>
     o.AddPolicy("login", ctx => RateLimitPartition.GetSlidingWindowLimiter("login:" + ctx.ClientIp(), _ => new SlidingWindowRateLimiterOptions
     {
         PermitLimit = ctx.RequestServices.GetRequiredService<IConfiguration>().GetValue("Limits:LoginPerMinutePerIp", 10),
+        Window = TimeSpan.FromMinutes(1),
+        SegmentsPerWindow = 6,
+        QueueLimit = 0,
+    }));
+    // M11b: SSO start + callback per IP. Higher than the password limit because a whole office behind one NAT address signs
+    // in at shift start, and nothing here guesses a credential; the callback still costs a token-endpoint round trip.
+    o.AddPolicy("oidc", ctx => RateLimitPartition.GetSlidingWindowLimiter("oidc:" + ctx.ClientIp(), _ => new SlidingWindowRateLimiterOptions
+    {
+        PermitLimit = ctx.RequestServices.GetRequiredService<IConfiguration>().GetValue("Limits:OidcPerMinutePerIp", 60),
         Window = TimeSpan.FromMinutes(1),
         SegmentsPerWindow = 6,
         QueueLimit = 0,

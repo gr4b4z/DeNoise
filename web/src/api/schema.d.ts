@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/auth/oidc/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Identity-provider redirect target. Success sets the session cookie and redirects to the validated `returnTo`; every failure redirects to `/login?error=sso` and is audited as `auth.oidc_refused`. */
+        get: operations["CompleteOidcSignIn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/providers": {
         parameters: {
             query?: never;
@@ -95,6 +112,23 @@ export interface paths {
         put?: never;
         /** @description Self-service reset lands with SMTP (C4); always answers 202 so nothing is leaked. */
         post: operations["RequestPasswordReset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/oidc/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Starts SSO: redirects (302) to the identity provider. `returnTo` must be a local path; anything else returns to the queue. 404 when OIDC is not configured. */
+        get: operations["StartOidcSignIn"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2703,6 +2737,7 @@ export interface components {
             email: null | string;
             roles: null | string[];
             scopes: null | string[];
+            localOnly?: null | boolean;
         };
         UserRef: {
             /** Format: uuid */
@@ -2728,6 +2763,10 @@ export interface components {
             createdAt: string;
             /** Format: int32 */
             version: number;
+            /** @default false */
+            localOnly: boolean;
+            /** Format: date-time */
+            rolesProjectedAt?: null | string;
         };
         WebhookTemplateDto: {
             /** Format: uuid */
@@ -2759,6 +2798,36 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    CompleteOidcSignIn: {
+        parameters: {
+            query?: {
+                code?: string;
+                state?: string;
+                error?: string;
+                error_description?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Found */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     GetAuthProviders: {
         parameters: {
             query?: never;
@@ -2908,6 +2977,33 @@ export interface operations {
         responses: {
             /** @description Accepted */
             202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StartOidcSignIn: {
+        parameters: {
+            query?: {
+                returnTo?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Found */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

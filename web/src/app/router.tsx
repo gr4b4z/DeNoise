@@ -47,7 +47,11 @@ function str(v: unknown): string | undefined {
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
-  validateSearch: (s: Record<string, unknown>): { returnTo?: string } => ({ returnTo: str(s.returnTo) }),
+  validateSearch: (s: Record<string, unknown>): { returnTo?: string; error?: string; breakGlass?: boolean } => ({
+    returnTo: str(s.returnTo),
+    error: str(s.error),
+    breakGlass: s.breakGlass === true || s.breakGlass === 'true' || s.breakGlass === 1 || s.breakGlass === '1' ? true : undefined,
+  }),
   component: LoginPage,
 });
 

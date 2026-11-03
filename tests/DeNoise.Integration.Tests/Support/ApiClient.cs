@@ -51,6 +51,14 @@ public sealed class ApiClient : IDisposable
         return response;
     }
 
+    /// <summary>Adopts a session cookie obtained elsewhere (the OIDC callback) and fetches its CSRF token.</summary>
+    public async Task UseSessionAsync(string sessionToken)
+    {
+        _cookie = sessionToken;
+        _bearer = null;
+        _csrf = (await GetAsync<CsrfResponse>("/auth/csrf"))!.Token;
+    }
+
     public Task<HttpResponseMessage> RawAsync(HttpMethod method, string path, object? body = null, int? ifMatch = null, Guid? idempotencyKey = null, bool csrf = true, bool idempotency = true)
         => SendAsync(method, path, body, ifMatch, idempotencyKey, csrf, idempotency);
 

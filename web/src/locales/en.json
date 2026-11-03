@@ -54,7 +54,13 @@
     "confirm": "Confirm new password",
     "setNew": "Set new password",
     "mismatch": "The two passwords differ",
-    "tooShort": "At least 12 characters"
+    "tooShort": "At least 12 characters",
+    "ssoWith": "Sign in with {{name}}",
+    "or": "or",
+    "ssoFailed": "Single sign-on did not complete. Try again; if it keeps failing, ask an administrator to check your access to DeNoise.",
+    "breakGlass": "Break-glass sign-in",
+    "breakGlassHint": "Password sign-in is reserved for emergency and service accounts.",
+    "breakGlassTitle": "Break-glass sign-in: emergency and service accounts only."
   },
   "queue": {
     "search": "Search summary, resource, service",

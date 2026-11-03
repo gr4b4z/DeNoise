@@ -16,6 +16,9 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         b.Property(x => x.DisplayName).HasColumnName("display_name");
         b.Property(x => x.AuthProvider).HasColumnName("auth_provider").HasDefaultValue(AuthProviders.Local);
         b.Property(x => x.ExternalId).HasColumnName("external_id");
+        b.Property(x => x.ExternalIssuer).HasColumnName("external_issuer");
+        b.Property(x => x.LocalOnly).HasColumnName("local_only").HasDefaultValue(false);
+        b.Property(x => x.RolesProjectedAt).HasColumnName("roles_projected_at");
         b.Property(x => x.PasswordHash).HasColumnName("password_hash");
         b.Property(x => x.PasswordChangedAt).HasColumnName("password_changed_at");
         b.Property(x => x.MustChangePassword).HasColumnName("must_change_password").HasDefaultValue(false);
@@ -33,6 +36,7 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         b.Ignore(x => x.IsPlatformAdmin);
         b.HasIndex(x => x.Username, "user_username_uq").IsUnique();
         b.HasIndex(x => x.Email, "user_email_uq").IsUnique().HasFilter("email IS NOT NULL");
+        b.HasIndex(x => new { x.ExternalIssuer, x.ExternalId }, "user_external_identity_uq").IsUnique().HasFilter("external_issuer IS NOT NULL AND external_id IS NOT NULL");
     }
 }
 

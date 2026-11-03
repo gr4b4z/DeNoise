@@ -1,6 +1,7 @@
 # Milestone 11b — OIDC sign-in with Entra ID
 
-Status: **planned**, gated on **C2** (tenant, app registration, role and group mapping). Buildable any time after M4.
+Status: **done** against the mock provider (`navikt/mock-oauth2-server`); a real sign-in against the C2 tenant is still
+to be verified once the app registration exists. Buildable any time after M4.
 Behaviour: spec §19.1–19.2. Decisions: [ADR-14](../03-architecture-and-adrs.md) as revised by
 [ADR-15](../adr/ADR-015-entra-app-roles-and-local-enforcement.md).
 
@@ -104,8 +105,9 @@ Unique index on `(external_issuer, external_id)` where both are not null. `cfg.s
 
 ## Tests
 
-`tests/DeNoise.Integration.Tests/Milestone11b/OidcScenarios.cs` against a mock OIDC provider (Docker Compose already
-reserves one, 09 M0):
+`tests/DeNoise.Integration.Tests/Milestone11b/OidcScenarios.cs` against a mock OIDC provider: `navikt/mock-oauth2-server`,
+started by Testcontainers (`Support/MockOidcServer.cs`, or an existing one via `DENOISE_TEST_OIDC_URL`) and available
+locally as the Compose service `mock-oidc` (profile `oidc`). Compose did not in fact reserve one before this milestone.
 
 | Scenario | Required result |
 |---|---|
@@ -121,6 +123,29 @@ reserves one, 09 M0):
 
 Unit: role and group mapping, overage path, `returnTo` validation. Playwright: the SSO button appears when the provider
 is configured and the break-glass link when local login is disabled.
+
+## As built
+
+- **Library.** `Microsoft.IdentityModel.Protocols.OpenIdConnect` — the protocol and validation library underneath the
+  stock ASP.NET Core `OpenIdConnect` handler — used directly, without the handler's middleware: the port shape above
+  (`BuildChallenge` / `CompleteAsync`), the two endpoints in OpenAPI, one session issuer for both providers and a distinct
+  audit reason per failure do not fit a remote-authentication handler that owns the callback path and signs into its own
+  cookie scheme. `ConfigurationManager` caches discovery and JWKS (12 h, refreshed early on an unknown signing key).
+  `Azure.Identity` (`ManagedIdentityCredential`) supplies the federated client assertion.
+- **State.** `state`, `nonce`, the PKCE verifier and the validated `returnTo` travel in the `denoise_oidc` cookie
+  (`HttpOnly`, `SameSite=Lax`, path `/auth/oidc`, 10 min), sealed with the shared Data Protection key ring (ADR-18) so any
+  replica can complete a sign-in. A consumed state is remembered per replica for its lifetime (replay guard); across
+  replicas Entra's single-use code is the guard.
+- **Matching.** `(external_issuer, oid)` first. Then the `email` claim, case-insensitively, only for a `local` account that
+  is not `local_only` and not linked yet, and never for a guest token (`acct=1`); several case variants, or an e-mail held
+  by an account that may not be linked, refuse with `email_conflict` instead of guessing. The issuer is always the
+  configured single tenant, since any other issuer fails validation first.
+- **Projection.** Roles and scopes are replaced, not merged. A token with no mapped role refuses the sign-in and, for an
+  existing projected account, also lowers its stored roles to none (least privilege for its PATs). On groups overage the
+  scopes are projected as empty. Linking a pre-SSO account retires its password.
+- **Not implemented.** `graphGroupLookup: true` fails start-up (no tenant to test Graph against); a user-management screen
+  does not exist yet in the SPA (08 §136), so `authProvider` / `localOnly` are exposed through the users API only.
+- **Offboarding.** [`docs/runbooks/user-offboarding.md`](../runbooks/user-offboarding.md).
 
 ## Risks
 
